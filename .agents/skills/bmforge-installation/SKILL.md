@@ -1,0 +1,20 @@
+---
+name: bmforge-installation
+description: Complete and verify every new application's install, upgrade and uninstall lifecycle, with a versioned /opt/prod installation footprint even for client-only or library-only projects. Adapt the existing BMForge installer; use DevLog only as a reference for optional client/server roles.
+---
+
+# Installation lifecycle
+
+**Baseline skill.** Read `references/specification.md`, `references/installation-scripts.md` and `references/engineering-contract.md` before implementing installation. New-project bootstrap has already installed `scripts/install.sh`, `upgrade.sh`, `uninstall.sh`, `install.py`, version constants and `new-release.sh` from approved BMForge templates. **Do not create a second installer or release script without a named requirement.**
+
+1. **Ask or infer from explicit requirements which topology is actually needed:** library/CLI-only, single-machine service, or client/server on separate machines. Do not select client/server merely because the application uses ZeroMQ or HTTP.
+2. **Use the existing `scripts/install.py` and thin wrappers** as the default implementation. It starts with `DEPLOYMENT_READY = False`. Complete its file ownership, deployment preparation, configuration preservation and validation for the actual application before enabling it. No empty stub may claim an installation completed.
+3. **Every successfully installed project owns `D<Name>.BASE_DIR`, normally `/opt/prod/<slug>`**, including pure client and custom library installs. Include a readable `<slug>/constants/D<Name>.py`, the existing `.installation-manifest.json` ownership record and the `.deployment-version` marker containing the **successfully installed** literal `D<Name>.VERSION`. If `pyproject.toml` contains a version, keep it in sync. Keep the payload minimal for library-only installs, but actually install/verify the chosen library or CLI.
+4. If two deployment roles are **explicitly** required, inspect `references/source/devlog/` to learn the **client-only** `install.sh -server HOST`, optional `install-server.sh`, persisted `conf/installation.json` role, release activation and role-preserving `upgrade.sh` pattern. Adapt this behaviour inside the application's own deployment interface. Never transplant DevLog's time-tracker features, database credentials or hard-coded ports.
+5. For a **client-only** machine, do not install server dependencies, provision MariaDB, create users/systemd units, or require a running server during installation. Validate the address before changes. For a server, provision only explicitly required services, validate startup through the existing application health endpoint, and preserve secrets/configuration.
+6. **Implement and test all three mandatory operations**: install, upgrade and uninstall. Only create an `install-server.sh` when a separate server installation role is genuinely required. Upgrade retains the installed role and user data; uninstall removes managed files/services for that role while retaining application/user data unless explicitly authorized otherwise.
+7. Use disposable directories and local service/DB fixtures to test metadata-only library installs, client-only installs, server installs, upgrades of both roles, failed activation, uninstall and repeat uninstall. **DevLog's pinned revision has no uninstall script; don't mistake it for a complete implementation.**
+8. Before releasing, check that deployment is enabled, wrappers are executable, `--help` and `--check` work, installed versions match the application's literals, and success markers move **only after verification**. Applying the `bmforge.installation` component marker is provenance, not a substitute for testing.
+9. No installation or uninstall on a real host, Git release, privilege escalation or secret provisioning is authorized merely by loading this skill. Implementation and use are separate. Report which operations were tested and what needs explicit user approval.
+
+The stable standards for Git release publication and skill-version update notifications remain unchanged.
