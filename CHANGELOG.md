@@ -6,16 +6,19 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+### Changed
+
+- Apply a dark green theme to the daily-hours report, including form controls,
+  the hours table, and the chart with matching labels, gridlines, and tooltips.
+
 ## [0.2.0] - 2026-10-24 @ 19:26
+
+This should be considered the initial release. The initial rollout was butchered using Git.
 
 ### Fixed
 
 - Reject escaped lone Unicode surrogates in incoming ZeroMQ JSON envelopes before activity dispatch. A malformed request receives `invalid_request` without terminating the socket worker; valid Unicode and subsequent requests still work.
 - Make fresh server installation preflight (including `--check`) require the `mariadb` executable when database provisioning will use it. Client-only installs and non-provisioning upgrades do not acquire that dependency.
-
-
-### Fixed
-
 - Close the BMForge 0.9.0 installation lifecycle gaps: implement role-aware
   `uninstall.sh` and read-only `--check` support for install, install-server,
   upgrade and uninstall without changing the client/server dependency split.
@@ -25,8 +28,6 @@ date (`YYYY-MM-DD`) when publishing.
 - Install a project-specific release script from the BMForge template, keeping
   `pyproject.toml` version synchronized with `DDevLog.VERSION` during releases.
 - Validate source package and literal CMDB versions before host changes.
-
-## 0.1.0 — Unreleased
 
 ### Added
 
