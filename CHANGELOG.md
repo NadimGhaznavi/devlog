@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Chromium**. Chromium helps stainless steel resist rust by forming a thin protective oxide layer.
+
 ### Changed
 
 - Apply a dark green theme to the daily-hours report, including form controls,
