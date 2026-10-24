@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-24 @ 19:43
+
 This release is named for the element **Chromium**. Chromium helps stainless steel resist rust by forming a thin protective oxide layer.
 
 ### Changed
