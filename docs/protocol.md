@@ -13,7 +13,7 @@ string), `target` (string or null), `method` (nonempty string), and `payload`
 (object). Requests target `devlog`; replies target the request sender and echo
 the method. A reply's payload is either `{"status":"ok","result":{...}}` or
 `{"status":"error","error":{"code":"...","message_key":"...","message":"..."}}`.
-Malformed requests receive an error; invalid requests do not stop the listener.
+Malformed requests receive an `invalid_request` error; invalid requests do not stop the listener. This includes syntactically valid JSON with escaped **lone Unicode surrogates** in envelope strings, nested payload strings or object keys. They are rejected before handler dispatch. Valid surrogate pairs remain accepted, and a valid request after an invalid one continues to work on the same ZeroMQ worker.
 Unexpected internal failures receive an error and terminate the worker visibly,
 so the service exits and systemd can restart it.
 

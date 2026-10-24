@@ -8,6 +8,12 @@ date (`YYYY-MM-DD`) when publishing.
 
 ### Fixed
 
+- Reject escaped lone Unicode surrogates in incoming ZeroMQ JSON envelopes before activity dispatch. A malformed request receives `invalid_request` without terminating the socket worker; valid Unicode and subsequent requests still work.
+- Make fresh server installation preflight (including `--check`) require the `mariadb` executable when database provisioning will use it. Client-only installs and non-provisioning upgrades do not acquire that dependency.
+
+
+### Fixed
+
 - Close the BMForge 0.9.0 installation lifecycle gaps: implement role-aware
   `uninstall.sh` and read-only `--check` support for install, install-server,
   upgrade and uninstall without changing the client/server dependency split.

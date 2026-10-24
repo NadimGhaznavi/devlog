@@ -124,6 +124,63 @@ def test_client_upgrade_preserves_host_and_role(deployment, monkeypatch):
     assert not unit.exists()
 
 
+@pytest.mark.parametrize("check", [True, False])
+def test_fresh_server_requires_mariadb_before_host_changes(deployment, monkeypatch, capsys, check):
+    module, base, unit, commands = deployment
+    monkeypatch.setattr(module.os, "geteuid", lambda: 0)
+    # All the other server prerequisites exist; only MariaDB is missing.
+    monkeypatch.setattr(module.shutil, "which",
+                        lambda name: None if name == "mariadb" else f"/usr/bin/{name}")
+    argv = ["install-server"] + (["--check"] if check else [])
+    with pytest.raises(SystemExit) as error:
+        module.main(argv)
+    assert error.value.code == 2
+    assert "mariadb" in capsys.readouterr().err
+    assert list(base.iterdir()) == []
+    assert not unit.exists()
+    assert commands == []
+
+
+def test_server_dry_run_succeeds_when_prerequisites_exist(deployment, monkeypatch):
+    module, base, unit, commands = deployment
+    monkeypatch.setattr(module.os, "geteuid", lambda: 1000)
+    monkeypatch.setattr(module.shutil, "which", lambda name: f"/usr/bin/{name}")
+    module.main(["install-server", "--check"])
+    assert list(base.iterdir()) == []
+    assert not unit.exists()
+    assert commands == []
+
+
+def test_server_with_existing_credentials_does_not_need_mariadb_executable(deployment, monkeypatch):
+    module, base, unit, commands = deployment
+    (base / "conf").mkdir()
+    (base / "conf/database.env").write_text("already configured")
+    monkeypatch.setattr(module.os, "geteuid", lambda: 1000)
+    monkeypatch.setattr(module.shutil, "which",
+                        lambda name: None if name == "mariadb" else f"/usr/bin/{name}")
+    module.main(["install-server", "--check"])
+    assert (base / "conf/database.env").read_text() == "already configured"
+    assert commands == []
+    assert not unit.exists()
+
+
+def test_existing_server_upgrade_does_not_require_admin_database_client(deployment, monkeypatch):
+    module, base, unit, commands = deployment
+    (base / "conf").mkdir()
+    (base / "conf/installation.json").write_text('{"role":"server"}')
+    (base / "conf/devlog.json").write_text("{}")
+    release = base / "releases/0.1.0-1234"
+    release.mkdir(parents=True)
+    (base / "current").symlink_to(release)
+    monkeypatch.setattr(module.os, "geteuid", lambda: 1000)
+    monkeypatch.setattr(module.shutil, "which",
+                        lambda name: None if name == "mariadb" else f"/usr/bin/{name}")
+    module.main(["upgrade", "--check"])
+    assert (base / "current").is_symlink()
+    assert commands == []
+    assert not unit.exists()
+
+
 def test_server_install_has_no_client_host_requirement(deployment):
     module, *_ = deployment
     _, arguments = module.arguments(["install-server"])
