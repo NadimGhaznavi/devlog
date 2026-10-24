@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-24 @ 19:26
+
 ### Fixed
 
 - Reject escaped lone Unicode surrogates in incoming ZeroMQ JSON envelopes before activity dispatch. A malformed request receives `invalid_request` without terminating the socket worker; valid Unicode and subsequent requests still work.
