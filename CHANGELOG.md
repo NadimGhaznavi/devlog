@@ -4,6 +4,20 @@ User-visible changes are recorded here, newest version first. Versions remain
 marked **Unreleased** until a release is cut; replace that label with the release
 date (`YYYY-MM-DD`) when publishing.
 
+## [Unreleased]
+
+### Fixed
+
+- Close the BMForge 0.9.0 installation lifecycle gaps: implement role-aware
+  `uninstall.sh` and read-only `--check` support for install, install-server,
+  upgrade and uninstall without changing the client/server dependency split.
+- Publish an installation ownership manifest, readable CMDB constants, and
+  a last-successful-version marker for both client and server deployments.
+  Preserve configuration and database data during uninstall.
+- Install a project-specific release script from the BMForge template, keeping
+  `pyproject.toml` version synchronized with `DDevLog.VERSION` during releases.
+- Validate source package and literal CMDB versions before host changes.
+
 ## 0.1.0 — Unreleased
 
 ### Added

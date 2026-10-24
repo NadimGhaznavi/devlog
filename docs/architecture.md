@@ -48,10 +48,22 @@ introduced.
 Pinned skill versions and source hashes are recorded in `.agents/bmforge/lock.json`.
 There are no BMForge or reference-application imports at runtime.
 
+Both client and server installs expose a standard BMForge installation identity
+at `/opt/prod/devlog`: an installed `devlog/constants/DDevLog.py`,
+`.installation-manifest.json` tracking owned resources, and
+`.deployment-version` written only after successful activation. `--check`
+preflights run without root or host changes. Role-aware
+`scripts/uninstall.sh` removes only DevLog-owned code and services while
+retaining configuration and database data. Client-only installations
+retain the canonical application version but suppress local server listener
+and database declarations in the CMDB-readable installed constants. Server
+installations retain the source declarations. All three lifecycle entry points
+are completed, not inert bootstrap stubs.
+
 Deployment is split between `scripts/install.sh -server HOST` for client-only
 machines and `scripts/install-server.sh` for the server machine. Only the server
 installer provisions MariaDB and systemd. The Python package's base dependency
 is PyZMQ; the `server` extra adds Jinja2 and PyMySQL. Both installations provide
 the public `bin/dl` path, and the server also provides `bin/dl-server` and
 `bin/dl-db-init`. `conf/installation.json` records the role so `scripts/upgrade.sh`
-can preserve it without upgrading a client into a server.
+can preserve it without upgrading a client into a server. DevLog's release script synchronizes the package's PEP 621 version with the canonical DDevLog constant. Installation rejects a mismatch before writing any files.
