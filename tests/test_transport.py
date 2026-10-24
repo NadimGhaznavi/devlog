@@ -23,6 +23,9 @@ def echo_handler():
     [json.dumps(dict(protocol_version=True, sender="dl", target="devlog", method="health", payload={})).encode()],
     [ZMQMsg(sender="dl", target="wrong", method="health").to_json()],
     [b'\xff'],
+    [b'{"protocol_version":1,"sender":"dl","target":"devlog","method":"health","payload":{"message":"\\ud800"}}'],
+    [b'{"protocol_version":1,"sender":"\\udfff","target":"devlog","method":"health","payload":{}}'],
+    [b'{"protocol_version":1,"sender":"dl","target":"devlog","method":"health","payload":{"\\ud800":"value"}}'],
     [b'[' * 1100 + b'0' + b']' * 1100],
 ])
 def test_malformed_then_valid_request(frames):
@@ -35,6 +38,20 @@ def test_malformed_then_valid_request(frames):
             reply = ZMQMsg.from_json(client.recv())
             assert reply.payload["status"] == "error"
         assert ZMQClient(server.endpoint, timeout_ms=1000).call(Method.HEALTH, {}) == {}
+
+
+def test_escaped_valid_surrogate_pair_is_accepted():
+    # A paired escape represents a valid Unicode scalar value, not a lone surrogate.
+    raw = (b'{"protocol_version":1,"sender":"dl","target":"devlog",'
+           b'"method":"health","payload":{"label":"\\ud83d\\ude00"}}')
+    with ZMQServer("tcp://127.0.0.1:*", echo_handler) as server:
+        with zmq.Context() as context, context.socket(zmq.REQ) as client:
+            client.setsockopt(zmq.RCVTIMEO, 1000)
+            client.setsockopt(zmq.LINGER, 0)
+            client.connect(server.endpoint)
+            client.send(raw)
+            reply = ZMQMsg.from_json(client.recv())
+            assert reply.payload == {"status": "ok", "result": {"label": "😀"}}
 
 
 def test_bind_failure_is_reported_synchronously():

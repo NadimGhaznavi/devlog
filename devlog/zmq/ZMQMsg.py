@@ -29,6 +29,13 @@ class ZMQMsg:
     @classmethod
     def from_json(cls, raw):
         values = json.loads(raw.decode("utf-8"), parse_constant=lambda value: cls._invalid_number(value))
+        # Escaped lone surrogates survive JSON decoding but cannot be encoded
+        # as UTF-8 in outgoing messages or persistence. Reject at the boundary,
+        # including nested values and object keys, before activity dispatch.
+        try:
+            json.dumps(values, ensure_ascii=False, allow_nan=False).encode("utf-8")
+        except (UnicodeError, ValueError) as error:
+            raise ValueError("Invalid Unicode in message envelope") from error
         if not isinstance(values, dict) or set(values) != {"protocol_version", "sender", "target", "method", "payload"}:
             raise ValueError("Invalid message envelope")
         version = values.pop("protocol_version")

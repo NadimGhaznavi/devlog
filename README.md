@@ -44,7 +44,10 @@ releasing.
 
 Cut your Git release, then run these scripts from the prepared release checkout;
 they do not pull or change Git. Both installation types require Python **3.11+**
-with venv/pip support and Git.
+with venv/pip support and Git. Fresh server provisioning additionally needs the
+`mariadb` command when new DB credentials must be created. `install-server.sh --check`
+verifies this before any account, filesystem or database changes. Client-only
+installs and server upgrades do not require the MariaDB administrator command.
 
 ### Client only
 

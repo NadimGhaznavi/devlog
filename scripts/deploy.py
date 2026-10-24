@@ -340,7 +340,13 @@ def main(argv=None):
             raise RuntimeError("Active ownership manifest exists; inspect installation before reinstall")
         if previous_manifest.get("role") != role:
             raise RuntimeError("Existing manifest belongs to a different installation role")
-    for command in (("git", "systemctl", "runuser") if server else ("git",)):
+    # Validate dependencies for this operation before touching host state.
+    # Fresh server provisioning needs MariaDB only when credentials are absent;
+    # upgrades and client installations never invoke the database admin CLI.
+    required = ("git", "systemctl", "runuser") if server else ("git",)
+    if args.action == "install-server" and not (BASE / "conf/database.env").exists():
+        required += ("mariadb",)
+    for command in required:
         if shutil.which(command) is None:
             parser.error(f"Required executable is missing: {command}")
     if args.check:
