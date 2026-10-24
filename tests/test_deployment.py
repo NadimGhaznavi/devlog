@@ -45,6 +45,7 @@ def test_failed_upgrade_restores_previous_release_and_unit(deployment, monkeypat
         module.activate(new, was_active=True, previous_release=old, previous_unit=b"previous unit")
     assert (base / "current").resolve() == old
     assert unit.read_bytes() == b"previous unit"
+    assert not (base / ".deployment-version").exists()
     assert commands[-1] == ("systemctl", "start", "devlog.service")
     assert not any("mariadb" in command for command in commands)
 
@@ -136,3 +137,148 @@ def test_original_server_installation_is_recognized(deployment):
     (base / "bin/dl-server").symlink_to("../current/venv/bin/dl-server")
     (base / "conf/database.env").write_text("existing credentials")
     assert module.installed_role() == "server"
+
+
+def test_check_mode_requires_no_root_and_makes_no_changes(deployment, monkeypatch):
+    module, base, unit, commands = deployment
+    monkeypatch.setattr(module.os, "geteuid", lambda: 1000)
+    monkeypatch.setattr(module.shutil, "which", lambda name: "/usr/bin/git" if name == "git" else None)
+    module.main(["install", "-server", "remote.example.net", "--check"])
+    assert list(base.iterdir()) == []
+    assert commands == []
+    assert not unit.exists()
+
+
+def test_client_install_creates_bmforge_identity(deployment, monkeypatch):
+    import json
+
+    module, base, unit, commands = deployment
+    monkeypatch.setattr(module.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(module.shutil, "which", lambda name: "/usr/bin/git" if name == "git" else None)
+    module.main(["install", "-server", "remote.example.net"])
+    assert (base / ".deployment-version").read_text() == "0.1.0\n"
+    installed_constants = base / "devlog/constants/DDevLog.py"
+    installed_text = installed_constants.read_text()
+    assert 'VERSION: Final[str] = "0.1.0"' in installed_text
+    assert "CMDB_DATABASES = ()" in installed_text
+    assert "CMDB_NETWORK = ()" in installed_text
+    assert module.installed_inventory("server") == (module.SOURCE / "devlog/constants/DDevLog.py").read_bytes()
+    manifest = json.loads((base / ".installation-manifest.json").read_text())
+    assert manifest["project"] == "DevLog"
+    assert manifest["role"] == "client"
+    assert manifest["files"] == [
+        "devlog/constants/DDevLog.py", "bin/dl", "current", "conf/installation.json"
+    ]
+    assert len(manifest["releases"]) == 1
+    assert not unit.exists()
+
+
+def test_client_upgrade_retains_manifest_and_uninstall_preserves_config(deployment, monkeypatch):
+    import json
+
+    module, base, unit, commands = deployment
+    monkeypatch.setattr(module.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(module.shutil, "which", lambda name: "/usr/bin/git" if name == "git" else None)
+    module.main(["install", "-server", "devlog.example.net"])
+    configuration = (base / "conf/devlog.json").read_bytes()
+    module.main(["upgrade"])
+    manifest = json.loads((base / ".installation-manifest.json").read_text())
+    assert len(manifest["releases"]) == 2
+    assert manifest["role"] == "client"
+    assert (base / ".deployment-version").read_text().strip() == "0.1.0"
+    commands.clear()
+    module.main(["uninstall", "--check"])
+    assert (base / "current").is_symlink()
+    module.main(["uninstall"])
+    assert not (base / "current").exists()
+    assert not (base / "bin/dl").exists()
+    assert not (base / "devlog/constants/DDevLog.py").exists()
+    assert not (base / ".deployment-version").exists()
+    assert (base / "conf/devlog.json").read_bytes() == configuration
+    assert json.loads((base / ".installation-manifest.json").read_text())["removed"]
+    assert not (base / "conf/installation.json").exists()
+    assert not unit.exists()
+    assert not any(c[0] in {"systemctl", "mariadb", "useradd", "groupadd"} for c in commands)
+    module.main(["uninstall"])
+
+
+def test_server_uninstall_only_removes_owned_service_and_code(deployment, monkeypatch):
+    import json
+
+    module, base, unit, commands = deployment
+    monkeypatch.setattr(module.os, "geteuid", lambda: 0)
+    (base / "conf").mkdir()
+    (base / "bin").mkdir()
+    (base / "releases" / "0.1.0-1234").mkdir(parents=True)
+    (base / "devlog/constants").mkdir(parents=True)
+    (base / "devlog/constants/DDevLog.py").write_bytes(
+        (module.SOURCE / "devlog/constants/DDevLog.py").read_bytes())
+    (base / "current").symlink_to(base / "releases/0.1.0-1234")
+    for name in ("dl", "dl-server", "dl-db-init"):
+        (base / "bin" / name).symlink_to(f"../current/venv/bin/{name}")
+    (base / "conf/installation.json").write_text('{"role":"server"}\n')
+    (base / "conf/devlog.json").write_text('{"retained":true}\n')
+    (base / "conf/database.env").write_text("secret")
+    (base / ".deployment-version").write_text("0.1.0\n")
+    (base / ".installation-manifest.json").write_text(json.dumps({
+        "project": "DevLog", "role": "server",
+        "files": ["devlog/constants/DDevLog.py", "bin/dl", "bin/dl-server",
+                  "bin/dl-db-init", "current", "conf/installation.json"],
+        "releases": ["releases/0.1.0-1234"], "service_unit": str(unit)
+    }))
+    unit.write_bytes((module.SOURCE / "systemd/devlog.service").read_bytes())
+    module.main(["uninstall"])
+    assert not unit.exists()
+    assert not (base / ".deployment-version").exists()
+    assert not (base / "current").is_symlink()
+    assert not (base / "bin/dl-server").exists()
+    assert not (base / "releases/0.1.0-1234").exists()
+    assert (base / "conf/devlog.json").read_text() == '{"retained":true}\n'
+    assert (base / "conf/database.env").read_text() == "secret"
+    assert ("systemctl", "stop", "devlog.service") in commands
+    assert ("systemctl", "disable", "devlog.service") in commands
+    assert not any("mariadb" in c for c in commands)
+
+
+def test_corrupt_manifest_release_path_refused_before_host_changes(deployment, monkeypatch):
+    import json
+
+    module, base, unit, commands = deployment
+    monkeypatch.setattr(module.os, "geteuid", lambda: 0)
+    (base / ".installation-manifest.json").write_text(json.dumps({
+        "project": "DevLog", "role": "client", "files": [],
+        "releases": ["releases/../../foreign"]
+    }))
+    with pytest.raises(RuntimeError, match="Unsafe managed release path"):
+        module.main(["install", "-server", "host.example.net"])
+    assert not (base / "current").exists()
+    assert not unit.exists()
+    assert commands == []
+
+
+def test_package_version_mismatch_blocks_check_before_changes(deployment, monkeypatch, tmp_path):
+    module, base, unit, commands = deployment
+    source = tmp_path / "separate-source"
+    (source / "devlog/constants").mkdir(parents=True)
+    (source / "scripts").mkdir()
+    (source / "scripts/check-cmdb.py").write_bytes(
+        (module.SOURCE / "scripts/check-cmdb.py").read_bytes())
+    (source / "devlog/constants/DDevLog.py").write_bytes(
+        (module.SOURCE / "devlog/constants/DDevLog.py").read_bytes())
+    (source / "pyproject.toml").write_text('[project]\nname = "devlog"\nversion = "9.9.9"\n')
+    monkeypatch.setattr(module, "SOURCE", source)
+    with pytest.raises(RuntimeError, match="differs from DDevLog.VERSION"):
+        module.main(["install", "-server", "host.example.net", "--check"])
+    assert list(base.iterdir()) == []
+    assert commands == []
+
+
+def test_symlinked_install_directory_is_rejected_before_mutation(deployment, tmp_path):
+    module, base, unit, commands = deployment
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (base / "releases").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(RuntimeError, match="Refusing symlinked installation path"):
+        module.main(["install", "-server", "host.example.net", "--check"])
+    assert list(outside.iterdir()) == []
+    assert commands == []

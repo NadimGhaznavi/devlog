@@ -23,6 +23,23 @@ the next task after a commit. Both active and paused tasks can be committed.
 Pass script arguments after `--`, for example `dl publish -- --help`. The timer
 is unchanged. The release script remains responsible for its release workflow.
 
+## Publishing a release
+
+DevLog owns its release files independently of BMForge. The project-specific
+`scripts/new-release.sh` is generated from the BMForge release template and
+retains the familiar feature → dev → main, annotated tag and atomic-push workflow.
+
+```bash
+scripts/new-release.sh 0.1.1 "Maintenance"
+```
+
+The release script validates that `DDevLog.VERSION` and the static
+`pyproject.toml` `[project].version` agree **before** modifying Git branches.
+It updates both versions and the DevLog changelog in the release commit. It
+never installs or upgrades the application itself. Resolve your branch history
+and ensure the release metadata and installer entry points are committed before
+releasing.
+
 ## Install a release
 
 Cut your Git release, then run these scripts from the prepared release checkout;
@@ -63,6 +80,27 @@ passed as command-line arguments. If that file already exists, installation uses
 it instead of provisioning credentials. Database tables are initialized explicitly
 by the installer; the running server never creates schema.
 
+### Installation identity and dry-run checks
+
+All client and server installations create `/opt/prod/devlog/`, including
+`devlog/constants/DDevLog.py` for CMDB discovery,
+`.installation-manifest.json` for installed file/release ownership, and
+`.deployment-version` for the **last successfully activated** version.
+On a client-only machine, the installed CMDB copy suppresses server-only
+database and listener declarations. The source application's constants and
+server installation retain the canonical declarations. These are installation
+records, not a separate server or runtime framework.
+
+Before installing, upgrading or uninstalling, use `--check` without privileges
+to validate known prerequisites without changing the host:
+
+```bash
+./scripts/install.sh -server devlog.example.net --check
+./scripts/install-server.sh --check
+./scripts/upgrade.sh --check
+./scripts/uninstall.sh --check
+```
+
 ### Upgrades
 
 On either machine, after preparing a later release:
@@ -77,6 +115,22 @@ upgrades preserve the configured server address and do not touch database or
 systemd resources. Server upgrades preserve credentials and timing records and
 do not require database administrator access. Original server installations from
 before this split are recognized by their server command and database credentials.
+
+### Uninstall
+
+From the release checkout, run:
+
+```bash
+sudo ./scripts/uninstall.sh
+```
+
+Uninstall removes DevLog-owned launchers, managed release directories, the
+installed CMDB constants, version marker and, for server installations, the
+DevLog systemd unit. It retains `conf/devlog.json`, database credentials,
+MariaDB data and other unowned files. The installation manifest remains as an
+empty ownership record when configuration is retained. Repeating uninstall is
+safe. Legacy installations without a manifest must first be upgraded to adopt
+the ownership record before they can be uninstalled safely.
 
 Each installation builds an isolated release environment under
 `/opt/prod/devlog/releases/`. `current` selects the installed release, and the
