@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devlog"
+version = "0.1.0"
+description = "Personal Git repository task and time tracker"
+requires-python = ">=3.11"
+dependencies = ["pyzmq==26.4.0"]
+
+[project.optional-dependencies]
+server = ["Jinja2==3.1.6", "PyMySQL==1.1.2"]
+
+[project.scripts]
+dl = "devlog.cli:main"
+dl-server = "devlog.server.main:main"
+dl-db-init = "devlog.database:main"
+
+[tool.setuptools.packages.find]
+include = ["devlog*"]
+
+[tool.setuptools.package-data]
+devlog = ["locales/*.json", "server/templates/*.html", "server/static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["database: integration checks requiring a disposable MariaDB database"]

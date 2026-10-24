@@ -1,0 +1,7 @@
+{
+  "app.title": "Application",
+  "language.label": "Language",
+  "language.name": "English",
+  "action.save": "Save",
+  "save.success": "Saved {name}"
+}

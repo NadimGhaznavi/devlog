@@ -1,0 +1,53 @@
+"""Compose service-owned resources; database connections stay in their worker."""
+
+from contextlib import contextmanager
+import logging
+from pathlib import Path
+
+from devlog.activity.Report import Report
+from devlog.activity.Tracking import Tracking
+from devlog.constants.DTracking import Method
+from devlog.entity.ServiceUnavailable import ServiceUnavailable
+from devlog.entity.TrackingError import TrackingError
+from devlog.interface.Localizer import Localizer
+from devlog.interface.TaskStore import TaskStore
+from devlog.interface.TrackingHandler import TrackingHandler
+from devlog.interface.ZMQClient import ZMQClient
+
+
+class Application:
+    def __init__(self, config):
+        self.config = config
+        self.store = TaskStore(config.database())
+        self.localizer = Localizer(Path(__file__).parents[1] / "locales")
+        self.worker = None
+
+    def tasks(self):
+        return self.store.open()
+
+    @contextmanager
+    def handler(self):
+        with self.tasks() as tasks:
+            tasks.health()
+            yield TrackingHandler(Tracking(tasks), self.localizer)
+
+    def report(self, **filters):
+        with self.tasks() as tasks:
+            return Report(tasks, self.config.zone).read(**filters)
+
+    def health(self):
+        components = {"http": "ok", "zmq": "ok", "db-server": "ok"}
+        try:
+            self.worker.check()
+            ZMQClient(self.config.local_endpoint, timeout_ms=self.config.timeout_ms).call(Method.HEALTH, {})
+        except (RuntimeError, OSError, ValueError, TrackingError):
+            logging.exception("DevLog ZMQ health failed")
+            components["zmq"] = "error"
+        try:
+            with self.tasks() as tasks:
+                tasks.health()
+        except (ServiceUnavailable, RuntimeError):
+            logging.exception("DevLog database health failed")
+            components["db-server"] = "error"
+        status = "ok" if all(value == "ok" for value in components.values()) else "error"
+        return {"status": status, "components": components}

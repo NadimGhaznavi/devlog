@@ -1,0 +1,33 @@
+from enum import StrEnum
+from typing import Final
+
+
+class TaskStatus(StrEnum):
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+
+
+class Method(StrEnum):
+    START = "start"
+    PAUSE = "pause"
+    COMMIT = "commit"
+    HEALTH = "health"
+
+
+class DTracking:
+    PROTOCOL_VERSION: Final[int] = 1
+    SERVER: Final[str] = "devlog"
+    CLIENT: Final[str] = "dl"
+    REPOSITORY: Final[str] = "repository"
+    TASK_ID: Final[str] = "task_id"
+    COMMIT_SHA: Final[str] = "commit_sha"
+    MESSAGE: Final[str] = "message"
+    PHASE: Final[str] = "phase"
+    PREPARE: Final[str] = "prepare"
+    COMPLETE: Final[str] = "complete"
+    TIMEZONE: Final[str] = "America/Toronto"
+    REPORT_DAYS: Final[int] = 7
+    MAX_REPORT_DAYS: Final[int] = 366
+    MAX_REPOSITORY: Final[int] = 512
+    MAX_COMMIT_MESSAGE: Final[int] = 16384

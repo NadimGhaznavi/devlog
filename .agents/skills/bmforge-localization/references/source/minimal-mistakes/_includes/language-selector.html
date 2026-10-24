@@ -1,0 +1,19 @@
+{%- assign default_lang = site.multilingual.default_lang | default: 'en' -%}
+{%- assign current_lang = page.lang | default: default_lang | replace: '_', '-' | downcase -%}
+{%- assign translation_candidates = site.pages | concat: site.documents -%}
+{%- assign translations = translation_candidates | where: 'translation_key', page.translation_key | sort: 'lang' -%}
+<div class="language-selector">
+  <label for="language-selector" class="visually-hidden">{{ site.multilingual.selector_label | default: 'Language' | escape }}</label>
+  <select id="language-selector"
+    data-default-lang="{{ default_lang | escape }}">
+    {%- for translation in translations -%}
+      {%- if translation.collection -%}
+        {%- assign translation_collection = site.collections | where: 'label', translation.collection | first -%}
+        {%- unless translation_collection.output -%}{%- continue -%}{%- endunless -%}
+      {%- endif -%}
+      {%- assign translation_lang = translation.lang | default: default_lang -%}
+      {%- assign normalized_lang = translation_lang | replace: '_', '-' | downcase -%}
+      <option value="{{ translation.url | relative_url | escape }}" lang="{{ translation_lang | replace: '_', '-' | escape }}" data-lang="{{ translation_lang | escape }}"{% if normalized_lang == current_lang %} selected{% endif %}>{{ translation.language_name | default: translation_lang | escape }}</option>
+    {%- endfor %}
+  </select>
+</div>

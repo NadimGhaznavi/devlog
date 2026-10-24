@@ -1,0 +1,49 @@
+{
+  "branch": "main",
+  "manager_sha256": "05b596e01ff04ba1c9ef7f537bf6e1a2afbaa5a9c74537c33231555ae1d95052",
+  "repository": "https://github.com/NadimGhaznavi/bmforge.git",
+  "schema": 1,
+  "skills": {
+    "bmforge-constants": {
+      "sha256": "ff9b53b5947ef810a4c595f52ce60e3045a6771bd30a635ca3c3d2a7dee9464f",
+      "source_commit": "97e6ea7d8e4fb550407a50e93062dc9eb9a33e75",
+      "spec_version": "0.1.0"
+    },
+    "bmforge-db-server": {
+      "sha256": "98991f45aae01c47bd4baef5e0d486161634d0a6030aa9aeddb1d540e810517b",
+      "source_commit": "97e6ea7d8e4fb550407a50e93062dc9eb9a33e75",
+      "spec_version": "0.4.0"
+    },
+    "bmforge-git": {
+      "sha256": "50830f772a9182b902cec69a95c01c925fe9bf492aeacb2894663790a57b957f",
+      "source_commit": "97e6ea7d8e4fb550407a50e93062dc9eb9a33e75",
+      "spec_version": "0.1.0"
+    },
+    "bmforge-http": {
+      "sha256": "5020705ddeba108981e952dae01056b4e3935971d3c36f7960b7d8a867f04014",
+      "source_commit": "97e6ea7d8e4fb550407a50e93062dc9eb9a33e75",
+      "spec_version": "0.3.0"
+    },
+    "bmforge-localization": {
+      "sha256": "fc534a53c456e5149dd3c00c76d31f3a923f5147483eb1e3a2cc5ee35d27de8f",
+      "source_commit": "97e6ea7d8e4fb550407a50e93062dc9eb9a33e75",
+      "spec_version": "0.1.0"
+    },
+    "bmforge-project": {
+      "sha256": "8ff140145352ce6f1e3985dddc325ae09346790f925783bbd3a9881818e0e55a",
+      "source_commit": "97e6ea7d8e4fb550407a50e93062dc9eb9a33e75",
+      "spec_version": "0.1.0"
+    },
+    "bmforge-visualization": {
+      "sha256": "0762b3b0b30a723b3354d60aa97ad39976a0c75cd8e697f45d1f052a62438abb",
+      "source_commit": "97e6ea7d8e4fb550407a50e93062dc9eb9a33e75",
+      "spec_version": "0.1.0"
+    },
+    "bmforge-zmq": {
+      "sha256": "5b5d0237f741c4b649bbe523967aefb0afecc38cbc1dfd80057fe91d8ca54632",
+      "source_commit": "97e6ea7d8e4fb550407a50e93062dc9eb9a33e75",
+      "spec_version": "0.3.0"
+    }
+  },
+  "source_commit": "97e6ea7d8e4fb550407a50e93062dc9eb9a33e75"
+}

@@ -1,0 +1,23 @@
+[Unit]
+Description=DevLog task timer and report server
+After=network.target mariadb.service
+
+[Service]
+Type=simple
+User=devlog
+Group=devlog
+WorkingDirectory=/opt/prod/devlog
+ExecStart=/opt/prod/devlog/bin/dl-server --config /opt/prod/devlog/conf/devlog.json
+Environment=PYTHONDONTWRITEBYTECODE=1
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=45
+KillMode=control-group
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
