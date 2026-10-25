@@ -51,7 +51,7 @@ durations for that day, ordered by task ID and combining resumed intervals.
 The chart stacks these project hours into one bar per day, with consistent
 project colors across filters and a legend below the Date label. Each project
 segment has a brighter 4 px border and 2 px horizontal task separators matching
-the site background; the separators follow the visible stacks when projects are
+the border color; the separators follow the visible stacks when projects are
 hidden using the legend.
 
 Report dates and chart segments link to `/tasks`, filtered by day and optionally
