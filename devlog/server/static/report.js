@@ -11,10 +11,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const barWidth = 0.8;
   const borderWidth = 4;
   const taskLineWidth = 2;
-  const highlightMix = 0.8;
-  const brighter = hex => "#" + hex.slice(1).match(/.{2}/g).map(channel => {
+  const shadeFactor = 0.5;
+  const darker = hex => "#" + hex.slice(1).match(/.{2}/g).map(channel => {
     const value = parseInt(channel, 16);
-    return Math.round(value + (255 - value) * highlightMix).toString(16).padStart(2, "0");
+    return Math.round(value * shadeFactor).toString(16).padStart(2, "0");
   }).join("");
   const projectColors = [
     "#E63946", "#00BCD4", "#FFD60A", "#7C3AED",
@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
       marker: {
         color: projectColors[index % projectColors.length],
         line: {
-          color: brighter(projectColors[index % projectColors.length]),
+          color: darker(projectColors[index % projectColors.length]),
           width: data.days.map(day => day.projects[repository] > 0 ? borderWidth : 0)
         }
       },

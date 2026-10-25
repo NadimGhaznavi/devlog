@@ -50,10 +50,10 @@ identities to hours. A `task_hours` mapping contains each project's positive tas
 durations for that day, ordered by task ID and combining resumed intervals.
 The chart stacks these project hours into one bar per day, with consistent
 project colors across filters and a legend below the Date label. Each project
-segment has a brighter 4 px border and 2 px horizontal task separators matching
+segment has a darker 4 px border and 2 px horizontal task separators matching
 the border color; the separators follow the visible stacks when projects are
 hidden using the legend.
-Horizontal separator strokes use crisp rendering and a strongly brightened
+Horizontal separator strokes use crisp rendering and a darkened
 version of the project color, shared with the bar border, for visibility.
 
 Report dates and chart segments link to `/tasks`, filtered by day and optionally
