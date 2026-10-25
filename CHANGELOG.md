@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-10-25 @ 08:05
+
 This release is named for the element **Krypton (Kr)**. Krypton is a noble 
 gas whose name comes from a Greek word meaning “hidden.”
 
