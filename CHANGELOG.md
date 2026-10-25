@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-10-25 @ 09:12
+
 This release is named for the element **Molybdenum (Mo)**. Molybdenum retains 
 strength at high temperatures and is an important additive in tough steels.
 
