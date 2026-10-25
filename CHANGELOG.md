@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-10-25 @ 08:16
+
 This release is named for the element **Rubidium (Rb)**. Rubidium is so reactive 
 that it is normally stored away from air and moisture.
 
