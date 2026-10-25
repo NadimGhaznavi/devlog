@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from devlog.activity.Report import Report
+from devlog.activity.TaskHistory import TaskHistory
 from devlog.entity.TrackingError import TrackingError
 from devlog.interface.DbMgr import DbMgr
 from devlog.interface.TaskDb import TaskDb
@@ -125,3 +126,103 @@ def test_manager_transaction_rollback_and_parameters(tasks):
             tasks.db.insert("INSERT INTO repositories (identity) VALUES (%s)", ("Unicode 完成 ' OR 1=1",))
             raise RuntimeError("rollback")
     assert tasks.db.query("SELECT COUNT(*) AS n FROM repositories")[0]["n"] == before
+
+
+def overnight_task(tasks):
+    task_id = tasks.start(A, now=datetime(2026, 10, 25, 1))["task_id"]  # 21:00 Toronto
+    tasks.complete(A, task_id, "e" * 40, "Overnight task", now=datetime(2026, 10, 25, 13))
+    interval_id = tasks.task_detail(task_id)["intervals"][0]["interval_id"]
+    return task_id, interval_id
+
+
+def test_insert_overnight_pause_recalculates_days_and_preserves_commit(tasks):
+    task_id, interval_id = overnight_task(tasks)
+    before = tasks.task_detail(task_id)
+    history = TaskHistory(tasks, ZoneInfo("America/Toronto"))
+    history.insert_pause(task_id, dict(interval_id=str(interval_id), pause_start="2026-10-24T22:00",
+                                       pause_end="2026-10-25T08:00"))
+    report = Report(tasks, history.zone).read(start="2026-10-24", end="2026-10-25")
+    assert [day["hours"] for day in report["days"]] == [1, 1]
+    assert report["total_hours"] == 2
+    detail = tasks.task_detail(task_id)
+    assert {k: v for k, v in detail.items() if k != "intervals"} == {
+        k: v for k, v in before.items() if k != "intervals"}
+    timeline = history.read(task_id)["timeline"]
+    assert len(timeline) == 3
+    assert timeline[1] == dict(interval_id=None, started_at="2026-10-24T22:00:00-04:00",
+                               ended_at="2026-10-25T08:00:00-04:00")
+    assert [task["task_id"] for task in history.list(day="2026-10-25")["tasks"]] == [task_id]
+    assert history.list(day="2026-10-25")["tasks"][0]["hours"] == 1
+    other = tasks.start(B, now=datetime(2026, 10, 25, 14))["task_id"]
+    tasks.pause(B, now=datetime(2026, 10, 25, 15))
+    filtered = history.list(day="2026-10-25", repository=B)["tasks"]
+    assert [(task["task_id"], task["hours"]) for task in filtered] == [(other, 1)]
+    with pytest.raises(TrackingError, match="pause_conflict"):
+        history.insert_pause(task_id, dict(interval_id=str(interval_id), pause_start="2026-10-24T22:00",
+                                           pause_end="2026-10-25T08:00"))
+
+
+@pytest.mark.parametrize("start,end,expected", [
+    (datetime(2026, 10, 25, 2), None, [(datetime(2026, 10, 25, 1), datetime(2026, 10, 25, 2))]),
+    (datetime(2026, 10, 25, 1), datetime(2026, 10, 25, 12),
+     [(datetime(2026, 10, 25, 12), datetime(2026, 10, 25, 13))]),
+    (datetime(2026, 10, 25, 1), None, []),
+])
+def test_pause_can_trim_either_edge_or_exclude_the_whole_interval(tasks, start, end, expected):
+    task_id, interval_id = overnight_task(tasks)
+    tasks.insert_pause(task_id, interval_id, start, end)
+    assert [(i["started_at"], i["ended_at"]) for i in tasks.task_detail(task_id)["intervals"]] == expected
+    # Even a task with all active time removed remains discoverable.
+    assert TaskHistory(tasks, ZoneInfo("UTC")).list(day="2026-10-25")["tasks"][0]["task_id"] == task_id
+
+
+@pytest.mark.parametrize("start,end", [
+    (datetime(2026, 10, 25, 0), datetime(2026, 10, 25, 2)),
+    (datetime(2026, 10, 25, 2), datetime(2026, 10, 25, 14)),
+    (datetime(2026, 10, 25, 3), datetime(2026, 10, 25, 2)),
+    (datetime(2026, 10, 25, 2), datetime(2026, 10, 25, 2)),
+])
+def test_invalid_pause_leaves_intervals_unchanged(tasks, start, end):
+    task_id, interval_id = overnight_task(tasks)
+    before = tasks.task_detail(task_id)
+    with pytest.raises(TrackingError, match="bad_pause"):
+        tasks.insert_pause(task_id, interval_id, start, end)
+    assert tasks.task_detail(task_id) == before
+
+
+def test_pause_replacement_rolls_back_on_failure(tasks, monkeypatch):
+    task_id, interval_id = overnight_task(tasks)
+    before = tasks.task_detail(task_id)
+    insert = tasks.db.insert
+    writes = []
+
+    def fail_second_interval(sql, params=()):
+        writes.append(params)
+        if len(writes) == 2:
+            raise RuntimeError("injected interval failure")
+        return insert(sql, params)
+
+    monkeypatch.setattr(tasks.db, "insert", fail_second_interval)
+    with pytest.raises(RuntimeError, match="injected"):
+        tasks.insert_pause(task_id, interval_id, datetime(2026, 10, 25, 2), datetime(2026, 10, 25, 12))
+    assert tasks.task_detail(task_id) == before
+
+
+def test_corrections_leave_active_timer_intact_and_reject_open_or_wrong_task_intervals(tasks):
+    old, old_interval = overnight_task(tasks)
+    active = tasks.start(B, now=datetime(2026, 10, 25, 14))["task_id"]
+    open_interval = tasks.task_detail(active)["intervals"][0]["interval_id"]
+    for task_id, interval_id in ((active, open_interval), (active, old_interval)):
+        with pytest.raises(TrackingError, match="pause_conflict"):
+            tasks.insert_pause(task_id, interval_id, datetime(2026, 10, 25, 15), None)
+    tasks.insert_pause(old, old_interval, datetime(2026, 10, 25, 2), None)
+    assert tasks.db.query("SELECT active_task_id FROM tracker_state")[0]["active_task_id"] == active
+    assert tasks.task_detail(active)["intervals"][0]["ended_at"] is None
+
+
+def test_task_drilldown_uses_local_midnight_as_an_exclusive_end(tasks):
+    task_id = tasks.start(A, now=datetime(2026, 10, 24, 23))["task_id"]
+    tasks.complete(A, task_id, "f" * 40, "Before midnight", now=datetime(2026, 10, 25, 4))
+    history = TaskHistory(tasks, ZoneInfo("America/Toronto"))
+    assert history.list(day="2026-10-24")["tasks"][0]["hours"] == 5
+    assert history.list(day="2026-10-25")["tasks"] == []

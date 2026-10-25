@@ -8,7 +8,7 @@ class Report:
         self.tasks = tasks
         self.zone = zone
 
-    def read(self, *, repository="", start="", end="", now=None):
+    def read(self, *, repository="", start="", end="", now=None, include_tasks=False):
         now = now or datetime.now(timezone.utc)
         last = date.fromisoformat(end) if end else now.astimezone(self.zone).date()
         first = date.fromisoformat(start) if start else last - timedelta(days=DTracking.REPORT_DAYS - 1)
@@ -26,5 +26,10 @@ class Report:
             if repository and repository not in repositories:
                 raise ValueError("Unknown repository")
             totals = self.tasks.daily_totals(days, repository, now.astimezone(timezone.utc).replace(tzinfo=None))
-        return dict(repositories=repositories, repository=repository, start=first.isoformat(), end=last.isoformat(),
-                    days=totals, total_hours=sum(day["hours"] for day in totals), timezone=str(self.zone))
+            history = self.tasks.task_summaries(days[0][1], days[-1][2], repository,
+                                               now.astimezone(timezone.utc).replace(tzinfo=None)) if include_tasks else None
+        result = dict(repositories=repositories, repository=repository, start=first.isoformat(), end=last.isoformat(),
+                      days=totals, total_hours=sum(day["hours"] for day in totals), timezone=str(self.zone))
+        if include_tasks:
+            result["tasks"] = history
+        return result

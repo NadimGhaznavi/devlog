@@ -1,9 +1,11 @@
 from contextlib import contextmanager
+from datetime import datetime
 import json
 from pathlib import Path
 from threading import Thread
 from types import SimpleNamespace
 from urllib.error import HTTPError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 import pytest
@@ -135,3 +137,63 @@ def test_real_service_reports_commands_and_survives_restart(service, checkout, t
     client = ZMQClient(service["endpoint"], timeout_ms=1000)
     with pytest.raises(Exception, match="unknown_method"):
         client.call("invented", {"repository": "github.com/example/project"})
+
+
+@pytest.mark.database
+def test_history_drilldown_and_pause_form_recalculate_report(service, tasks):
+    repository = "github.com/example/overnight"
+    task_id = tasks.start(repository, now=datetime(2026, 10, 25, 1))["task_id"]
+    tasks.complete(repository, task_id, "a" * 40, '<script>alert("unsafe")</script>',
+                   now=datetime(2026, 10, 25, 13))
+    interval = tasks.task_detail(task_id)["intervals"][0]["interval_id"]
+    query = "?start=2026-10-24&end=2026-10-25&day=2026-10-25&lang=en"
+    with urlopen(service["url"] + "/tasks" + query) as response:
+        html = response.read().decode()
+        assert f"/tasks/{task_id}?" in html
+        assert "&lt;script&gt;" in html
+        assert "9.00" in html
+    with urlopen(service["url"] + f"/tasks/{task_id}" + query) as response:
+        html = response.read().decode()
+        assert 'name="pause_start"' in html and 'name="pause_end"' in html
+        assert "America/Toronto" in html and "12.00" in html
+    data = urlencode(dict(interval_id=interval, pause_start="2026-10-24T22:00",
+                          pause_end="2026-10-25T08:00")).encode()
+    request = Request(service["url"] + f"/tasks/{task_id}/pause" + query, data=data,
+                      headers={"Origin": service["url"]})
+    with urlopen(request) as response:
+        assert response.status == 200 and "saved=1" in response.geturl()
+        assert b"Pause saved" in response.read()
+    with urlopen(service["url"] + "/api/report?start=2026-10-24&end=2026-10-25") as response:
+        assert [day["hours"] for day in json.load(response)["days"]] == [1, 1]
+    with pytest.raises(HTTPError) as error:
+        urlopen(request)
+    assert error.value.code == 409
+    with pytest.raises(HTTPError) as error:
+        urlopen(service["url"] + "/tasks/999999999")
+    assert error.value.code == 404
+
+
+@pytest.mark.database
+@pytest.mark.parametrize("data,headers,query,status", [
+    (b"interval_id=1&pause_start=x&pause_end=", {}, "", 403),
+    (b"interval_id=1&pause_start=x&pause_end=", {"Origin": "http://elsewhere.invalid"}, "", 403),
+    (b"interval_id=1&pause_start=x&pause_end=", {"Sec-Fetch-Site": "cross-site"}, "", 403),
+    (b"{}", {"Content-Type": "application/json"}, "", 400),
+    (b"x" * 8193, {}, "", 400),
+    (b"interval_id=1&pause_start=x&pause_start=y&pause_end=", {}, "", 400),
+    (b"interval_id=1&pause_start=x&pause_end=&extra=y", {}, "", 400),
+    (b"interval_id=1&pause_start=x&pause_end=", {}, "?extra=y", 400),
+])
+def test_invalid_pause_requests_do_not_modify_data(service, tasks, data, headers, query, status):
+    task_id = tasks.start("github.com/example/a", now=datetime(2026, 10, 24, 10))["task_id"]
+    tasks.pause("github.com/example/a", now=datetime(2026, 10, 24, 12))
+    before = tasks.task_detail(task_id)
+    # An empty headers mapping in the first case intentionally omits Origin.
+    supplied = {"Origin": service["url"], **headers}
+    if status == 403 and not headers:
+        supplied = {}
+    request = Request(service["url"] + f"/tasks/{task_id}/pause" + query, data=data, headers=supplied)
+    with pytest.raises(HTTPError) as error:
+        urlopen(request)
+    assert error.value.code == status
+    assert tasks.task_detail(task_id) == before

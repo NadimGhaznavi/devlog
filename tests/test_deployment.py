@@ -4,6 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from devlog.constants.DDevLog import DDevLog
+
 
 @pytest.fixture
 def deployment(tmp_path, monkeypatch):
@@ -213,10 +215,10 @@ def test_client_install_creates_bmforge_identity(deployment, monkeypatch):
     monkeypatch.setattr(module.os, "geteuid", lambda: 0)
     monkeypatch.setattr(module.shutil, "which", lambda name: "/usr/bin/git" if name == "git" else None)
     module.main(["install", "-server", "remote.example.net"])
-    assert (base / ".deployment-version").read_text() == "0.1.0\n"
+    assert (base / ".deployment-version").read_text() == DDevLog.VERSION + "\n"
     installed_constants = base / "devlog/constants/DDevLog.py"
     installed_text = installed_constants.read_text()
-    assert 'VERSION: Final[str] = "0.1.0"' in installed_text
+    assert f'VERSION: Final[str] = "{DDevLog.VERSION}"' in installed_text
     assert "CMDB_DATABASES = ()" in installed_text
     assert "CMDB_NETWORK = ()" in installed_text
     assert module.installed_inventory("server") == (module.SOURCE / "devlog/constants/DDevLog.py").read_bytes()
@@ -242,7 +244,7 @@ def test_client_upgrade_retains_manifest_and_uninstall_preserves_config(deployme
     manifest = json.loads((base / ".installation-manifest.json").read_text())
     assert len(manifest["releases"]) == 2
     assert manifest["role"] == "client"
-    assert (base / ".deployment-version").read_text().strip() == "0.1.0"
+    assert (base / ".deployment-version").read_text().strip() == DDevLog.VERSION
     commands.clear()
     module.main(["uninstall", "--check"])
     assert (base / "current").is_symlink()

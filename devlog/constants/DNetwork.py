@@ -13,3 +13,4 @@ class DNetwork:
     HTTP_TIMEOUT: Final[int] = 10
     MAX_MESSAGE_BYTES: Final[int] = 65536
     MAX_QUERY_FIELDS: Final[int] = 10
+    MAX_FORM_BYTES: Final[int] = 8192
