@@ -11,10 +11,10 @@ import pytest
 @pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
 def test_plotly_report_filters_and_mobile_layout(service, tasks):
     playwright = pytest.importorskip("playwright.sync_api")
-    tasks.start("github.com/example/alpha", now=datetime(2026, 10, 24, 10))
-    tasks.pause("github.com/example/alpha", now=datetime(2026, 10, 24, 12))
-    tasks.start("github.com/example/beta", now=datetime(2026, 10, 24, 13))
-    tasks.pause("github.com/example/beta", now=datetime(2026, 10, 24, 14))
+    tasks.start("github.com/nadimghaznavi/alpha", now=datetime(2026, 10, 24, 10))
+    tasks.pause("github.com/nadimghaznavi/alpha", now=datetime(2026, 10, 24, 12))
+    tasks.start("github.com/nadimghaznavi/beta", now=datetime(2026, 10, 24, 13))
+    tasks.pause("github.com/nadimghaznavi/beta", now=datetime(2026, 10, 24, 14))
     errors = []
     with playwright.sync_playwright() as runtime:
         browser = runtime.chromium.launch()
@@ -27,8 +27,8 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         assert page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.y)") == [[0, 2, 0], [0, 1, 0]]
         assert page.evaluate("document.getElementById('daily-chart').layout.barmode") == "stack"
         colors = page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.marker.color)")
-        assert len(set(colors)) == 2
-        assert page.locator("#daily-chart .legendtext").all_text_contents() == ["example/alpha", "example/beta"]
+        assert colors == ["rgb(230, 57, 70)", "rgb(243, 84, 37)"]
+        assert page.locator("#daily-chart .legendtext").all_text_contents() == ["alpha", "beta"]
 
         def assert_legend_below_date():
             title = page.locator("#daily-chart .xtitle").bounding_box()
@@ -48,7 +48,7 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         if screenshot:
             page.screenshot(path=str(Path(screenshot) / "devlog-mobile.png"), full_page=True)
         page.set_viewport_size({"width": 1200, "height": 900})
-        page.get_by_label("Repository", exact=True).select_option("github.com/example/beta")
+        page.get_by_label("Repository", exact=True).select_option("github.com/nadimghaznavi/beta")
         page.get_by_role("button", name="Show report").click()
         page.wait_for_selector("#daily-chart .plot-container")
         assert page.locator(".total strong").inner_text() == "1.00"
