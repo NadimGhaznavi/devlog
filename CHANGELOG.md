@@ -6,6 +6,15 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Selenium (Se)**. Selenium is essential in 
+tiny amounts for human health but can be toxic in excess.
+
+### Changed
+
+- Format task timestamps as `yyyy-mm-dd hh:mm:ss` in the configured local
+  timezone, show elapsed `HH:MM:SS` for each active interval, and use
+  `yyyy-mm-dd hh:mm` examples for pause edits.
+
 ## [0.4.0] - 2026-10-25 @ 05:58
 
 The **Arsenic** release is named after the element **Arsenic (As)**. Arsenic has 

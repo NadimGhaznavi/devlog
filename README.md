@@ -163,10 +163,14 @@ Task-list hours cover the selected period; task details show the whole task.
 
 Under the affected active interval, choose **Insert a pause**, enter **Pause
 began** and **Work resumed**, and save. For example, an overnight break might run
-from `2026-10-24T22:00` to `2026-10-25T08:00`. Leave **Work resumed** blank to
+from `2026-10-24 22:00` to `2026-10-25 08:00` (`yyyy-mm-dd hh:mm`). Leave **Work resumed** blank to
 exclude time through that interval's recorded end. Times without an offset use
 the configured report timezone; an explicit offset such as `-04:00` resolves
 ambiguous daylight-saving times.
+
+Task timestamps display as `yyyy-mm-dd hh:mm:ss` in the configured report
+timezone. Each active interval also shows elapsed time as `HH:MM:SS`, with
+hours continuing beyond 24 for longer intervals.
 
 Saving subtracts the break from active time and recalculates the daily/project
 totals. The task's original start, completion time and Git commit remain intact.

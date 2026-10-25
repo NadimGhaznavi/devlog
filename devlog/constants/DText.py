@@ -63,6 +63,7 @@ class DText(StrEnum):
     STATUS_PAUSED = "history.status_paused"
     STATUS_COMPLETED = "history.status_completed"
     ACTIVE_TIME = "history.active_time"
+    ELAPSED_TIME = "history.elapsed_time"
     PAUSE_TIME = "history.pause_time"
     TIMELINE = "history.timeline"
     NOW = "history.now"

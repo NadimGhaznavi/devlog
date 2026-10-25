@@ -27,6 +27,7 @@ class DTracking:
     PREPARE: Final[str] = "prepare"
     COMPLETE: Final[str] = "complete"
     TIMEZONE: Final[str] = "America/Toronto"
+    HISTORY_TIME_FORMAT: Final[str] = "%Y-%m-%d %H:%M:%S"
     REPORT_DAYS: Final[int] = 7
     MAX_REPORT_DAYS: Final[int] = 366
     MAX_REPOSITORY: Final[int] = 512
