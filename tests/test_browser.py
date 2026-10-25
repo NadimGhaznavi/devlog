@@ -53,8 +53,7 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         separator = page.evaluate("document.getElementById('daily-chart').layout.shapes[0]")
         assert separator["y0"] == separator["y1"] == 2.25
         assert separator["x0"] == .6 and separator["x1"] == 1.4
-        background = page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--background').trim()")
-        assert separator["line"] == {"color": background, "width": 2}
+        assert separator["line"] == {"color": borders[1]["color"], "width": 2}
         assert page.locator("#daily-chart .shapelayer path").count() == 1
         assert page.locator("#daily-chart .shapelayer path").evaluate(
             "node => getComputedStyle(node).strokeWidth") == "2px"
