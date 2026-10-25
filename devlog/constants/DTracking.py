@@ -30,6 +30,7 @@ class DTracking:
     HISTORY_TIME_FORMAT: Final[str] = "%Y-%m-%d %H:%M:%S"
     REPORT_DAYS: Final[int] = 7
     MAX_REPORT_DAYS: Final[int] = 366
+    TASK_HOURS: Final[str] = "task_hours"
     MAX_REPOSITORY: Final[int] = 512
     MAX_COMMIT_MESSAGE: Final[int] = 16384
     INTERVAL_ID: Final[str] = "interval_id"

@@ -6,6 +6,15 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named after the element **Strontium (Sr)**. Strontium salts 
+produce the brilliant red colors in many fireworks.
+
+### Changed
+
+- Add brighter 4 px borders around project bars in the daily-hours chart and
+  2 px horizontal separators showing individual task sizes within each project.
+  Separators stay aligned when filtering or toggling projects in the legend.
+
 ## [0.4.4] - 2026-10-25 @ 08:16
 
 This release is named for the element **Rubidium (Rb)**. Rubidium is so reactive 
