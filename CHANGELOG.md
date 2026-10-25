@@ -6,6 +6,13 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+### Changed
+
+The **Cobolt (Co)** release is named after the element. Cobalt compounds have produced vivid blue glass and ceramics for thousands of years.
+
+- Use the supplied 20-color palette for project bars and omit `nadimghaznavi/`
+  from project legend labels.
+
 ## [0.3.0] - 2026-10-24 @ 21:43
 
 This release is named for the element **Iron (Fe)**. Earth's core is made mainly of iron, and flowing liquid metal in the outer core helps generate our magnetic field.
