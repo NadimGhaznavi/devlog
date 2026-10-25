@@ -27,7 +27,7 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         assert page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.y)") == [[0, 2, 0], [0, 1, 0]]
         assert page.evaluate("document.getElementById('daily-chart').layout.barmode") == "stack"
         colors = page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.marker.color)")
-        assert colors == ["rgb(230, 57, 70)", "rgb(243, 84, 37)"]
+        assert colors == ["#E63946", "#00BCD4"]
         assert page.locator("#daily-chart .legendtext").all_text_contents() == ["alpha", "beta"]
 
         def assert_legend_below_date():
