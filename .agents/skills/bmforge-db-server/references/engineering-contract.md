@@ -22,6 +22,8 @@ translation_key: bmforge-engineering-contract
 8. **Classify by responsibility.** Follow [Activity / Interface / Entity]({{ site.baseurl }}{% link pages/classification.md %}): interface classes bridge technology or domain data access, activity classes orchestrate application operations, and entities hold values. Do not blend SQL, workflow and entity state into one class.
 9. **Preserve approved runtime choices.** Component module inventories are binding. [Display visualization choices]({{ site.baseurl }}{% link pages/component-visualization.md %}) are likewise fixed by actual chart, map or graph requirements, not by Codex preferences. Do not replace or add infrastructure libraries, drivers or frameworks to solve a task without user approval and an updated component specification. Configure the known pattern rather than re-architecting it.
 
+10. **Maintain the changelog for every completed change.** Update `CHANGELOG.md` under `## [Unreleased]` in the same task for code, tests, documentation, configuration, and maintenance, however small. Make `### Summary` the default for any meaningful feature, fix, or operational improvement, even when it stands alone; keep one summary per section. Follow [Changelog Maintenance]({{ site.baseurl }}{% link pages/changelog-maintenance.md %}).
+
 ## What failure should look like
 
 | Situation | Contract-driven response |

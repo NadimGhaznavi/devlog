@@ -12,7 +12,7 @@ Publish a completed feature branch using the tooling from [Release Setup]({{ sit
 
 If the project has a `pyproject.toml` with `[project]` package metadata, keep its literal `version` aligned with the application's canonical `D<Name>.VERSION` before releasing. The release script checks that agreement before merging, updates both to the new release version, and commits both files. Dynamic or ambiguous `[project].version` declarations fail clearly rather than being silently skipped. Tool-only `pyproject.toml` files without `[project]` are unaffected.
 
-Finish the relevant verification and documentation, review the entries accumulated through [Changelog Maintenance]({{ site.baseurl }}{% link pages/changelog-maintenance.md %}), and commit all work. Run from a feature branch with a clean working tree. Incorporate any changes from `main` into `dev`, then from `dev` into the feature branch, before releasing.
+Finish the relevant verification and documentation, confirm **every completed change** already has an entry accumulated through [Changelog Maintenance]({{ site.baseurl }}{% link pages/changelog-maintenance.md %}), and commit all work. Meaningful work should already have one current `### Summary` in `Unreleased`, even for a single feature or fix; add or refresh it before release if needed. The release script does not write that explanation. Run from a feature branch with a clean working tree. Incorporate any changes from `main` into `dev`, then from `dev` into the feature branch, before releasing.
 
 If deployment tracking is enabled, regenerate and commit a changed dependency map before releasing. See [Deployment Impact Tracking]({{ site.baseurl }}{% link pages/deployment-impact-tracking.md %}).
 

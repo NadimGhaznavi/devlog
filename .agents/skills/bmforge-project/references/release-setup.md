@@ -16,7 +16,7 @@ Complete [CMDB Compliance]({{ site.baseurl }}{% link pages/cmdb-compliance.md %}
 
 Add the three lifecycle entry points using [Installation Scripts]({{ site.baseurl }}{% link pages/installation-scripts.md %}). They must be executable and committed before releasing; deployment remains a separate operation.
 
-Create `CHANGELOG.md` with exactly one `## [Unreleased]` heading. The [changelog template]({{ '/templates/project/CHANGELOG.md' | relative_url }}) provides the initial structure. Follow [Changelog Maintenance]({{ site.baseurl }}{% link pages/changelog-maintenance.md %}) to keep it current during development and maintenance.
+Create `CHANGELOG.md` with exactly one `## [Unreleased]` heading. The [changelog template]({{ '/templates/project/CHANGELOG.md' | relative_url }}) provides the initial structure. Follow [Changelog Maintenance]({{ site.baseurl }}{% link pages/changelog-maintenance.md %}) **for every completed change**, not just release preparation. Add or refresh `### Summary` for meaningful work from the first change onward.
 
 ## Install the Scripts
 

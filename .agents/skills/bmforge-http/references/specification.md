@@ -4,7 +4,7 @@ lang: en
 locale: en-US
 language_name: English
 component_id: "bmforge.http-server"
-spec_version: "0.3.0"
+spec_version: "0.4.0"
 spec_status: "draft"
 translation_key: bmforge-component-http
 ---
@@ -21,7 +21,7 @@ Provide a small, locally owned HTTP service using Python's `ThreadingHTTPServer`
 
 ## Approved runtime modules
 
-This is the **complete approved module inventory for the reusable HTTP Display Server infrastructure** in specification `0.3.0`.
+This is the **complete approved module inventory for the reusable HTTP Display Server infrastructure** in specification `0.4.0`.
 
 | Origin | Module | Purpose |
 | --- | --- | --- |
@@ -41,12 +41,30 @@ These are Python import modules, not a complete transitive dependency tree. The 
 
 **Not part of this component:** PyMySQL imports in the BMGeoIP HTTP handler belong to the GeoIP application's database operations, not HTTP transport. Plotly.js, Leaflet and Cytoscape.js are *optional browser presentation capabilities* specified separately in [Display Visualizations]({{ site.baseurl }}{% link pages/component-visualization.md %}), never implicit HTTP dependencies. Select only those the application actually needs. Do not replace this implementation with Django, Flask, FastAPI, Werkzeug, Gunicorn, NGINX, or another server framework without user approval.
 
+## GUI design contract (human-facing HTML only)
+
+When an HTTP application provides a browser GUI, **use a dark, high-contrast visual style inspired by BMDynIP**. This is a presentation standard; an API-only service needs no GUI. It does not change the approved HTTP transport modules.
+
+**The implementing AI chooses the actual palette.** BMDynIP demonstrates the design language, not mandatory hex values or a specific combination of navy, cyan and orange.
+
+- **Dark foundation:** Start with deep neutral or dark-hued backgrounds, distinct content panels and input surfaces, discernible borders, bright foreground text, and readable secondary labels.
+- **Strong primary accents:** Choose saturated primary hues and adjacent vivid shades for links, primary buttons, focus and meaningful status. **Avoid pastels**, washed-out colors and low-contrast gray-on-gray themes. Apply accents consistently and sparingly rather than turning the page into neon.
+- **Reusable tokens:** Keep the application's palette in CSS custom properties for background, surfaces, borders, text, muted text, links, actions, focus and status colors as needed. Maintain that palette throughout the app and any requested charts. The AI may use any dark palette that meets these rules.
+- **Practical structure:** Take BMDynIP's clear masthead, hierarchy, bordered panels, readable tables, labeled forms, button states, status feedback, and confirmation controls as a visual guide. Only create components the requested workflow requires; do not reproduce BMDynIP's DNS settings, branding, icon, content or exact layout.
+- **Accessible contrast and states:** Target WCAG AA **4.5:1** contrast for normal text, **3:1** for large text and **3:1** for essential control and focus indicators. Provide visible keyboard focus and legible hover, error, warning, success and disabled states. Status must not rely on color alone.
+- **Responsive layout:** Ensure usable desktop and narrow/mobile views. Stack panels at small widths, retain accessible actions and scroll wide tables within their own containers, not the entire page.
+- **Simple frontend:** Prefer app-owned HTML, CSS and ordinary browser JavaScript. Do not introduce Bootstrap, Tailwind, React, theme engines or other dependencies just to satisfy the visual style; a separately selected visualization component still governs charts and maps.
+
+The pinned BMDynIP HTML and CSS are **design references only**. Inspect their variables, spacing, table scroll behavior, focus, buttons and media queries, then build the application's own interface. Never import assets directly from the BMDynIP runtime.
+
 ## Reference snapshot
 
 - `components/reference/bmgeoip/bmgeoip/server/BMGeoIPServer.py`: listener, CLI binding, integration, lifecycle
 - `components/reference/bmgeoip/bmgeoip/server/BMGeoIPHandler.py`: GET/HEAD/POST routing, templates, JSON response, health endpoints
+- `components/reference/bmdynip/bmdynip/server/static/index.html`: dark UI structure, semantic controls and status
+- `components/reference/bmdynip/bmdynip/server/static/style.css`: reusable palette tokens, action states and responsive rules
 
-These contain GeoIP-specific routes, data-loader integration, globals, and filenames. **Do not reproduce those behaviours** in unrelated applications.
+The BMGeoIP examples contain GeoIP-specific routes, globals and integration code. **Do not reproduce those behaviours** in unrelated applications. The BMDynIP design snapshots are pinned from [BMDynIP commit 2077300e7ee20de5328164115a277f353ed19579](https://github.com/NadimGhaznavi/bmdynip/tree/2077300e7ee20de5328164115a277f353ed19579); see the [example screenshot](https://github.com/NadimGhaznavi/bmdynip/blob/2077300e7ee20de5328164115a277f353ed19579/pages/images/bmdynip-web-interface.png). They illustrate appearance, not an application to replicate.
 
 ## Required contract
 
@@ -59,6 +77,7 @@ These contain GeoIP-specific routes, data-loader integration, globals, and filen
 - Use Jinja2 HTML autoescaping and fail on missing template values; keep templates, static assets and route data application-owned. Never embed secrets in rendered output or public diagnostics.
 - Serve `GET /health` on the existing HTTP listener as the application's CMDB-facing check: `200` when its required components are usable, `503` when a known required component is unavailable. Return the small component-status JSON defined by Application Health Checks. A fixed `200` for a running process is insufficient. Do not add a separate `/ready` implementation without a concrete requirement.
 - Cleanly close the HTTP listener and any owned background workers during termination, including SIGTERM. No orphaned threads.
+- When a human-facing GUI is requested, apply the **GUI design contract** above. An API-only service need not render HTML.
 - Keep application-specific business logic out of the generic HTTP mechanics. Use typed interfaces or injected collaborators where useful without inventing extra layers.
 
 ## Acceptance checks
@@ -70,3 +89,4 @@ These contain GeoIP-specific routes, data-loader integration, globals, and filen
 5. Address-in-use, invalid port and graceful shutdown are tested; service exits without lingering workers.
 6. Confirm the installed application exposes its declared address/port, respects production overrides, and has no runtime import of BMForge/bmgeoip.
 7. Verify the HTTP implementation uses the approved runtime modules only; any proposed replacement or addition was approved by the user before implementation.
+8. **GUI only:** visually inspect desktop and narrow/mobile pages for a consistent dark, high-contrast, non-pastel palette; legible panels, tables and forms; saturated primary accents; visible keyboard focus; labeled status; and no clipped essential actions. Verify applicable text and control contrast targets. API-only services skip this check.

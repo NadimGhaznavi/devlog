@@ -6,6 +6,25 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Palladium (Pd)**. Palladium can 
+absorb remarkably large quantities of hydrogen relative to its own volume.
+
+### Summary
+
+Check the globally running task from any directory with `dl status`. Refresh
+the pinned BMForge guidance for project maintenance and future UI work.
+
+### Added
+
+- Add `dl status`, a read-only ZMQ/database query that reports the active
+  repository and task ID, or that no task is currently running.
+
+### Changed
+
+- Refresh all nine pinned BMForge skills and the project-local manager to
+  upstream revision `fca87103c710`, including HTTP 0.4.0 design guidance and
+  immediate changelog maintenance requirements; update lock fingerprints.
+
 ## [0.5.7] - 2026-10-25 @ 10:13
 
 This release is named for the element **Ruthenium (Ru)**. Ruthenium belongs 

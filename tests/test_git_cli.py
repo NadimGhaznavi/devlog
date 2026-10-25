@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from pathlib import Path
 import subprocess
 
@@ -7,6 +8,48 @@ from conftest import dl, git
 from devlog.activity.CommitTask import CommitRecordingError, CommitTask
 from devlog.interface.Git import Git
 from devlog.interface.LocalRepository import LocalRepository
+from devlog.zmq.ZMQServer import ZMQServer
+
+
+@pytest.mark.parametrize("result,expected", [
+    ({"task_id": None, "repository": None}, "No task currently running\n"),
+    ({"task_id": 42, "repository": "github.com/example/mycount"},
+     "Repository (mycount): Task #42 running\n"),
+])
+def test_cli_status_outside_repository_over_zmq(tmp_path, result, expected):
+    @contextmanager
+    def handler():
+        def respond(request):
+            assert request.method == "status"
+            assert request.payload == {}
+            return {"status": "ok", "result": result}
+        yield respond
+
+    with ZMQServer("tcp://127.0.0.1:*", handler) as server:
+        response = dl(tmp_path, {"environment": {"PYTHONPATH": str(Path(__file__).resolve().parents[1])}},
+                      "--server", server.endpoint, "status")
+    assert response.returncode == 0, response.stderr
+    assert response.stdout == expected
+
+
+@pytest.mark.database
+def test_real_cli_global_status(service, tasks, tmp_path):
+    def status(expected):
+        result = dl(tmp_path, service, "status")
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == expected + "\n"
+
+    status("No task currently running")
+    first = tasks.start("github.com/example/mycount")["task_id"]
+    status(f"Repository (mycount): Task #{first} running")
+    second = tasks.start("github.com/example/other")["task_id"]
+    status(f"Repository (other): Task #{second} running")
+    tasks.pause("github.com/example/other")
+    status("No task currently running")
+    tasks.start("github.com/example/mycount")
+    status(f"Repository (mycount): Task #{first} running")
+    tasks.complete("github.com/example/mycount", first, "a" * 40, "done")
+    status("No task currently running")
 
 
 def test_commit_callback_runs_before_push_and_stages_root(checkout):

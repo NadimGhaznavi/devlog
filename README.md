@@ -2,15 +2,20 @@
 
 Personal time tracking for work in GitHub repositories. One persistent systemd
 service stores tasks and active intervals in MariaDB and serves a daily-hours
-report. The CLI operates on the repository containing the current directory.
+report. Repository commands operate on the repository containing the current directory.
 
 ```bash
+dl status                      # show the globally running task from any directory
 dl start                       # start or resume this repository's task
 dl pause                       # pause it
 dl start                       # resume it
 dl commit "Implement lookup"   # git add . -v; commit; record task/SHA; push
 dl publish                     # invoke the repository's existing release script
 ```
+
+`dl status` queries the server without changing the timer. It prints
+`No task currently running` or `Repository (mycount): Task #XX running`, using
+the active repository's short name and task ID. Paused tasks are not running.
 
 Starting in another repository pauses the previous task automatically. Only one
 task accrues time at once. A successful commit completes its task even when the

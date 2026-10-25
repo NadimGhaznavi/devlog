@@ -1,14 +1,18 @@
 from contextlib import contextmanager
 import json
+from pathlib import Path
 import socket
 import time
 
 import pytest
 import zmq
 
+from devlog.activity.Tracking import Tracking
 from devlog.constants.DTracking import Method
-from devlog.interface.ZMQClient import ZMQClient
 from devlog.entity.TrackingError import TrackingError
+from devlog.interface.Localizer import Localizer
+from devlog.interface.TrackingHandler import TrackingHandler
+from devlog.interface.ZMQClient import ZMQClient
 from devlog.zmq.ZMQMsg import ZMQMsg
 from devlog.zmq.ZMQServer import ZMQServer
 
@@ -16,6 +20,24 @@ from devlog.zmq.ZMQServer import ZMQServer
 @contextmanager
 def echo_handler():
     yield lambda request: {"status": "ok", "result": request.payload}
+
+
+def test_status_dispatch_rejects_repository_then_answers_global_query():
+    class Tasks:
+        def status(self):
+            return {"task_id": 42, "repository": "github.com/example/mycount"}
+
+    @contextmanager
+    def handler():
+        yield TrackingHandler(Tracking(Tasks()), Localizer(Path(__file__).resolve().parents[1] / "devlog/locales"))
+
+    with ZMQServer("tcp://127.0.0.1:*", handler) as server:
+        client = ZMQClient(server.endpoint, timeout_ms=1000)
+        with pytest.raises(TrackingError, match="invalid_request"):
+            client.call(Method.STATUS, {"repository": "github.com/example/other"})
+        assert client.call(Method.STATUS, {}) == {
+            "task_id": 42, "repository": "github.com/example/mycount",
+        }
 
 
 @pytest.mark.parametrize("frames", [

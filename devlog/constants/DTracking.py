@@ -9,6 +9,7 @@ class TaskStatus(StrEnum):
 
 
 class Method(StrEnum):
+    STATUS = "status"
     START = "start"
     PAUSE = "pause"
     COMMIT = "commit"
