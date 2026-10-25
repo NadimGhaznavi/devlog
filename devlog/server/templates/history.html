@@ -28,14 +28,15 @@
         <li class="interval {% if not interval.interval_id %}pause{% endif %}">
           <strong>{{ t(text.ACTIVE_TIME if interval.interval_id else text.PAUSE_TIME) }}</strong>
           <p><time>{{ interval.started_at }}</time> → <time>{{ interval.ended_at or t(text.NOW) }}</time></p>
+          {% if interval.interval_id %}<p class="elapsed">{{ t(text.ELAPSED_TIME, elapsed=interval.elapsed_time) }}</p>{% endif %}
           {% if interval.interval_id and interval.ended_at %}
           {% set editing = form_values is defined and form_values.get('interval_id') == interval.interval_id | string %}
           <details {% if editing %}open{% endif %}><summary>{{ t(text.INSERT_PAUSE) }}</summary>
             <form method="post" action="{{ link('/tasks/' ~ task.task_id ~ '/pause') }}" class="pause-form">
               <input type="hidden" name="interval_id" value="{{ interval.interval_id }}">
               <p>{{ t(text.HISTORY_PAUSE_HELP) }}</p>
-              <div class="field"><label for="pause-start-{{ interval.interval_id }}">{{ t(text.PAUSE_START) }}</label><input id="pause-start-{{ interval.interval_id }}" name="pause_start" type="text" value="{{ form_values.get('pause_start', '') if editing else '' }}" placeholder="{{ interval.started_at }}" required autocomplete="off"></div>
-              <div class="field"><label for="pause-end-{{ interval.interval_id }}">{{ t(text.PAUSE_END) }}</label><input id="pause-end-{{ interval.interval_id }}" name="pause_end" type="text" value="{{ form_values.get('pause_end', '') if editing else '' }}" placeholder="{{ interval.ended_at }}" autocomplete="off"></div>
+              <div class="field"><label for="pause-start-{{ interval.interval_id }}">{{ t(text.PAUSE_START) }}</label><input id="pause-start-{{ interval.interval_id }}" name="pause_start" type="text" value="{{ form_values.get('pause_start', '') if editing else '' }}" placeholder="{{ interval.started_at[:16] }}" required autocomplete="off"></div>
+              <div class="field"><label for="pause-end-{{ interval.interval_id }}">{{ t(text.PAUSE_END) }}</label><input id="pause-end-{{ interval.interval_id }}" name="pause_end" type="text" value="{{ form_values.get('pause_end', '') if editing else '' }}" placeholder="{{ interval.ended_at[:16] }}" autocomplete="off"></div>
               <button type="submit">{{ t(text.SAVE_PAUSE) }}</button>
             </form>
           </details>

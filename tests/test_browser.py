@@ -90,18 +90,26 @@ def test_drilldown_insert_overnight_pause_and_chart_fallback(service, tasks):
         page.locator(".task-link").click()
         page.wait_for_url(f"**/tasks/{task_id}?**")
         assert page.locator(".total strong").inner_text() == "12.00"
+        assert page.locator(".task-metadata time").all_text_contents() == [
+            "2026-10-24 21:00:00", "2026-10-25 09:00:00"]
+        assert page.locator(".interval time").all_text_contents() == [
+            "2026-10-24 21:00:00", "2026-10-25 09:00:00"]
+        assert page.locator(".elapsed").all_text_contents() == ["Elapsed time: 12:00:00"]
         page.get_by_text("Insert a pause", exact=True).click()
-        page.get_by_label("Pause began", exact=True).fill("2026-10-24T22:00")
-        page.get_by_label("Work resumed (optional)", exact=True).fill("2026-10-24T21:00")
+        assert page.get_by_label("Pause began", exact=True).get_attribute("placeholder") == "2026-10-24 21:00"
+        assert page.get_by_label("Work resumed (optional)", exact=True).get_attribute("placeholder") == "2026-10-25 09:00"
+        page.get_by_label("Pause began", exact=True).fill("2026-10-24 22:00")
+        page.get_by_label("Work resumed (optional)", exact=True).fill("2026-10-24 21:00")
         page.get_by_role("button", name="Save pause").click()
         assert page.get_by_role("alert").is_visible()
-        assert page.get_by_label("Pause began", exact=True).input_value() == "2026-10-24T22:00"
-        page.get_by_label("Work resumed (optional)", exact=True).fill("2026-10-25T08:00")
+        assert page.get_by_label("Pause began", exact=True).input_value() == "2026-10-24 22:00"
+        page.get_by_label("Work resumed (optional)", exact=True).fill("2026-10-25 08:00")
         page.get_by_role("button", name="Save pause").click()
         assert page.get_by_role("status").inner_text().startswith("Pause saved")
         assert page.locator(".total strong").inner_text() == "2.00"
         assert page.locator(".interval").count() == 3
         assert page.locator(".interval.pause").count() == 1
+        assert page.locator(".elapsed").all_text_contents() == ["Elapsed time: 01:00:00", "Elapsed time: 01:00:00"]
         assert page.locator(".task-metadata").inner_text().count("e" * 40) == 1
         page.set_viewport_size({"width": 390, "height": 844})
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
