@@ -19,11 +19,11 @@
         <a href="{{ link('/tasks') }}"{% if active_page == 'tasks' %} aria-current="page"{% endif %}>{{ t(text.TASKS) }}</a>
       </nav>
       <span class="version">{{ t(text.APP_VERSION, version=version) }}</span>
-      <span class="last-updated">{{ t(text.LAST_UPDATED, timestamp=last_updated) }}</span>
     </div>
   </header>
   <main>
     {% block content %}{% endblock %}
+    <footer class="last-updated">{{ t(text.LAST_UPDATED, timestamp=last_updated) }}</footer>
   </main>
   {% block scripts %}{% endblock %}
 </body>
