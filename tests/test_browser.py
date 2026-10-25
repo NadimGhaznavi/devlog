@@ -44,7 +44,7 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         borders = page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.marker.line)")
         assert [border["width"] for border in borders] == [[0, 4, 0], [0, 4, 0]]
         for fill, border in zip(colors, borders):
-            assert all(int(border["color"][channel:channel + 2], 16) >= int(fill[channel:channel + 2], 16)
+            assert all(int(border["color"][channel:channel + 2], 16) <= int(fill[channel:channel + 2], 16)
                        for channel in (1, 3, 5))
             assert border["color"] != fill
         assert page.locator("#daily-chart .barlayer .point path").first.evaluate(
@@ -157,7 +157,7 @@ def test_completed_task_dividers_have_visible_pixels(service, tasks):
                       for value in values]
             return sum(value * weight for value, weight in zip(linear, (.2126, .7152, .0722)))
 
-        assert (luminance(rgb) + .05) / (luminance([0, 188, 212]) + .05) >= 1.8
+        assert (luminance([0, 188, 212]) + .05) / (luminance(rgb) + .05) >= 1.8
         browser.close()
 
 
