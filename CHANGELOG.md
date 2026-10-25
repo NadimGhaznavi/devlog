@@ -6,6 +6,10 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Ruthenium (Ru)**. Ruthenium belongs 
+to the platinum group and can improve the hardness and wear resistance of 
+electrical contacts.
+
 ### Added
 
 - Show a **Last updated** timestamp in the footer of report and task pages,
