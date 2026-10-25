@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-25 @ 08:46
+
 This release is named for the element **Yttrium (Y)**. Yttrium compounds are 
 used in phosphors and lasers, including the widely used YAG laser.
 
