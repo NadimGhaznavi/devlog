@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-10-25 @ 09:07
+
 ### Fixed
 
 This release is named for the element **Niobium (Nb)**. Niobium helps create 
