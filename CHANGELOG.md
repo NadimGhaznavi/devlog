@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-25 @ 08:40
+
 This release is named after the element **Strontium (Sr)**. Strontium salts 
 produce the brilliant red colors in many fireworks.
 
