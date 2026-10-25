@@ -6,6 +6,14 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+### Fixed
+
+This release is named for the element **Niobium (Nb)**. Niobium helps create 
+superconducting magnets used in MRI machines and particle accelerators.
+
+- Make task dividers easier to see by brightening the shared bar-border and
+  divider color and rendering the 2 px horizontal strokes without blurred edges.
+
 ## [0.5.3] - 2026-10-25 @ 08:51
 
 This release is named for the element **Zirconium (Zr)**. Zirconium alloys are 
