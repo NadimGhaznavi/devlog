@@ -40,7 +40,8 @@ class ReportApplication:
     def report(self, **filters):
         return dict(repositories=['<script>alert("unsafe")</script>'], repository="", start="2026-10-24",
                     end="2026-10-24", timezone="America/Toronto", total_hours=2.5,
-                    days=[dict(date="2026-10-24", hours=2.5)])
+                    days=[dict(date="2026-10-24", hours=2.5,
+                               projects={'<script>alert("unsafe")</script>': 2.5})])
 
     def health(self):
         return dict(status="ok", components={"http": "ok", "zmq": "ok", "db-server": "ok"})

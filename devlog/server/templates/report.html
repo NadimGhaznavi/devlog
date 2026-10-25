@@ -26,6 +26,6 @@
       <table><thead><tr><th scope="col">{{ t(text.DATE) }}</th><th scope="col">{{ t(text.HOURS) }}</th></tr></thead><tbody>{% for day in report.days %}<tr><td>{{ day.date }}</td><td>{{ '%.2f' | format(day.hours) }}</td></tr>{% endfor %}</tbody></table>
     </section>
   </main>
-  <script id="chart-data" type="application/json">{{ {'days': report.days, 'hoursLabel': t(text.HOURS), 'dateLabel': t(text.DATE)} | tojson }}</script>
+  <script id="chart-data" type="application/json">{{ {'days': report.days, 'repositories': report.repositories, 'hoursLabel': t(text.HOURS), 'dateLabel': t(text.DATE)} | tojson }}</script>
 </body>
 </html>

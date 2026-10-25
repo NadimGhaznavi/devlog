@@ -31,8 +31,10 @@ def test_switch_resume_pause_commit_and_new_task(tasks):
                     dict(task_id=second, status="paused", commit_message=None)]
     report = Report(tasks, ZoneInfo("UTC")).read(start="2026-10-24", end="2026-10-24", now=t(15).replace(tzinfo=timezone.utc))
     assert report["total_hours"] == 3
+    assert report["days"] == [dict(date="2026-10-24", hours=3, projects={A: 2, B: 1})]
     report = Report(tasks, ZoneInfo("UTC")).read(repository=A, start="2026-10-24", end="2026-10-24", now=t(15).replace(tzinfo=timezone.utc))
     assert report["total_hours"] == 2
+    assert report["days"] == [dict(date="2026-10-24", hours=2, projects={A: 2})]
     assert tasks.start(A, now=t(16))["task_id"] != first
 
 
@@ -80,6 +82,7 @@ def test_local_days_include_dst(tasks, day, start, end, hours):
     tasks.complete(A, task["task_id"], "b" * 40, "DST", now=end)
     report = Report(tasks, ZoneInfo("America/Toronto")).read(start=day, end=day, now=end.replace(tzinfo=timezone.utc))
     assert report["total_hours"] == hours
+    assert report["days"][0]["projects"] == {A: hours}
 
 
 def test_midnight_splits_and_open_intervals_survive_new_connection(tasks, db_options):
@@ -88,6 +91,21 @@ def test_midnight_splits_and_open_intervals_survive_new_connection(tasks, db_opt
         report = Report(TaskDb(db), ZoneInfo("America/Toronto")).read(
             start="2026-10-23", end="2026-10-24", now=datetime(2026, 10, 24, 5, tzinfo=timezone.utc))
     assert [day["hours"] for day in report["days"]] == [.5, 1]
+    assert [day["projects"] for day in report["days"]] == [{A: .5}, {A: 1}]
+
+
+def test_project_stacks_across_midnight_and_empty_days(tasks):
+    tasks.start(A, now=datetime(2026, 10, 24, 23))
+    tasks.start(B, now=datetime(2026, 10, 25, 1))
+    report = Report(tasks, ZoneInfo("UTC")).read(
+        start="2026-10-23", end="2026-10-26", now=datetime(2026, 10, 25, 3, tzinfo=timezone.utc))
+    assert report["days"] == [
+        dict(date="2026-10-23", hours=0, projects={}),
+        dict(date="2026-10-24", hours=1, projects={A: 1}),
+        dict(date="2026-10-25", hours=3, projects={A: 1, B: 2}),
+        dict(date="2026-10-26", hours=0, projects={}),
+    ]
+    assert report["total_hours"] == 4
 
 
 def test_reject_missing_task_and_conflicting_completion(tasks):
