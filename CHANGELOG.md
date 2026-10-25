@@ -6,6 +6,12 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Nickel (Ni)**. Nickel is used in many coins and is also a key ingredient in numerous stainless-steel alloys.
+
+### Changed
+
+- Reorder the 20 project colors to increase contrast between neighboring stacks.
+
 ## [0.3.1] - 2026-10-24 @ 21:50
 
 ### Changed

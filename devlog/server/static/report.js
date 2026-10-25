@@ -9,11 +9,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const theme = getComputedStyle(document.documentElement);
   const color = name => theme.getPropertyValue(name).trim();
   const projectColors = [
-    "rgb(230, 57, 70)", "rgb(243, 84, 37)", "rgb(247, 127, 0)", "rgb(255, 166, 0)",
-    "rgb(255, 214, 10)", "rgb(186, 216, 10)", "rgb(122, 200, 0)", "rgb(34, 197, 94)",
-    "rgb(0, 184, 148)", "rgb(0, 168, 150)", "rgb(0, 188, 212)", "rgb(0, 157, 255)",
-    "rgb(37, 99, 235)", "rgb(79, 70, 229)", "rgb(124, 58, 237)", "rgb(168, 85, 247)",
-    "rgb(217, 70, 239)", "rgb(236, 72, 153)", "rgb(244, 63, 94)", "rgb(190, 24, 93)"
+    "#E63946", "#00BCD4", "#FFD60A", "#7C3AED",
+    "#22C55E", "#F77F00", "#2563EB", "#EC4899",
+    "#7AC800", "#009DFF", "#BE185D", "#FFA600",
+    "#00A896", "#A855F7", "#F35425", "#4F46E5",
+    "#BAD80A", "#F43F5E", "#00B894", "#D946EF"
   ];
   const escapeLabel = label => label.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   const traces = data.repositories.flatMap((repository, index) => {
