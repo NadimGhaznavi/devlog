@@ -167,7 +167,9 @@ def test_history_drilldown_and_pause_form_recalculate_report(service, tasks):
                       headers={"Origin": service["url"]})
     with urlopen(request) as response:
         assert response.status == 200 and "saved=1" in response.geturl()
-        assert b"Pause saved" in response.read()
+        html = response.read().decode()
+        assert "Pause saved" in html
+        assert "Elapsed time: 10:00:00" in html
     with urlopen(service["url"] + "/api/report?start=2026-10-24&end=2026-10-25") as response:
         assert [day["hours"] for day in json.load(response)["days"]] == [1, 1]
     with pytest.raises(HTTPError) as error:

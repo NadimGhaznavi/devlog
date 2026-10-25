@@ -187,7 +187,7 @@ the configured report timezone; an explicit offset such as `-04:00` resolves
 ambiguous daylight-saving times.
 
 Task timestamps display as `yyyy-mm-dd hh:mm:ss` in the configured report
-timezone. Each active interval also shows elapsed time as `HH:MM:SS`, with
+timezone. Each active interval and pause also shows elapsed time as `HH:MM:SS`, with
 hours continuing beyond 24 for longer intervals.
 
 Saving subtracts the break from active time and recalculates the daily/project
