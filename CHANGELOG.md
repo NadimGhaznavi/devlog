@@ -6,6 +6,18 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Bromine (Br)**. Bromine is one of only two 
+elements that are liquids near room temperature.
+
+### Changed
+
+- Uninstall removes all DevLog installation files, configuration, and logged
+  data, including the server's database, database account, service and system
+  account/group. Only the root-protected database credentials are retained.
+- Server reinstall reuses retained credentials to recreate the database and
+  account. Server installation now requires the MariaDB administrator client
+  even when credentials already exist; upgrades continue preserving data.
+
 ## [0.4.1] - 2026-10-25 @ 06:22
 
 This release is named for the element **Selenium (Se)**. Selenium is essential in 

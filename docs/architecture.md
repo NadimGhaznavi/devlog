@@ -71,8 +71,14 @@ at `/opt/prod/devlog`: an installed `devlog/constants/DDevLog.py`,
 `.installation-manifest.json` tracking owned resources, and
 `.deployment-version` written only after successful activation. `--check`
 preflights run without root or host changes. Role-aware
-`scripts/uninstall.sh` removes only DevLog-owned code and services while
-retaining configuration and database data. Client-only installations
+`scripts/uninstall.sh` removes the DevLog installation directory except for
+`conf/database.env`. Server uninstall also drops the owned local database and
+database account, removes the systemd unit and system account/group, and leaves
+the credential file root-owned with mode 600. Reinstallation recreates the
+database/account with those saved credentials and shipped configuration defaults;
+upgrades preserve configuration and data. Server install and uninstall require
+the MariaDB administrator client; upgrades and client operations do not.
+Client-only installations
 retain the canonical application version but suppress local server listener
 and database declarations in the CMDB-readable installed constants. Server
 installations retain the source declarations. All three lifecycle entry points

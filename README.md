@@ -44,8 +44,9 @@ releasing.
 
 Cut your Git release, then run these scripts from the prepared release checkout;
 they do not pull or change Git. Both installation types require Python **3.11+**
-with venv/pip support and Git. Fresh server provisioning additionally needs the
-`mariadb` command when new DB credentials must be created. `install-server.sh --check`
+with venv/pip support and Git. Every server installation, including a reinstall
+with saved credentials, additionally needs the `mariadb` command to provision
+the database and account. `install-server.sh --check`
 verifies this before any account, filesystem or database changes. Client-only
 installs and server upgrades do not require the MariaDB administrator command.
 
@@ -79,8 +80,12 @@ sudo ./scripts/install-server.sh
 Server installation includes the local CLI, creates the `devlog` system account, a local `devlog` database/user,
 and a random database password in `/opt/prod/devlog/conf/database.env` (root-owned,
 mode 640, readable by the service group). Credentials are never shell-sourced or
-passed as command-line arguments. If that file already exists, installation uses
-it instead of provisioning credentials. Database tables are initialized explicitly
+passed as command-line arguments. If that file already exists, installation reuses
+its credentials and recreates any missing database/account resources, restoring
+the account's password and grants. New credentials are generated only when the
+file is absent. The installer manages the local `devlog` database and
+`devlog`@`localhost` database account; an optional `DB_SOCKET` selects the local
+MariaDB instance. Database tables are initialized explicitly
 by the installer; the running server never creates schema.
 
 ### Installation identity and dry-run checks
@@ -127,13 +132,26 @@ From the release checkout, run:
 sudo ./scripts/uninstall.sh
 ```
 
-Uninstall removes DevLog-owned launchers, managed release directories, the
-installed CMDB constants, version marker and, for server installations, the
-DevLog systemd unit. It retains `conf/devlog.json`, database credentials,
-MariaDB data and other unowned files. The installation manifest remains as an
-empty ownership record when configuration is retained. Repeating uninstall is
-safe. Legacy installations without a manifest must first be upgraded to adopt
-the ownership record before they can be uninstalled safely.
+Uninstall removes the entire DevLog installation, including all release
+directories, configuration, installed CMDB constants and installation/version
+records. On a server it also stops and removes the systemd service, drops the
+DevLog database and database account, and removes the `devlog` system account
+and group. Server uninstall requires the `mariadb` command and local root socket
+access, as server installation does. Its `--check` checks prerequisites without
+changing files or connecting to MariaDB.
+
+**The sole retained file is `conf/database.env`**, when present. Uninstall leaves
+it owned by root with mode 600. A client without credentials leaves no installation
+directory. Client uninstall affects its local installation; server resources are
+removed by uninstalling on the server.
+
+Reinstalling the server reuses those saved credentials, creates an empty database,
+and restores the service account's access to the credential file. All other
+configuration starts from the shipped defaults. Upgrades continue preserving
+configuration, credentials and logged data. Repeating uninstall is safe, and the
+new uninstaller also removes data retained by an older uninstall that left its
+ownership manifest. Legacy installations without a manifest must first be
+upgraded to adopt that record before uninstalling.
 
 Each installation builds an isolated release environment under
 `/opt/prod/devlog/releases/`. `current` selects the installed release, and the
