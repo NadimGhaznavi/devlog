@@ -88,7 +88,7 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         if screenshot:
             page.screenshot(path=str(Path(screenshot) / "devlog-mobile.png"), full_page=True)
         page.set_viewport_size({"width": 1200, "height": 900})
-        page.get_by_label("Repository", exact=True).select_option("github.com/nadimghaznavi/beta")
+        page.get_by_role("combobox", name="Reporting", exact=True).select_option("github.com/nadimghaznavi/beta")
         page.get_by_role("button", name="Show report").click()
         page.wait_for_selector("#daily-chart .plot-container")
         assert page.locator(".total strong").inner_text() == "1.00"
@@ -221,7 +221,7 @@ def test_drilldown_insert_overnight_pause_and_chart_fallback(service, tasks):
             page.screenshot(path=str(Path(screenshot) / "devlog-pause-mobile.png"), full_page=True)
         page.get_by_role("link", name="Back to report").click()
         page.wait_for_selector("#daily-chart .plot-container")
-        assert page.get_by_label("Repository", exact=True).input_value() == ""
+        assert page.get_by_role("combobox", name="Reporting", exact=True).input_value() == ""
         assert page.get_by_label("From", exact=True).input_value() == "2026-10-24"
         assert page.get_by_label("Through", exact=True).input_value() == "2026-10-25"
         assert page.locator(".total strong").inner_text() == "4.00"

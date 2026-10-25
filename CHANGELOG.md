@@ -6,6 +6,20 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Technetium (Tc)**. Technetium was the
+first element produced artificially, and its isotope technetium-99m is widely
+used in medical imaging.
+
+### Changed
+
+- Match BMDynIP's report-server styling across DevLog's report and task pages:
+  a bordered full-width header, compact title, navigation and version display,
+  wider bordered panels, and navy, cyan and orange colors.
+- Match the daily-hours chart background to the page and keep mobile date
+  filters wide enough to display complete dates.
+- Give the main page separate Reporting, Daily hours and Tasks panels, with
+  matching heading styles and the date/hour task links in their own frame.
+
 ## [0.5.5] - 2026-10-25 @ 09:12
 
 This release is named for the element **Molybdenum (Mo)**. Molybdenum retains 

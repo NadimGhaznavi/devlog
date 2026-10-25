@@ -1,32 +1,32 @@
-<!doctype html>
-<html lang="{{ locale }}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ t(text.APP_TITLE) }} · {{ t(text.DAILY_HOURS) }}</title>
-  <link rel="stylesheet" href="/static/style.css">
+{% extends "base.html" %}
+{% set active_page = 'report' %}
+{% block page_title %}{{ t(text.DAILY_HOURS) }}{% endblock %}
+{% block head %}
   <script defer src="https://cdn.plot.ly/plotly-4.1.1.min.js" charset="utf-8"></script>
   <script defer src="/static/report.js"></script>
-</head>
-<body>
-  <main>
-    <header><div><h1>{{ t(text.APP_TITLE) }}<span class="dot">.</span></h1><p>{{ t(text.APP_SUBTITLE) }}</p></div><span class="version">v{{ version }}</span></header>
-    <form method="get" class="filters">
-      <div class="field"><label for="repository">{{ t(text.REPOSITORY) }}</label><select id="repository" name="repository"><option value="">{{ t(text.ALL_REPOSITORIES) }}</option>{% for repository in report.repositories %}<option value="{{ repository }}" {% if report.repository == repository %}selected{% endif %}>{{ repository.removeprefix('github.com/') }}</option>{% endfor %}</select></div>
-      <div class="field"><label for="start">{{ t(text.FROM) }}</label><input id="start" type="date" name="start" value="{{ report.start }}" required></div>
-      <div class="field"><label for="end">{{ t(text.THROUGH) }}</label><input id="end" type="date" name="end" value="{{ report.end }}" required></div>
-      {% if languages | length > 1 %}<div class="field"><label for="language">{{ t(text.LANGUAGE_LABEL) }}</label><select id="language" name="lang">{% for language in languages %}<option value="{{ language }}" {% if language == locale %}selected{% endif %}>{{ language }}</option>{% endfor %}</select></div>{% else %}<input type="hidden" name="lang" value="{{ locale }}">{% endif %}
-      <button type="submit">{{ t(text.APPLY) }} <span aria-hidden="true">↗</span></button>
-    </form>
-    <section class="report" aria-labelledby="daily-title">
-      <div class="report-heading"><div><h2 id="daily-title">{{ t(text.DAILY_HOURS) }}</h2><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>
+{% endblock %}
+{% block content %}
+    <section class="panel" aria-labelledby="reporting-title">
+      <h2 class="panel-title" id="reporting-title"><label for="repository">{{ t(text.REPORTING) }}</label></h2>
+      <form method="get" class="filters">
+        <div class="field"><select id="repository" name="repository"><option value="">{{ t(text.ALL_REPOSITORIES) }}</option>{% for repository in report.repositories %}<option value="{{ repository }}" {% if report.repository == repository %}selected{% endif %}>{{ repository.removeprefix('github.com/') }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="start">{{ t(text.FROM) }}</label><input id="start" type="date" name="start" value="{{ report.start }}" required></div>
+        <div class="field"><label for="end">{{ t(text.THROUGH) }}</label><input id="end" type="date" name="end" value="{{ report.end }}" required></div>
+        {% if languages | length > 1 %}<div class="field"><label for="language">{{ t(text.LANGUAGE_LABEL) }}</label><select id="language" name="lang">{% for language in languages %}<option value="{{ language }}" {% if language == locale %}selected{% endif %}>{{ language }}</option>{% endfor %}</select></div>{% else %}<input type="hidden" name="lang" value="{{ locale }}">{% endif %}
+        <button type="submit">{{ t(text.APPLY) }} <span aria-hidden="true">↗</span></button>
+      </form>
+    </section>
+    <section class="report panel" aria-labelledby="daily-title">
+      <div class="report-heading"><div><h1 class="panel-title" id="daily-title">{{ t(text.DAILY_HOURS) }}</h1><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>
       {% if report.total_hours == 0 %}<p class="empty">{{ t(text.EMPTY) }}</p>{% endif %}
       <div id="daily-chart" aria-label="{{ t(text.DAILY_HOURS) }}"></div>
       <p id="chart-error" hidden>{{ t(text.CHART_UNAVAILABLE) }}</p>
-      <p><a href="{{ link('/tasks') }}">{{ t(text.TASKS) }} →</a></p>
-      <table><thead><tr><th scope="col">{{ t(text.DATE) }}</th><th scope="col">{{ t(text.HOURS) }}</th></tr></thead><tbody>{% for day in report.days %}<tr><td><a href="{{ link('/tasks', day=day.date) }}">{{ day.date }}</a></td><td>{{ '%.2f' | format(day.hours) }}</td></tr>{% endfor %}</tbody></table>
     </section>
-  </main>
+    <section class="panel" aria-labelledby="tasks-title">
+      <h2 class="panel-title" id="tasks-title"><a href="{{ link('/tasks') }}">{{ t(text.TASKS) }} <span aria-hidden="true">→</span></a></h2>
+      <div class="table-wrap"><table><thead><tr><th scope="col">{{ t(text.DATE) }}</th><th scope="col">{{ t(text.HOURS) }}</th></tr></thead><tbody>{% for day in report.days %}<tr><td><a href="{{ link('/tasks', day=day.date) }}">{{ day.date }}</a></td><td>{{ '%.2f' | format(day.hours) }}</td></tr>{% endfor %}</tbody></table></div>
+    </section>
+{% endblock %}
+{% block scripts %}
   <script id="chart-data" type="application/json">{{ {'days': report.days, 'repositories': report.repositories, 'hoursLabel': t(text.HOURS), 'dateLabel': t(text.DATE), 'taskUrl': link('/tasks')} | tojson }}</script>
-</body>
-</html>
+{% endblock %}

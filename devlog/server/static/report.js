@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
     barmode: "stack", showlegend: true,
     shapes: taskSeparators(traces),
     legend: {orientation: "h", x: 0.5, xanchor: "center", y: -0.3, yanchor: "top", traceorder: "normal"},
-    paper_bgcolor: color("--surface"), plot_bgcolor: color("--surface"),
+    paper_bgcolor: color("--background"), plot_bgcolor: color("--background"),
     font: {family: "system-ui, sans-serif", color: color("--text")},
     hoverlabel: {bgcolor: color("--surface"), bordercolor: color("--accent"), font: {color: color("--text")}},
     margin: {t: 20, r: 20, b: 100, l: 55},

@@ -4,9 +4,13 @@ from enum import StrEnum
 class DText(StrEnum):
     APP_TITLE = "app.title"
     APP_SUBTITLE = "app.subtitle"
+    REPORTS = "app.reports"
+    MAIN_NAVIGATION = "app.main_navigation"
+    APP_VERSION = "app.version"
     LANGUAGE_LABEL = "language.label"
     LANGUAGE_NAME = "language.name"
     REPOSITORY = "report.repository"
+    REPORTING = "report.reporting"
     ALL_REPOSITORIES = "report.all_repositories"
     FROM = "report.from"
     THROUGH = "report.through"
