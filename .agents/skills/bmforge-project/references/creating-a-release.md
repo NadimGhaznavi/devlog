@@ -10,6 +10,8 @@ Publish a completed feature branch using the tooling from [Release Setup]({{ sit
 
 ## Prepare the Release
 
+If the project has a `pyproject.toml` with `[project]` package metadata, keep its literal `version` aligned with the application's canonical `D<Name>.VERSION` before releasing. The release script checks that agreement before merging, updates both to the new release version, and commits both files. Dynamic or ambiguous `[project].version` declarations fail clearly rather than being silently skipped. Tool-only `pyproject.toml` files without `[project]` are unaffected.
+
 Finish the relevant verification and documentation, review the entries accumulated through [Changelog Maintenance]({{ site.baseurl }}{% link pages/changelog-maintenance.md %}), and commit all work. Run from a feature branch with a clean working tree. Incorporate any changes from `main` into `dev`, then from `dev` into the feature branch, before releasing.
 
 If deployment tracking is enabled, regenerate and commit a changed dependency map before releasing. See [Deployment Impact Tracking]({{ site.baseurl }}{% link pages/deployment-impact-tracking.md %}).
@@ -37,7 +39,7 @@ Review the source branch, tag, codename, next branch, and remote in the summary.
 After local and remote checks and confirmation, the script:
 
 1. Merges the feature branch into `dev` with a merge commit.
-2. Updates `VERSION`, `CMDB_CODENAME`, and the changelog's release version and local timestamp. When enabled, it also records deployment impact.
+2. Updates `VERSION`, `CMDB_CODENAME`, the changelog's release version and local timestamp, and any static PEP 621 `[project].version` in `pyproject.toml`. When enabled, it also records deployment impact.
 3. Commits the release metadata and merges `dev` into `main`.
 4. Creates an annotated `v<version>` tag and advances `dev` to `main`.
 5. Atomically pushes `main`, `dev`, and the tag to `origin`.

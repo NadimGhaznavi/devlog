@@ -34,6 +34,8 @@ translation_key: bmforge-engineering-contract
 
 A health check reports actual application state; it is not a mandate to build a self-healing system. Follow [Application Health Checks]({{ site.baseurl }}{% link pages/health-checks.md %}): one existing interface, no monitoring background workers, and no direct CMDB-to-MariaDB probe. Security at exposed boundaries is mandatory where applicable, but redundant internal validation is not security.
 
+Every new project must also satisfy the [Installation Lifecycle contract]({{ site.baseurl }}{% link pages/component-installation.md %}): install, upgrade and uninstall must work for the application's actual distribution topology. A successful install leaves a readable version/ownership record under its application-owned `/opt/prod` directory. Bootstrapped deployment stubs are **not proof** that the app can be installed.
+
 ## Scope gate for Codex
 
 Before adding nontrivial defensive logic or an additional layer, identify **the requirement or observed failure it solves**. If none exists, omit it. Prefer an understandable, observable failure over code that quietly limps forward.

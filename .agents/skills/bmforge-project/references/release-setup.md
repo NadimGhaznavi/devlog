@@ -27,13 +27,33 @@ For manual projects without the Codex bootstrap, copy these files from BMForge:
 | [Release script]({{ '/templates/project/scripts/new-release.sh' | relative_url }}) | `scripts/new-release.sh` |
 | [Metadata checker]({{ '/templates/project/scripts/check-cmdb.py' | relative_url }}) | `scripts/check-cmdb.py` |
 
-Make `scripts/new-release.sh` executable. It requires Bash, Git, Python 3.10 or newer, and standard GNU command-line tools. It reads and edits metadata without importing application code.
+Make `scripts/new-release.sh` executable. It requires Bash, Git, Python 3.10 or newer, and standard GNU command-line tools. Projects with a static PEP 621 `[project].version` in `pyproject.toml` get version synchronization automatically; that version must initially match the literal application `VERSION`. It reads and edits metadata without importing application code.
 
 Replace `__PROJECT_NAME__` and `__PROJECT_SLUG__` in the script's settings block with the canonical application name and its lowercase form. Review the version path, changelog path, remote, and branch names. The standard defaults are `origin`, `dev`, `main`, and `feat/maint-`.
 
 Deployment impact tracking is configured separately. Leave `dependency_rules` and `deployment_config` empty until [Deployment Impact Tracking]({{ site.baseurl }}{% link pages/deployment-impact-tracking.md %}) is ready; enable both together when using it.
 
 ## Establish the Branches
+
+For projects initialized through the **Codex bootstrap**, the project-local
+manager handles the initial *local* release branching after a user-reviewed
+commit on `main`:
+
+```sh
+python3 .agents/bmforge/manage.py setup-branches --project . --dry-run
+python3 .agents/bmforge/manage.py setup-branches --project .
+```
+
+The first command checks prerequisites without changing refs. The second
+creates `dev` and `feat/maint-0.1.0`, both based on the initial `main`
+commit, and switches to the feature branch. It does **not** commit, publish
+a branch to `origin`, configure a remote or create a release. Explicitly
+review and commit the generated scaffold first. Do not re-create or overwrite
+existing branches: reconcile existing `dev`/feature remote refs separately.
+
+For projects that were **not** initialized through the Codex bootstrap, use
+the original manual commands below.
+
 
 Start with a committed initial project on `main` and an `origin` remote. Create the development and first feature branches:
 
