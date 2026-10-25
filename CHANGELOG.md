@@ -6,6 +6,17 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Gallium (Ga)**. Gallium can melt in the warmth of your hand because its melting point is about 30°C.
+
+### Added
+
+- Drill down from report dates and project bars to tasks, commit details and
+  active/pause timelines.
+- Insert a retrospective pause into a closed active interval to remove forgotten
+  overnight time. Daily/project totals recalculate while task completion and Git
+  metadata are preserved. The editor supports timezone offsets, inline validation
+  and stale-edit rejection.
+
 ## [0.3.2] - 2026-10-24 @ 21:55
 
 This release is named for the element **Nickel (Ni)**. Nickel is used in many coins and is also a key ingredient in numerous stainless-steel alloys.

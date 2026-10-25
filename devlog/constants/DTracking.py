@@ -31,3 +31,6 @@ class DTracking:
     MAX_REPORT_DAYS: Final[int] = 366
     MAX_REPOSITORY: Final[int] = 512
     MAX_COMMIT_MESSAGE: Final[int] = 16384
+    INTERVAL_ID: Final[str] = "interval_id"
+    PAUSE_START: Final[str] = "pause_start"
+    PAUSE_END: Final[str] = "pause_end"

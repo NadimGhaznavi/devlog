@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t(text.APP_TITLE) }} · {{ t(text.TASKS) }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main>
+    <header><div><h1>{{ t(text.APP_TITLE) }}<span class="dot">.</span></h1><p>{{ t(text.APP_SUBTITLE) }}</p></div><span class="version">v{{ version }}</span></header>
+    <nav class="history-nav"><a href="{{ link('/') }}">← {{ t(text.BACK_REPORT) }}</a>{% if task %}<a href="{{ link('/tasks') }}">← {{ t(text.BACK_TASKS) }}</a>{% endif %}</nav>
+    {% if saved %}<p class="notice" role="status">{{ t(text.PAUSE_SAVED) }}</p>{% endif %}
+    {% if form_error is defined %}<p class="notice" role="alert">{{ t(form_error) }}</p>{% endif %}
+    <section class="report">
+    {% if task %}
+      <div class="report-heading"><div><h2>{{ t(text.TASK, task_id=task.task_id) }}</h2><p>{{ task.repository }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(task.total_hours) }}</strong></div></div>
+      <dl class="task-metadata">
+        <dt>{{ t(text.STATUS) }}</dt><dd>{{ t(text['STATUS_' ~ task.status.upper()]) }}</dd>
+        <dt>{{ t(text.STARTED_AT) }}</dt><dd><time>{{ task.started_at }}</time></dd>
+        {% if task.completed_at %}<dt>{{ t(text.COMPLETED_AT) }}</dt><dd><time>{{ task.completed_at }}</time></dd>{% endif %}
+        {% if task.commit_sha %}<dt>{{ t(text.COMMIT) }}</dt><dd><code>{{ task.commit_sha }}</code><p class="commit-message">{{ task.commit_message }}</p></dd>{% endif %}
+      </dl>
+      <h3>{{ t(text.TIMELINE) }}</h3>
+      <p class="muted">{{ t(text.TIME_FORMAT, timezone=task.timezone) }}</p>
+      <ol class="timeline">
+      {% for interval in task.timeline %}
+        <li class="interval {% if not interval.interval_id %}pause{% endif %}">
+          <strong>{{ t(text.ACTIVE_TIME if interval.interval_id else text.PAUSE_TIME) }}</strong>
+          <p><time>{{ interval.started_at }}</time> → <time>{{ interval.ended_at or t(text.NOW) }}</time></p>
+          {% if interval.interval_id and interval.ended_at %}
+          {% set editing = form_values is defined and form_values.get('interval_id') == interval.interval_id | string %}
+          <details {% if editing %}open{% endif %}><summary>{{ t(text.INSERT_PAUSE) }}</summary>
+            <form method="post" action="{{ link('/tasks/' ~ task.task_id ~ '/pause') }}" class="pause-form">
+              <input type="hidden" name="interval_id" value="{{ interval.interval_id }}">
+              <p>{{ t(text.HISTORY_PAUSE_HELP) }}</p>
+              <div class="field"><label for="pause-start-{{ interval.interval_id }}">{{ t(text.PAUSE_START) }}</label><input id="pause-start-{{ interval.interval_id }}" name="pause_start" type="text" value="{{ form_values.get('pause_start', '') if editing else '' }}" placeholder="{{ interval.started_at }}" required autocomplete="off"></div>
+              <div class="field"><label for="pause-end-{{ interval.interval_id }}">{{ t(text.PAUSE_END) }}</label><input id="pause-end-{{ interval.interval_id }}" name="pause_end" type="text" value="{{ form_values.get('pause_end', '') if editing else '' }}" placeholder="{{ interval.ended_at }}" autocomplete="off"></div>
+              <button type="submit">{{ t(text.SAVE_PAUSE) }}</button>
+            </form>
+          </details>
+          {% elif interval.interval_id %}<p class="muted">{{ t(text.OPEN_INTERVAL) }}</p>{% endif %}
+        </li>
+      {% endfor %}
+      </ol>
+    {% else %}
+      <div class="report-heading"><div><h2>{{ t(text.TASKS) }}</h2><p>{{ t(text.TASK_RANGE, start=report.start, end=report.end) }}</p><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>
+      {% if not report.tasks %}<p class="empty">{{ t(text.NO_TASKS) }}</p>{% endif %}
+      <ol class="task-list">
+      {% for item in report.tasks %}
+        <li><a class="task-link" href="{{ link('/tasks/' ~ item.task_id) }}"><span><strong>{{ t(text.TASK, task_id=item.task_id) }} · {{ item.repository.removeprefix('github.com/') }}</strong><span class="muted">{{ item.commit_message or t(text['STATUS_' ~ item.status.upper()]) }}</span><time>{{ item.started_at }}</time></span><span>{{ '%.2f' | format(item.hours) }} {{ t(text.HOURS) }} →</span></a></li>
+      {% endfor %}
+      </ol>
+    {% endif %}
+    </section>
+  </main>
+</body>
+</html>

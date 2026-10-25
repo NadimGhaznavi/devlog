@@ -154,6 +154,26 @@ defaults are in `conf/devlog.json`. Edit the file and restart the service to
 change interfaces, ports, client host, timeouts, or report timezone (initially
 `America/Toronto`). Keep these unauthenticated listeners on your trusted network.
 
+### Correcting a forgotten pause
+
+Click a date in the report table to see its tasks, or click a colored chart
+segment to see that day's tasks for that repository. **Tasks** opens the whole
+filtered period. Open a task to inspect its commit, active intervals and pauses.
+Task-list hours cover the selected period; task details show the whole task.
+
+Under the affected active interval, choose **Insert a pause**, enter **Pause
+began** and **Work resumed**, and save. For example, an overnight break might run
+from `2026-10-24T22:00` to `2026-10-25T08:00`. Leave **Work resumed** blank to
+exclude time through that interval's recorded end. Times without an offset use
+the configured report timezone; an explicit offset such as `-04:00` resolves
+ambiguous daylight-saving times.
+
+Saving subtracts the break from active time and recalculates the daily/project
+totals. The task's original start, completion time and Git commit remain intact.
+Only closed active intervals can be corrected; run `dl pause` first if the
+affected interval is still running. A pause must fit within one active interval.
+Corrections commit atomically, and stale forms must be reloaded before editing.
+
 The service does not access Git checkouts. The CLI derives repository identity
 from its GitHub `origin`, supporting HTTPS and SSH remotes; checkout paths are
 never sent. To connect to another service host:
@@ -197,7 +217,9 @@ test administrator. Never point these variables at production.
 
 An optional browser acceptance check uses Playwright/Chromium as test-only tools:
 set `DEVLOG_TEST_BROWSER=1` along with the disposable database socket. It verifies
-the pinned Plotly asset, chart values, repository selection, and mobile layout.
+the pinned Plotly asset, chart values, repository selection, pause editing and
+mobile layout. For offline runs, `DEVLOG_TEST_PLOTLY_ASSET` may point to a cached
+copy of the approved Plotly 4.1.1 asset; this only intercepts requests in tests.
 
 See the [changelog](CHANGELOG.md) for version history. Before cutting a release,
 date its changelog entry and record any additional user-visible changes.

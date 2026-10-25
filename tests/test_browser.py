@@ -7,6 +7,13 @@ from pathlib import Path
 import pytest
 
 
+def use_cached_plotly(page):
+    asset = os.environ.get("DEVLOG_TEST_PLOTLY_ASSET")
+    if asset:
+        page.route("https://cdn.plot.ly/plotly-4.1.1.min.js",
+                   lambda route: route.fulfill(path=asset, content_type="text/javascript"))
+
+
 @pytest.mark.database
 @pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
 def test_plotly_report_filters_and_mobile_layout(service, tasks):
@@ -19,6 +26,7 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
     with playwright.sync_playwright() as runtime:
         browser = runtime.chromium.launch()
         page = browser.new_page(viewport={"width": 1200, "height": 900}, ignore_https_errors=True)
+        use_cached_plotly(page)
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(service["url"] + "/?start=2026-10-23&end=2026-10-25")
         page.wait_for_selector("#daily-chart .plot-container")
@@ -54,5 +62,63 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         assert page.locator(".total strong").inner_text() == "1.00"
         assert page.evaluate("document.getElementById('daily-chart').data[0].y") == [0, 1, 0]
         assert page.evaluate("document.getElementById('daily-chart').data[0].marker.color") == colors[1]
+        assert errors == []
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+def test_drilldown_insert_overnight_pause_and_chart_fallback(service, tasks):
+    playwright = pytest.importorskip("playwright.sync_api")
+    repository = "github.com/example/overnight"
+    task_id = tasks.start(repository, now=datetime(2026, 10, 25, 1))["task_id"]
+    tasks.complete(repository, task_id, "e" * 40, "Overnight correction", now=datetime(2026, 10, 25, 13))
+    errors = []
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page(viewport={"width": 1200, "height": 900}, ignore_https_errors=True)
+        use_cached_plotly(page)
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.goto(service["url"] + "/?start=2026-10-24&end=2026-10-25")
+        page.wait_for_selector("#daily-chart .plot-container")
+        assert page.locator(".total strong").inner_text() == "12.00"
+        bar = page.locator("#daily-chart .barlayer .point").last.bounding_box()
+        page.mouse.click(bar["x"] + bar["width"] / 2, bar["y"] + bar["height"] / 2)
+        page.wait_for_url("**/tasks?**")
+        assert "day=2026-10-25" in page.url
+        assert "repository=" in page.url
+        page.locator(".task-link").click()
+        page.wait_for_url(f"**/tasks/{task_id}?**")
+        assert page.locator(".total strong").inner_text() == "12.00"
+        page.get_by_text("Insert a pause", exact=True).click()
+        page.get_by_label("Pause began", exact=True).fill("2026-10-24T22:00")
+        page.get_by_label("Work resumed (optional)", exact=True).fill("2026-10-24T21:00")
+        page.get_by_role("button", name="Save pause").click()
+        assert page.get_by_role("alert").is_visible()
+        assert page.get_by_label("Pause began", exact=True).input_value() == "2026-10-24T22:00"
+        page.get_by_label("Work resumed (optional)", exact=True).fill("2026-10-25T08:00")
+        page.get_by_role("button", name="Save pause").click()
+        assert page.get_by_role("status").inner_text().startswith("Pause saved")
+        assert page.locator(".total strong").inner_text() == "2.00"
+        assert page.locator(".interval").count() == 3
+        assert page.locator(".interval.pause").count() == 1
+        assert page.locator(".task-metadata").inner_text().count("e" * 40) == 1
+        page.set_viewport_size({"width": 390, "height": 844})
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+        screenshot = os.environ.get("DEVLOG_SCREENSHOT_DIR")
+        if screenshot:
+            Path(screenshot).mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(Path(screenshot) / "devlog-pause-mobile.png"), full_page=True)
+        page.get_by_role("link", name="Back to report").click()
+        page.wait_for_selector("#daily-chart .plot-container")
+        assert page.locator(".total strong").inner_text() == "2.00"
+        assert page.evaluate("document.getElementById('daily-chart').data[0].y") == [1, 1]
+        # The table drill-down and forms work even when the CDN cannot be reached.
+        page.route("https://cdn.plot.ly/plotly-4.1.1.min.js", lambda route: route.abort())
+        page.reload()
+        assert page.locator("#chart-error").is_visible()
+        page.get_by_role("link", name="2026-10-25", exact=True).click()
+        page.locator(".task-link").click()
+        assert page.locator(".total strong").inner_text() == "2.00"
         assert errors == []
         browser.close()
