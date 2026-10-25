@@ -35,14 +35,17 @@ class TaskHistory:
             if cursor < interval["started_at"]:
                 timeline.append(dict(interval_id=None, started_at=cursor, ended_at=interval["started_at"]))
             cursor = interval["ended_at"] or now
-            elapsed = (cursor - interval["started_at"]).total_seconds()
-            hours, remainder = divmod(int(elapsed), 3600)
-            minutes, seconds = divmod(remainder, 60)
-            timeline.append(dict(interval, elapsed_time=f"{hours:02}:{minutes:02}:{seconds:02}"))
-            total += elapsed
+            timeline.append(dict(interval))
         end = task["completed_at"] or now
         if cursor < end and task["status"] != TaskStatus.RUNNING:
             timeline.append(dict(interval_id=None, started_at=cursor, ended_at=task["completed_at"]))
+        for interval in timeline:
+            elapsed = ((interval["ended_at"] or now) - interval["started_at"]).total_seconds()
+            hours, remainder = divmod(int(elapsed), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            interval["elapsed_time"] = f"{hours:02}:{minutes:02}:{seconds:02}"
+            if interval["interval_id"]:
+                total += elapsed
         return dict(self._present(task), timeline=[self._present(row) for row in timeline],
                     total_hours=total / 3600, timezone=str(self.zone))
 
