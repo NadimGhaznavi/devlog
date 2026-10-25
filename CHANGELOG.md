@@ -6,6 +6,14 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Rubidium (Rb)**. Rubidium is so reactive 
+that it is normally stored away from air and moisture.
+
+### Fixed
+
+- Clear the repository filter when returning from task lists or task details
+  with **Back to report**, preserving the selected date range and language.
+
 ## [0.4.3] - 2026-10-25 @ 08:05
 
 This release is named for the element **Krypton (Kr)**. Krypton is a noble 
