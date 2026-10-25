@@ -60,6 +60,7 @@ class ReportHandler(BaseHTTPRequestHandler):
             values.update(lang=locale, **updates)
             if path == "/":
                 values.pop("day", None)
+                values.pop("repository", None)
             return path + "?" + urlencode(values)
         return build
 
