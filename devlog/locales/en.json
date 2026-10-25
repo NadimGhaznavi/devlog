@@ -1,9 +1,13 @@
 {
   "app.title": "DevLog",
   "app.subtitle": "Time spent building, one repository at a time.",
+  "app.reports": "Reports",
+  "app.main_navigation": "Main navigation",
+  "app.version": "Bear & Moose · Version {version}",
   "language.label": "Language",
   "language.name": "English",
   "report.repository": "Repository",
+  "report.reporting": "Reporting",
   "report.all_repositories": "All repositories",
   "report.from": "From",
   "report.through": "Through",

@@ -1,20 +1,13 @@
-<!doctype html>
-<html lang="{{ locale }}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ t(text.APP_TITLE) }} · {{ t(text.TASKS) }}</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-  <main>
-    <header><div><h1>{{ t(text.APP_TITLE) }}<span class="dot">.</span></h1><p>{{ t(text.APP_SUBTITLE) }}</p></div><span class="version">v{{ version }}</span></header>
+{% extends "base.html" %}
+{% set active_page = 'tasks' %}
+{% block page_title %}{{ t(text.TASKS) }}{% endblock %}
+{% block content %}
     <nav class="history-nav"><a href="{{ link('/') }}">← {{ t(text.BACK_REPORT) }}</a>{% if task %}<a href="{{ link('/tasks') }}">← {{ t(text.BACK_TASKS) }}</a>{% endif %}</nav>
     {% if saved %}<p class="notice" role="status">{{ t(text.PAUSE_SAVED) }}</p>{% endif %}
     {% if form_error is defined %}<p class="notice" role="alert">{{ t(form_error) }}</p>{% endif %}
-    <section class="report">
+    <section class="report panel">
     {% if task %}
-      <div class="report-heading"><div><h2>{{ t(text.TASK, task_id=task.task_id) }}</h2><p>{{ task.repository }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(task.total_hours) }}</strong></div></div>
+      <div class="report-heading"><div><h1>{{ t(text.TASK, task_id=task.task_id) }}</h1><p>{{ task.repository }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(task.total_hours) }}</strong></div></div>
       <dl class="task-metadata">
         <dt>{{ t(text.STATUS) }}</dt><dd>{{ t(text['STATUS_' ~ task.status.upper()]) }}</dd>
         <dt>{{ t(text.STARTED_AT) }}</dt><dd><time>{{ task.started_at }}</time></dd>
@@ -45,7 +38,7 @@
       {% endfor %}
       </ol>
     {% else %}
-      <div class="report-heading"><div><h2>{{ t(text.TASKS) }}</h2><p>{{ t(text.TASK_RANGE, start=report.start, end=report.end) }}</p><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>
+      <div class="report-heading"><div><h1>{{ t(text.TASKS) }}</h1><p>{{ t(text.TASK_RANGE, start=report.start, end=report.end) }}</p><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>
       {% if not report.tasks %}<p class="empty">{{ t(text.NO_TASKS) }}</p>{% endif %}
       <ol class="task-list">
       {% for item in report.tasks %}
@@ -54,6 +47,4 @@
       </ol>
     {% endif %}
     </section>
-  </main>
-</body>
-</html>
+{% endblock %}
