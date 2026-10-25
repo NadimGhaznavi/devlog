@@ -51,6 +51,8 @@ Animated GIF exports are separately covered by [GIF Animation]({{ site.baseurl }
 
 The vendored example files in `components/reference/bmgeoip/` are copied from `NadimGhaznavi/bmgeoip` at commit `35c8745c7003a124dce5b5799b08b2d7c851fbfc` (24 October 2026). They are immutable examples from that revision, not live links, and must not be periodically synchronised without review. The source file layout is retained to show component boundaries and imports. Some examples depend on BMGeoIP-only modules intentionally not part of the component catalogue; implementation agents must replace those integrations, not attempt to run the snapshot as a standalone application. Each component contract names exactly which Python import modules are approved. Third-party package versions are installed and tracked in the **generated application's** dependency files, with deliberate upgrades.
 
+The HTTP component additionally provides BMDynIP's **frozen HTML/CSS visual references** under `components/reference/bmdynip/bmdynip/server/static/`, pinned to commit `2077300e7ee20de5328164115a277f353ed19579`. New human-facing pages use them as design inspiration for dark, saturated, high-contrast interfaces without fixed hex colors, copied DNS functionality or a BMDynIP runtime dependency. API-only services do not acquire a GUI.
+
 The visualization component has frozen local MyCount Plotly/Leaflet and CMDB Cytoscape source examples under `components/reference/`. Its approved JavaScript libraries are independent of the Python HTTP transport's module list and require explicit selection by application need.
 
 ## Component boundaries

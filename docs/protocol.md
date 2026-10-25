@@ -19,11 +19,15 @@ so the service exits and systemd can restart it.
 
 | Method | Payload | Result |
 | --- | --- | --- |
+| `status` | Empty object | `task_id`, `repository` (both null when idle; otherwise the global active task's ID and full repository identity) |
 | `start` | `repository` | `task_id`, `status: running` |
 | `pause` | `repository` | `task_id`, `status: paused` |
 | `commit` | `repository`, `phase: prepare`, optional `commit_sha` for recovery | Unfinished task's `task_id` and `status`, or the task already linked to the supplied SHA |
 | `commit` | `repository`, `phase: complete`, `task_id`, `commit_sha`, `message` | `task_id`, `status: completed`, `commit_sha` |
 | `health` | Empty object | Empty result, after checking the worker's application DAL |
+
+`status` reads the global tracker state without modifying tasks or intervals.
+It requires no local Git checkout and rejects nonempty payloads.
 
 The CLI normalizes the GitHub `origin` remote into `github.com/owner/repository`
 (case insensitive, no `.git`). The server treats that identifier as data. It has
