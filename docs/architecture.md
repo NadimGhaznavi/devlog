@@ -45,6 +45,10 @@ exact approved CDN URL. An HTML daily-hours table remains available if that asse
 cannot load. No frontend build, Python plotting package, maps, or graph library is
 introduced.
 
+Daily report rows include total hours and a `projects` mapping of repository
+identities to hours. The chart stacks these project hours into one bar per day,
+with consistent project colors across filters and a legend below the Date label.
+
 Pinned skill versions and source hashes are recorded in `.agents/bmforge/lock.json`.
 There are no BMForge or reference-application imports at runtime.
 

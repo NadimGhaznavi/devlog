@@ -6,9 +6,19 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-24 @ 21:43
+
+This release is named for the element **Iron (Fe)**. Earth's core is made mainly of iron, and flowing liquid metal in the outer core helps generate our magnetic field.
+
+### Changed
+
+- Stack each day's tracked hours by project using distinct colors, with the
+  project legend below the Date label and project hours in segment tooltips.
+
 ## [0.2.1] - 2026-10-24 @ 19:43
 
-This release is named for the element **Chromium**. Chromium helps stainless steel resist rust by forming a thin protective oxide layer.
+This release is named for the element **Chromium**. Chromium helps stainless 
+steel resist rust by forming a thin protective oxide layer.
 
 ### Changed
 
