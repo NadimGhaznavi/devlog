@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
           type: "line", xref: "x", yref: "y",
           x0: dayIndex - barWidth / 2, x1: dayIndex + barWidth / 2,
           y0: boundary, y1: boundary,
-          line: {color: trace.marker.line.color, width: taskLineWidth}
+          line: {color: color("--background"), width: taskLineWidth}
         };
       });
     });
