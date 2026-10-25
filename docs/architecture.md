@@ -46,8 +46,12 @@ cannot load. No frontend build, Python plotting package, maps, or graph library 
 introduced.
 
 Daily report rows include total hours and a `projects` mapping of repository
-identities to hours. The chart stacks these project hours into one bar per day,
-with consistent project colors across filters and a legend below the Date label.
+identities to hours. A `task_hours` mapping contains each project's positive task
+durations for that day, ordered by task ID and combining resumed intervals.
+The chart stacks these project hours into one bar per day, with consistent
+project colors across filters and a legend below the Date label. Each project
+segment has a brighter 4 px border and 2 px horizontal task separators; the
+separators follow the visible stacks when projects are hidden using the legend.
 
 Report dates and chart segments link to `/tasks`, filtered by day and optionally
 repository. `/tasks/<id>` presents the complete task timeline through
