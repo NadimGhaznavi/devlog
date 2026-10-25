@@ -178,6 +178,7 @@ Click a date in the report table to see its tasks, or click a colored chart
 segment to see that day's tasks for that repository. **Tasks** opens the whole
 filtered period. Open a task to inspect its commit, active intervals and pauses.
 Task-list hours cover the selected period; task details show the whole task.
+**Back to report** shows all repositories for the selected period.
 
 Under the affected active interval, choose **Insert a pause**, enter **Pause
 began** and **Work resumed**, and save. For example, an overnight break might run
