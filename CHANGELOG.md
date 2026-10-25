@@ -6,6 +6,16 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-25 @ 08:51
+
+This release is named for the element **Zirconium (Zr)**. Zirconium alloys are 
+used to clad nuclear fuel because they absorb relatively few neutrons.
+
+### Changed
+
+- Restore the daily-hours chart's 2 px task separators to the brighter color
+  used by each project bar's border.
+
 ## [0.5.1] - 2026-10-25 @ 08:46
 
 This release is named for the element **Yttrium (Y)**. Yttrium compounds are 
