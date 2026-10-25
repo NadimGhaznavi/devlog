@@ -38,8 +38,30 @@ h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.5px; }
 .total strong { font-size: 36px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
 #daily-chart { height: 340px; width: 100%; }
 .empty, #chart-error { padding: 14px; border-radius: 6px; background: var(--notice); font-size: 14px; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:hover { color: var(--accent-hover); }
+.history-nav { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 24px; }
+.notice { padding: 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--notice); }
+.muted { color: var(--muted); }
+.task-metadata { display: grid; grid-template-columns: auto 1fr; gap: 12px 24px; margin: 28px 0; }
+.task-metadata dt { color: var(--muted); }
+.task-metadata dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.commit-message { white-space: pre-wrap; margin-bottom: 0; }
+.task-list, .timeline { list-style: none; padding: 0; }
+.task-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 8px; border-bottom: 1px solid var(--grid); text-decoration: none; overflow-wrap: anywhere; }
+.task-link > span:first-child { min-width: 0; display: grid; gap: 8px; }
+.task-link > span:last-child { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.task-link time { font-size: 13px; color: var(--muted); }
+.interval { border-left: 3px solid var(--accent); padding: 16px; margin: 16px 0; background: var(--background); overflow-wrap: anywhere; }
+.interval.pause { border-color: var(--muted); color: var(--muted); }
+summary { cursor: pointer; color: var(--accent); padding: 8px 0; }
+.pause-form { display: grid; gap: 16px; max-width: 600px; }
+.pause-form .field { min-width: 0; }
+.pause-form input { width: 100%; min-width: 0; }
+.pause-form button { justify-self: start; }
 table { border-collapse: collapse; width: 100%; margin-top: 16px; font-size: 14px; }
 th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--grid); }
 th { color: var(--muted); font-size: 12px; font-weight: 600; }
 th:last-child, td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 600px) { main { padding: 24px 14px; } header { margin-bottom: 24px; } .report { padding: 18px 10px; } .filters .field { flex: 1; min-width: 130px; } .filters .field:first-child { flex-basis: 100%; } .report-heading { padding: 0 6px; } .total strong { font-size: 30px; } }
+@media (max-width: 600px) { .task-metadata { grid-template-columns: 1fr; gap: 8px; } .task-metadata dd { margin-bottom: 8px; } .task-link { align-items: start; flex-direction: column; } .report-heading > div:first-child { min-width: 0; overflow-wrap: anywhere; } }

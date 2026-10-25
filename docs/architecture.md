@@ -49,6 +49,20 @@ Daily report rows include total hours and a `projects` mapping of repository
 identities to hours. The chart stacks these project hours into one bar per day,
 with consistent project colors across filters and a legend below the Date label.
 
+Report dates and chart segments link to `/tasks`, filtered by day and optionally
+repository. `/tasks/<id>` presents the complete task timeline through
+`activity/TaskHistory`. The application-owned form endpoint
+`POST /tasks/<id>/pause` validates a bounded same-origin form and passes its
+timestamps through the configured report timezone. Ambiguous local DST times
+require an explicit offset. These routes retain report filters and locale.
+
+`TaskDb.insert_pause` holds the same singleton lock used by CLI transitions. It
+replaces one closed active interval with up to two remaining active intervals in
+one transaction. Pauses remain gaps between active intervals, so there is no
+schema migration or change to report calculations. Replacement interval IDs
+reject repeated/stale edits. Open intervals and task/commit metadata remain
+unchanged; the task timeline also shows gaps at either end of a completed task.
+
 Pinned skill versions and source hashes are recorded in `.agents/bmforge/lock.json`.
 There are no BMForge or reference-application imports at runtime.
 

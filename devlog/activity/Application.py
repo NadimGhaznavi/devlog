@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 from devlog.activity.Report import Report
+from devlog.activity.TaskHistory import TaskHistory
 from devlog.activity.Tracking import Tracking
 from devlog.constants.DTracking import Method
 from devlog.entity.ServiceUnavailable import ServiceUnavailable
@@ -34,6 +35,18 @@ class Application:
     def report(self, **filters):
         with self.tasks() as tasks:
             return Report(tasks, self.config.zone).read(**filters)
+
+    def task_list(self, **filters):
+        with self.tasks() as tasks:
+            return TaskHistory(tasks, self.config.zone).list(**filters)
+
+    def task_detail(self, task_id):
+        with self.tasks() as tasks:
+            return TaskHistory(tasks, self.config.zone).read(task_id)
+
+    def insert_pause(self, task_id, payload):
+        with self.tasks() as tasks:
+            TaskHistory(tasks, self.config.zone).insert_pause(task_id, payload)
 
     def health(self):
         components = {"http": "ok", "zmq": "ok", "db-server": "ok"}

@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return [{
       type: "bar", name: escapeLabel(repository.replace(/^github\.com\//, "").replace(/^nadimghaznavi\//, "")),
       x: data.days.map(day => day.date), y: data.days.map(day => day.projects[repository] || 0),
+      customdata: data.days.map(() => repository),
       marker: {color: projectColors[index % projectColors.length]},
       hovertemplate: "%{x}<br>%{y:.2f} " + data.hoursLabel + "<extra>%{fullData.name}</extra>"
     }];
@@ -34,5 +35,13 @@ document.addEventListener("DOMContentLoaded", () => {
     margin: {t: 20, r: 20, b: 100, l: 55},
     xaxis: {type: "category", categoryorder: "array", categoryarray: data.days.map(day => day.date), title: {text: data.dateLabel}, fixedrange: true},
     yaxis: {title: {text: data.hoursLabel}, rangemode: "tozero", gridcolor: color("--grid"), zerolinecolor: color("--border"), fixedrange: true}
-  }, {responsive: true, displayModeBar: false}).catch(() => { error.hidden = false; });
+  }, {responsive: true, displayModeBar: false}).then(chart => {
+    chart.on("plotly_click", event => {
+      const point = event.points[0];
+      const target = new URL(data.taskUrl, window.location.origin);
+      target.searchParams.set("day", point.x);
+      target.searchParams.set("repository", point.customdata);
+      window.location.assign(target);
+    });
+  }).catch(() => { error.hidden = false; });
 });

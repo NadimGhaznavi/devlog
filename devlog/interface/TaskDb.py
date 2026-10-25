@@ -151,6 +151,63 @@ class TaskDb:
     def repositories(self):
         return [row["identity"] for row in self.db.query("SELECT identity FROM repositories ORDER BY identity")]
 
+    def task_summaries(self, lower, upper, repository, now):
+        """Tasks spanning the selected range, with hours clipped to that range."""
+        condition = " AND r.identity = %s" if repository else ""
+        rows = self.db.query(f"""
+            SELECT t.task_id, r.identity AS repository, t.status, t.started_at, t.completed_at,
+                t.commit_sha, t.commit_message,
+                COALESCE(SUM(TIMESTAMPDIFF(MICROSECOND,
+                    GREATEST(i.started_at, %s), LEAST(COALESCE(i.ended_at, %s), %s))), 0)
+                    / 3600000000 AS hours
+            FROM tasks t JOIN repositories r ON r.repository_id = t.repository_id
+            LEFT JOIN intervals i ON i.task_id = t.task_id
+                AND i.started_at < %s AND COALESCE(i.ended_at, %s) > %s
+            WHERE t.started_at < %s AND COALESCE(t.completed_at, CAST(%s AS DATETIME(6))) > %s {condition}
+            GROUP BY t.task_id, r.identity, t.status, t.started_at, t.completed_at,
+                t.commit_sha, t.commit_message
+            ORDER BY t.started_at DESC, t.task_id DESC
+        """, (lower, now, upper, upper, now, lower, upper, now, lower,
+              *((repository,) if repository else ())))
+        return [dict(row, hours=float(row["hours"])) for row in rows]
+
+    def task_detail(self, task_id):
+        with self.db.transaction(read_only=True):
+            rows = self.db.query("""
+                SELECT t.task_id, r.identity AS repository, t.status, t.started_at,
+                    t.completed_at, t.commit_sha, t.commit_message
+                FROM tasks t JOIN repositories r ON r.repository_id = t.repository_id
+                WHERE t.task_id = %s
+            """, (task_id,))
+            if not rows:
+                raise TrackingError("not_found", DText.NOT_FOUND)
+            intervals = self.db.query("""
+                SELECT interval_id, started_at, ended_at FROM intervals
+                WHERE task_id = %s ORDER BY started_at, interval_id
+            """, (task_id,))
+        return dict(rows[0], intervals=intervals)
+
+    def insert_pause(self, task_id, interval_id, start, end):
+        """Subtract a break from one closed interval without changing task/commit state."""
+        with self.db.transaction():
+            self._lock()  # Serialize corrections with start/pause/commit transitions.
+            rows = self.db.query("""
+                SELECT started_at, ended_at FROM intervals
+                WHERE task_id = %s AND interval_id = %s FOR UPDATE
+            """, (task_id, interval_id))
+            if not rows or rows[0]["ended_at"] is None:
+                raise TrackingError("pause_conflict", DText.PAUSE_CONFLICT)
+            interval = rows[0]
+            end = interval["ended_at"] if end is None else end
+            if not interval["started_at"] <= start < end <= interval["ended_at"]:
+                raise TrackingError("bad_pause", DText.BAD_PAUSE)
+            # Replacement IDs make a previously rendered edit form stale after a correction.
+            self.db.execute("DELETE FROM intervals WHERE interval_id = %s", (interval_id,))
+            for lower, upper in ((interval["started_at"], start), (end, interval["ended_at"])):
+                if lower < upper:
+                    self.db.insert("INSERT INTO intervals (task_id, started_at, ended_at) VALUES (%s, %s, %s)",
+                                   (task_id, lower, upper))
+
     def daily_totals(self, days, repository, now):
         """Sum interval overlaps by day and repository using explicit UTC boundaries."""
         day_table = " UNION ALL ".join("SELECT %s AS day, %s AS day_start, %s AS day_end" for _ in days)
