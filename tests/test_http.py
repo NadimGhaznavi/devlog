@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 from threading import Thread
@@ -40,10 +40,11 @@ def display(application):
 class ReportApplication:
     localizer = Localizer(Path(__file__).parents[1] / "devlog/locales")
     config = SimpleNamespace(zone=ZoneInfo("America/Toronto"))
+    current_task = dict(task_id=None, repository=None, active_seconds=0)
 
     def report(self, **filters):
         return dict(repositories=['<script>alert("unsafe")</script>'], repository="", start="2026-10-24",
-                    end="2026-10-24", timezone="America/Toronto", total_hours=2.5,
+                    end="2026-10-24", timezone="America/Toronto", total_hours=2.5, current_task=self.current_task,
                     days=[dict(date="2026-10-24", hours=2.5,
                                projects={'<script>alert("unsafe")</script>': 2.5})])
 
@@ -59,6 +60,8 @@ def test_report_html_json_head_and_asset_boundaries():
             assert len(body) == length
             assert b"plotly-4.1.1.min.js" in body
             assert b"2.50" in body
+            assert b'<p id="current-task-status">No task currently running</p>' in body
+            assert body.index(b'id="reporting-title"') < body.index(b'id="current-task-title"') < body.index(b'id="daily-title"')
             assert b"&lt;script&gt;" in body
             assert b'<script>alert("unsafe")</script>' not in body
             assert response.headers["X-Content-Type-Options"] == "nosniff"
@@ -74,6 +77,40 @@ def test_report_html_json_head_and_asset_boundaries():
         with pytest.raises(HTTPError) as error:
             urlopen(Request(url + "/api/report", data=b"{", method="POST"))
         assert error.value.code == 501
+
+
+@pytest.mark.parametrize("seconds, duration", [
+    (0, "0 seconds"),
+    (.1, "1 second"),
+    (2.1, "3 seconds"),
+    (60, "1 minute"),
+    (60.1, "1 minute 1 second"),
+    (131.1, "2 minutes 12 seconds"),
+    (3599, "59 minutes 59 seconds"),
+    (3599.1, "1 hour"),
+    (3600, "1 hour"),
+    (3600.1, "1 hour 1 minute"),
+    (4 * 3600 + 22 * 60 + .1, "4 hours 23 minutes"),
+    (5 * 3600 - .1, "5 hours"),
+    (36 * 3600, "36 hours"),
+])
+def test_current_task_uses_short_repository_and_rounded_human_duration(seconds, duration):
+    app = ReportApplication()
+    app.current_task = dict(task_id=17, repository="github.com/example/bmdynip", active_seconds=seconds)
+    with display(app) as url:
+        with urlopen(url) as response:
+            html = response.read().decode()
+    assert f'<p id="current-task-status">Task #17 (bmdynip) running for {duration}</p>' in html
+
+
+def test_current_task_repository_is_escaped():
+    app = ReportApplication()
+    app.current_task = dict(task_id=17, repository='github.com/example/<img onerror="unsafe">', active_seconds=3)
+    with display(app) as url:
+        with urlopen(url) as response:
+            html = response.read().decode()
+    assert 'Task #17 (&lt;img onerror=&#34;unsafe&#34;&gt;) running for 3 seconds' in html
+    assert '<img onerror="unsafe">' not in html
 
 
 def test_health_and_report_dependency_failures_are_not_success():
@@ -115,6 +152,32 @@ def test_aggregate_health_uses_application_connections_and_reports_failure(monke
         assert json.load(error.value) == {"status": "error", "components": {
             "http": "ok", "zmq": "ok", "db-server": "error",
         }}
+
+
+@pytest.mark.database
+def test_current_task_is_global_excludes_pauses_and_clears_when_paused(service, tasks):
+    repository, other = "github.com/example/bmdynip", "github.com/example/other"
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    tasks.start(other, now=now - timedelta(days=1))
+    tasks.pause(other, now=now - timedelta(days=1) + timedelta(seconds=3))
+    start = now - timedelta(hours=6)
+    task_id = tasks.start(repository, now=start)["task_id"]
+    tasks.pause(repository, now=start + timedelta(hours=4, minutes=22, seconds=20))
+    tasks.start(repository, now=now - timedelta(seconds=5))
+    # Both the selected repository and historical dates exclude the running task.
+    query = "?" + urlencode(dict(repository=other, start="2020-01-01", end="2020-01-01"))
+    with urlopen(service["url"] + query) as response:
+        html = response.read().decode()
+        assert f'Task #{task_id} (bmdynip) running for 4 hours 23 minutes' in html
+    with urlopen(service["url"] + "/api/report" + query) as response:
+        report = json.load(response)
+        assert report["total_hours"] == 0
+        assert report["current_task"]["task_id"] == task_id
+        assert report["current_task"]["repository"] == repository
+        assert 4 * 3600 + 22 * 60 + 25 <= report["current_task"]["active_seconds"] < 4 * 3600 + 23 * 60
+    tasks.pause(repository)
+    with urlopen(service["url"] + query) as response:
+        assert '<p id="current-task-status">No task currently running</p>' in response.read().decode()
 
 
 @pytest.mark.database

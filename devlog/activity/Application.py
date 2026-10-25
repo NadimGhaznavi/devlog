@@ -7,7 +7,7 @@ from pathlib import Path
 from devlog.activity.Report import Report
 from devlog.activity.TaskHistory import TaskHistory
 from devlog.activity.Tracking import Tracking
-from devlog.constants.DTracking import Method
+from devlog.constants.DTracking import DTracking, Method
 from devlog.entity.ServiceUnavailable import ServiceUnavailable
 from devlog.entity.TrackingError import TrackingError
 from devlog.interface.Localizer import Localizer
@@ -34,7 +34,9 @@ class Application:
 
     def report(self, **filters):
         with self.tasks() as tasks:
-            return Report(tasks, self.config.zone).read(**filters)
+            report = Report(tasks, self.config.zone).read(**filters)
+            report[DTracking.CURRENT_TASK] = tasks.status()
+            return report
 
     def task_list(self, **filters):
         with self.tasks() as tasks:

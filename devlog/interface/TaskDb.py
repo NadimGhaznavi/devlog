@@ -66,17 +66,21 @@ class TaskDb:
     def _lock(self):
         return self.db.query("SELECT active_task_id FROM tracker_state WHERE singleton_id = 1 FOR UPDATE")[0]["active_task_id"]
 
-    def status(self):
+    def status(self, *, now=None):
         with self.db.transaction(read_only=True):
             rows = self.db.query("""
-                SELECT s.active_task_id AS task_id, r.identity AS repository
+                SELECT s.active_task_id AS task_id, r.identity AS repository,
+                    COALESCE((SELECT SUM(TIMESTAMPDIFF(MICROSECOND,
+                        i.started_at, COALESCE(i.ended_at, %s)))
+                        FROM intervals i WHERE i.task_id = s.active_task_id), 0) AS active_microseconds
                 FROM tracker_state s
                 LEFT JOIN tasks t ON t.task_id = s.active_task_id
                 LEFT JOIN repositories r ON r.repository_id = t.repository_id
                 WHERE s.singleton_id = 1
-            """)
+            """, (self._now(now),))
             if len(rows) != 1:
                 raise RuntimeError("DevLog schema is not initialized; run dl-db-init")
+            rows[0][DTracking.ACTIVE_SECONDS] = float(rows[0].pop("active_microseconds")) / 1000000
             return rows[0]
 
     @staticmethod
@@ -127,9 +131,12 @@ class TaskDb:
         with self.db.transaction():
             active = self._lock()
             task = self._unfinished(repository)
+            result = {"task_id": task["task_id"], "status": TaskStatus.PAUSED, DTracking.PAUSED_AT: None}
             if task["task_id"] == active:
-                self._stop(active, self._now(now))
-            return {"task_id": task["task_id"], "status": TaskStatus.PAUSED}
+                now = self._now(now)
+                self._stop(active, now)
+                result[DTracking.PAUSED_AT] = now.replace(tzinfo=timezone.utc).isoformat()
+            return result
 
     def prepare_commit(self, repository, *, commit_sha=None):
         with self.db.transaction(read_only=True):

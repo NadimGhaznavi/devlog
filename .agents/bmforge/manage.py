@@ -78,6 +78,7 @@ SKILLS = {
     "bmforge-gif-animation": ("pages/component-gif-animation.md", (
         "components/reference/snake-web-code/snakewebcode/activity/SimulationAnimation.py",
     )),
+    "bmforge-rca": (None, ()),
 }
 BASE_SKILLS = ("bmforge-project", "bmforge-constants", "bmforge-localization", "bmforge-installation")
 COMMON = (
