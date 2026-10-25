@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-25 @ 08:51
+
 This release is named for the element **Zirconium (Zr)**. Zirconium alloys are 
 used to clad nuclear fuel because they absorb relatively few neutrons.
 
