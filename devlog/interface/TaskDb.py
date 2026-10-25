@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from devlog.constants.DText import DText
-from devlog.constants.DTracking import TaskStatus
+from devlog.constants.DTracking import DTracking, TaskStatus
 from devlog.entity.TrackingError import TrackingError
 
 
@@ -209,7 +209,7 @@ class TaskDb:
                                    (task_id, lower, upper))
 
     def daily_totals(self, days, repository, now):
-        """Sum interval overlaps by day and repository using explicit UTC boundaries."""
+        """Sum task overlaps by local day, keeping each project's task sizes."""
         day_table = " UNION ALL ".join("SELECT %s AS day, %s AS day_start, %s AS day_end" for _ in days)
         params = tuple(value for day in days for value in day)
         condition = " AND t.repository_id = (SELECT repository_id FROM repositories WHERE identity = %s)" if repository else ""
@@ -222,13 +222,16 @@ class TaskDb:
                 AND EXISTS (SELECT 1 FROM tasks t WHERE t.task_id = i.task_id {condition})
             LEFT JOIN tasks t ON t.task_id = i.task_id
             LEFT JOIN repositories r ON r.repository_id = t.repository_id
-            GROUP BY d.day, r.identity ORDER BY d.day, r.identity
+            GROUP BY d.day, r.identity, t.task_id ORDER BY d.day, r.identity, t.task_id
         """, (now, *params, now, *((repository,) if repository else ())))
-        totals = {day: {"date": day, "hours": 0, "projects": {}} for day, _, _ in days}
+        totals = {day: {"date": day, "hours": 0, "projects": {}, DTracking.TASK_HOURS: {}} for day, _, _ in days}
         for row in rows:
             day = totals[row["day"]]
             hours = float(row["seconds"]) / 3600
             day["hours"] += hours
             if row["repository"] is not None:
-                day["projects"][row["repository"]] = hours
+                project = row["repository"]
+                day["projects"][project] = day["projects"].get(project, 0) + hours
+                if hours > 0:
+                    day[DTracking.TASK_HOURS].setdefault(project, []).append(hours)
         return list(totals.values())

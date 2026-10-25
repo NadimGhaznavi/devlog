@@ -21,7 +21,10 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
     playwright = pytest.importorskip("playwright.sync_api")
     tasks.start("github.com/nadimghaznavi/alpha", now=datetime(2026, 10, 24, 10))
     tasks.pause("github.com/nadimghaznavi/alpha", now=datetime(2026, 10, 24, 12))
-    tasks.start("github.com/nadimghaznavi/beta", now=datetime(2026, 10, 24, 13))
+    first_beta = tasks.start("github.com/nadimghaznavi/beta", now=datetime(2026, 10, 24, 13))["task_id"]
+    tasks.complete("github.com/nadimghaznavi/beta", first_beta, "a" * 40, "First task",
+                   now=datetime(2026, 10, 24, 13, 15))
+    tasks.start("github.com/nadimghaznavi/beta", now=datetime(2026, 10, 24, 13, 15))
     tasks.pause("github.com/nadimghaznavi/beta", now=datetime(2026, 10, 24, 14))
     errors = []
     with playwright.sync_playwright() as runtime:
@@ -37,7 +40,34 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         assert page.evaluate("document.getElementById('daily-chart').layout.barmode") == "stack"
         colors = page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.marker.color)")
         assert colors == ["#E63946", "#00BCD4"]
+        borders = page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.marker.line)")
+        assert [border["width"] for border in borders] == [[0, 4, 0], [0, 4, 0]]
+        for fill, border in zip(colors, borders):
+            assert all(int(border["color"][channel:channel + 2], 16) >= int(fill[channel:channel + 2], 16)
+                       for channel in (1, 3, 5))
+            assert border["color"] != fill
+        assert page.locator("#daily-chart .barlayer .point path").first.evaluate(
+            "node => getComputedStyle(node).strokeWidth") == "0px"
+        assert page.locator("#daily-chart .barlayer .point path").nth(1).evaluate(
+            "node => getComputedStyle(node).strokeWidth") == "4px"
+        separator = page.evaluate("document.getElementById('daily-chart').layout.shapes[0]")
+        assert separator["y0"] == separator["y1"] == 2.25
+        assert separator["x0"] == .6 and separator["x1"] == 1.4
+        assert separator["line"] == {"color": borders[1]["color"], "width": 2}
+        assert page.locator("#daily-chart .shapelayer path").count() == 1
+        assert page.locator("#daily-chart .shapelayer path").evaluate(
+            "node => getComputedStyle(node).strokeWidth") == "2px"
         assert page.locator("#daily-chart .legendtext").all_text_contents() == ["alpha", "beta"]
+
+        # Hiding a lower project must move the separator with the remaining bar.
+        page.locator("#daily-chart .legendtoggle").nth(0).click()
+        page.wait_for_function("document.getElementById('daily-chart').layout.shapes[0].y0 === .25")
+        page.locator("#daily-chart .legendtoggle").nth(0).click()
+        page.wait_for_function("document.getElementById('daily-chart').layout.shapes[0].y0 === 2.25")
+        page.locator("#daily-chart .legendtoggle").nth(1).click()
+        page.wait_for_function("document.getElementById('daily-chart').layout.shapes.length === 0")
+        page.locator("#daily-chart .legendtoggle").nth(1).click()
+        page.wait_for_function("document.getElementById('daily-chart').layout.shapes.length === 1")
 
         def assert_legend_below_date():
             title = page.locator("#daily-chart .xtitle").bounding_box()
@@ -63,6 +93,11 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         assert page.locator(".total strong").inner_text() == "1.00"
         assert page.evaluate("document.getElementById('daily-chart').data[0].y") == [0, 1, 0]
         assert page.evaluate("document.getElementById('daily-chart').data[0].marker.color") == colors[1]
+        assert page.evaluate("document.getElementById('daily-chart').layout.shapes[0].y0") == .25
+        line = page.locator("#daily-chart .shapelayer path").bounding_box()
+        page.mouse.click(line["x"] + line["width"] / 2, line["y"])
+        page.wait_for_url("**/tasks?**")
+        assert parse_qs(urlsplit(page.url).query)["repository"] == ["github.com/nadimghaznavi/beta"]
         assert errors == []
         browser.close()
 
