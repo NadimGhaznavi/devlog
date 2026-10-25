@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-25 @ 05:58
+
 The **Arsenic** release is named after the element **Arsenic (As)**. Arsenic has 
 a long history as a poison, but some arsenic compounds are also used as medicines.
 
