@@ -1,10 +1,13 @@
 from contextlib import contextmanager
+import json
 from pathlib import Path
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
 from conftest import dl, git
+from devlog import cli
 from devlog.activity.CommitTask import CommitRecordingError, CommitTask
 from devlog.interface.Git import Git
 from devlog.interface.LocalRepository import LocalRepository
@@ -13,8 +16,10 @@ from devlog.zmq.ZMQServer import ZMQServer
 
 @pytest.mark.parametrize("result,expected", [
     ({"task_id": None, "repository": None}, "No task currently running\n"),
-    ({"task_id": 42, "repository": "github.com/example/mycount"},
-     "Repository (mycount): Task #42 running\n"),
+    *[({"task_id": 17, "repository": "github.com/example/bmforge", "active_seconds": seconds},
+       f"Repository (bmforge): Task #17 running for {duration} hours\n")
+      for seconds, duration in ((0, "00:00"), (59.999999, "00:00"), (60, "00:01"),
+                                (9359, "02:35"), (371099, "103:04"))],
 ])
 def test_cli_status_outside_repository_over_zmq(tmp_path, result, expected):
     @contextmanager
@@ -32,6 +37,53 @@ def test_cli_status_outside_repository_over_zmq(tmp_path, result, expected):
     assert response.stdout == expected
 
 
+@pytest.mark.parametrize("paused_at,zone,expected", [
+    ("2026-10-25T15:20:30.987654+00:00", "America/Toronto",
+     "Repository (mycount): Task #12 paused on 2026-10-25 11:20:30\n"),
+    ("2026-01-25T15:20:30+00:00", "America/Toronto",
+     "Repository (mycount): Task #12 paused on 2026-01-25 10:20:30\n"),
+    ("2026-10-25T15:20:30+00:00", "Asia/Kolkata",
+     "Repository (mycount): Task #12 paused on 2026-10-25 20:50:30\n"),
+    (None, "America/Toronto", "Task 12 in mycount is paused.\n"),
+])
+def test_cli_pause_over_zmq(tmp_path, monkeypatch, capsys, paused_at, zone, expected):
+    repository = SimpleNamespace(identity="github.com/example/mycount", name="mycount")
+    monkeypatch.setattr(cli, "LocalRepository", lambda: SimpleNamespace(repository=repository))
+    config = tmp_path / "devlog.json"
+    config.write_text(json.dumps({"timezone": zone}))
+
+    @contextmanager
+    def handler():
+        def respond(request):
+            assert request.method == "pause"
+            assert request.payload == {"repository": repository.identity}
+            return {"status": "ok", "result": {"task_id": 12, "status": "paused", "paused_at": paused_at}}
+        yield respond
+
+    with ZMQServer("tcp://127.0.0.1:*", handler) as server:
+        assert cli.main(["--config", str(config), "--server", server.endpoint, "pause"]) == 0
+    captured = capsys.readouterr()
+    assert captured.out == expected
+    assert captured.err == ""
+
+
+def test_cli_pause_without_task_keeps_error(monkeypatch, capsys):
+    repository = SimpleNamespace(identity="github.com/example/mycount", name="mycount")
+    monkeypatch.setattr(cli, "LocalRepository", lambda: SimpleNamespace(repository=repository))
+
+    @contextmanager
+    def handler():
+        yield lambda request: {"status": "error", "error": {
+            "code": "no_task", "message_key": "error.no_task",
+        }}
+
+    with ZMQServer("tcp://127.0.0.1:*", handler) as server:
+        assert cli.main(["--server", server.endpoint, "pause"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "This repository has no unfinished task. Run dl start first.\n"
+
+
 @pytest.mark.database
 def test_real_cli_global_status(service, tasks, tmp_path):
     def status(expected):
@@ -41,13 +93,13 @@ def test_real_cli_global_status(service, tasks, tmp_path):
 
     status("No task currently running")
     first = tasks.start("github.com/example/mycount")["task_id"]
-    status(f"Repository (mycount): Task #{first} running")
+    status(f"Repository (mycount): Task #{first} running for 00:00 hours")
     second = tasks.start("github.com/example/other")["task_id"]
-    status(f"Repository (other): Task #{second} running")
+    status(f"Repository (other): Task #{second} running for 00:00 hours")
     tasks.pause("github.com/example/other")
     status("No task currently running")
     tasks.start("github.com/example/mycount")
-    status(f"Repository (mycount): Task #{first} running")
+    status(f"Repository (mycount): Task #{first} running for 00:00 hours")
     tasks.complete("github.com/example/mycount", first, "a" * 40, "done")
     status("No task currently running")
 

@@ -48,6 +48,7 @@ h2 { font-size: 1.15rem; }
 .panel-title a { color: inherit; text-decoration: none; }
 .panel-title a:hover { color: var(--accent); }
 .report-heading p { margin: .5rem 0 0; }
+#current-task-status { margin: .75rem 0 0; overflow-wrap: anywhere; }
 .total { display: grid; text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .total strong { font-size: 36px; color: var(--action); font-weight: 600; font-variant-numeric: tabular-nums; }
 #daily-chart { height: 340px; width: 100%; }

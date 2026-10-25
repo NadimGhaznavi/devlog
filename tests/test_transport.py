@@ -25,7 +25,7 @@ def echo_handler():
 def test_status_dispatch_rejects_repository_then_answers_global_query():
     class Tasks:
         def status(self):
-            return {"task_id": 42, "repository": "github.com/example/mycount"}
+            return {"task_id": 42, "repository": "github.com/example/mycount", "active_seconds": 90}
 
     @contextmanager
     def handler():
@@ -36,7 +36,7 @@ def test_status_dispatch_rejects_repository_then_answers_global_query():
         with pytest.raises(TrackingError, match="invalid_request"):
             client.call(Method.STATUS, {"repository": "github.com/example/other"})
         assert client.call(Method.STATUS, {}) == {
-            "task_id": 42, "repository": "github.com/example/mycount",
+            "task_id": 42, "repository": "github.com/example/mycount", "active_seconds": 90,
         }
 
 

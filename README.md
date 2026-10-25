@@ -14,8 +14,14 @@ dl publish                     # invoke the repository's existing release script
 ```
 
 `dl status` queries the server without changing the timer. It prints
-`No task currently running` or `Repository (mycount): Task #XX running`, using
-the active repository's short name and task ID. Paused tasks are not running.
+`No task currently running` or
+`Repository (bmforge): Task #17 running for 02:35 hours`, using the active
+repository's short name, task ID and total active time in `HH:MM` (excluding
+pauses). Hours can exceed 24. Paused tasks are not running.
+
+`dl pause` prints `Repository (mycount): Task #12 paused on 2026-10-25 11:30:00`,
+using the saved pause time in the configured timezone. Messages for an already
+paused task or no task remain unchanged.
 
 Starting in another repository pauses the previous task automatically. Only one
 task accrues time at once. A successful commit completes its task even when the

@@ -1,6 +1,7 @@
 """The installed dl command; local Git work stays on the client."""
 
 import argparse
+from datetime import datetime
 import os
 from pathlib import Path
 import subprocess
@@ -58,8 +59,9 @@ def main(argv=None):
             if result[DTracking.TASK_ID] is None:
                 print(t(DText.NO_RUNNING_TASK))
             else:
+                hours, minutes = divmod(int(result[DTracking.ACTIVE_SECONDS]) // 60, 60)
                 print(t(DText.TASK_RUNNING, repository=result[DTracking.REPOSITORY].rsplit("/", 1)[-1],
-                        task_id=result[DTracking.TASK_ID]))
+                        task_id=result[DTracking.TASK_ID], duration=f"{hours:02}:{minutes:02}"))
             return 0
         repository = local.repository.identity
         if args.command == "commit":
@@ -73,7 +75,12 @@ def main(argv=None):
         else:
             result = client.call(Method(args.command), {DTracking.REPOSITORY: repository})
             key = DText.STARTED if args.command == "start" else DText.PAUSED
-            print(t(key, repository=local.repository.name, task_id=result["task_id"]))
+            values = dict(repository=local.repository.name, task_id=result[DTracking.TASK_ID])
+            if args.command == Method.PAUSE and result[DTracking.PAUSED_AT] is not None:
+                key = DText.PAUSED_ON
+                values[DTracking.PAUSED_AT] = datetime.fromisoformat(result[DTracking.PAUSED_AT]).astimezone(
+                    config.zone).strftime(DTracking.HISTORY_TIME_FORMAT)
+            print(t(key, **values))
         return 0
     except CommitRecordingError as error:
         print(t(error.key, commit_sha=error.commit_sha), file=sys.stderr)
