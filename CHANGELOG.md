@@ -6,6 +6,16 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-10-25 @ 09:12
+
+This release is named for the element **Molybdenum (Mo)**. Molybdenum retains 
+strength at high temperatures and is an important additive in tough steels.
+
+### Changed
+
+- Use darker shades of each project color for the daily-hours chart's 4 px bar
+  borders and matching 2 px task dividers.
+
 ## [0.5.4] - 2026-10-25 @ 09:07
 
 ### Fixed
