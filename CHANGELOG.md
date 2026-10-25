@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-25 @ 19:16
+
 This release is named for the element **Indium (In)**. Indium tin oxide forms 
 transparent conductive coatings used in touchscreens and displays.
 
