@@ -53,6 +53,8 @@ project colors across filters and a legend below the Date label. Each project
 segment has a brighter 4 px border and 2 px horizontal task separators matching
 the border color; the separators follow the visible stacks when projects are
 hidden using the legend.
+Horizontal separator strokes use crisp rendering and a strongly brightened
+version of the project color, shared with the bar border, for visibility.
 
 Report dates and chart segments link to `/tasks`, filtered by day and optionally
 repository. `/tasks/<id>` presents the complete task timeline through
