@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-10-25 @ 09:42
+
 This release is named for the element **Technetium (Tc)**. Technetium was the
 first element produced artificially, and its isotope technetium-99m is widely
 used in medical imaging.
