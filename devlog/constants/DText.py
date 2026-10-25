@@ -7,6 +7,7 @@ class DText(StrEnum):
     REPORTS = "app.reports"
     MAIN_NAVIGATION = "app.main_navigation"
     APP_VERSION = "app.version"
+    LAST_UPDATED = "app.last_updated"
     LANGUAGE_LABEL = "language.label"
     LANGUAGE_NAME = "language.name"
     REPOSITORY = "report.repository"

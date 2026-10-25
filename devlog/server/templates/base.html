@@ -9,17 +9,20 @@
 </head>
 <body>
   <header class="masthead">
-    <a class="brand" href="{{ link('/') }}">{{ t(text.APP_TITLE) }} <span>{{ t(text.REPORTS) }}</span></a>
+    <div>
+      <a class="brand" href="{{ link('/') }}">{{ t(text.APP_TITLE) }} <span>{{ t(text.REPORTS) }}</span></a>
+      <p class="note introduction">{{ t(text.APP_SUBTITLE) }}</p>
+    </div>
     <div class="masthead-details">
       <nav aria-label="{{ t(text.MAIN_NAVIGATION) }}">
         <a href="{{ link('/') }}"{% if active_page == 'report' %} aria-current="page"{% endif %}>{{ t(text.DAILY_HOURS) }}</a>
         <a href="{{ link('/tasks') }}"{% if active_page == 'tasks' %} aria-current="page"{% endif %}>{{ t(text.TASKS) }}</a>
       </nav>
       <span class="version">{{ t(text.APP_VERSION, version=version) }}</span>
+      <span class="last-updated">{{ t(text.LAST_UPDATED, timestamp=last_updated) }}</span>
     </div>
   </header>
   <main>
-    <p class="note introduction">{{ t(text.APP_SUBTITLE) }}</p>
     {% block content %}{% endblock %}
   </main>
   {% block scripts %}{% endblock %}

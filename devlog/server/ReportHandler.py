@@ -1,3 +1,4 @@
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 import json
 import logging
@@ -9,6 +10,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 from devlog.constants.DDevLog import DDevLog
 from devlog.constants.DNetwork import DNetwork
 from devlog.constants.DText import DText
+from devlog.constants.DTracking import DTracking
 from devlog.entity.ServiceUnavailable import ServiceUnavailable
 from devlog.entity.TrackingError import TrackingError
 
@@ -69,6 +71,7 @@ class ReportHandler(BaseHTTPRequestHandler):
         body = TEMPLATES.get_template(template).render(
             t=lambda key, **fields: app.localizer.text(key, locale=locale, **fields),
             text=DText, locale=locale, languages=app.localizer.languages, version=DDevLog.VERSION,
+            last_updated=datetime.now(app.config.zone).strftime(DTracking.HISTORY_TIME_FORMAT),
             **values,
         ).encode("utf-8")
         self.respond(status, body, "text/html; charset=utf-8")

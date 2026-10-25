@@ -24,11 +24,11 @@ main { padding: 1rem 2rem 2rem; max-width: 94rem; margin-inline: auto; }
 .brand span { color: var(--muted); }
 .masthead-details { margin-left: auto; text-align: right; }
 .masthead nav { display: flex; flex-wrap: wrap; gap: 1.2rem; justify-content: end; }
-.version { display: block; margin-top: .5rem; font-size: .85rem; color: var(--muted); }
+.version, .last-updated { display: block; margin-top: .5rem; font-size: .85rem; color: var(--muted); }
 .note, .report-heading p { color: var(--muted); font-size: .9rem; line-height: 1.6; }
-.introduction { margin: .75rem 0 1.5rem; }
+.introduction { margin: .35rem 0 0; }
 .panel { border: 1px solid var(--border); border-radius: .65rem; padding: 1.5rem; min-width: 0; margin-bottom: 1.5rem; }
-.filters { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-top: 1.5rem; }
+.filters { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-top: .5rem; }
 .field { display: grid; gap: .5rem; min-width: 0; }
 label { font-size: .9rem; }
 .filters .field:first-child { flex: 1; min-width: 14rem; }
