@@ -6,6 +6,26 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+The **Arsenic** release is named after the element **Arsenic (As)**. Arsenic has 
+a long history as a poison, but some arsenic compounds are also used as medicines.
+
+### Added
+
+- Extend the BMForge project bootstrap with release metadata, release tooling,
+  CMDB checks and disabled install/upgrade/uninstall stubs.
+- Add `setup-branches` with a read-only `--dry-run` preview to create local
+  `dev` and initial feature branches after a reviewed scaffold commit, refusing
+  to overwrite existing branches.
+
+### Changed
+
+- Re-pin project-owned BMForge skills to snapshot `7047662` (PR #3), including
+  updated installation lifecycle, ZeroMQ Unicode validation and release-template
+  guidance.
+- Make BMForge update checks read-only and offline against a clean local `main`
+  checkout, configurable through `BMFORGE_SOURCE` or `--source`. Report the cached
+  revision or an unavailable check without fetching, cloning or applying updates.
+
 ## [0.3.4] - 2026-10-25 @ 05:05
 
 This release is named for the element **Gallium (Ga)**. Gallium can melt in the warmth of your hand because its melting point is about 30°C.
