@@ -34,12 +34,15 @@ Installing the Codex skills does not install an application. After requirements 
 8. Implement the selected components' on-demand health checks via the application's existing interfaces. CMDB must ask the application rather than the database directly.
 9. Place the chosen component's literal `BMFORGE_COMPONENT` marker in its owning implementation module, using the ID and version shown by the component specification. This is provenance, not a runtime dependency or a compliance certificate.
 
+Animated GIF exports are separately covered by [GIF Animation]({{ site.baseurl }}{% link pages/component-gif-animation.md %}). This backend Pillow encoder does not replace Plotly.js or imply that every browser dashboard needs GIF generation.
+
 ## Blueprints
 
 - [HTTP Display Server]({{ site.baseurl }}{% link pages/component-http.md %})
 - [ZeroMQ Request/Reply Server]({{ site.baseurl }}{% link pages/component-zmq.md %})
 - [DB Server]({{ site.baseurl }}{% link pages/component-db-server.md %})
 - [Display Visualizations: charts, maps and graphs]({{ site.baseurl }}{% link pages/component-visualization.md %})
+- [GIF Animation: rendered frames to animated GIF]({{ site.baseurl }}{% link pages/component-gif-animation.md %})
 - [Constants]({{ site.baseurl }}{% link pages/component-constants.md %})
 - [Application Localization]({{ site.baseurl }}{% link pages/component-localization.md %})
 - [Installation Lifecycle]({{ site.baseurl }}{% link pages/component-installation.md %})

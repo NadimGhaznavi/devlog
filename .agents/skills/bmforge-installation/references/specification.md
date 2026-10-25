@@ -4,7 +4,7 @@ lang: en
 locale: en-US
 language_name: English
 component_id: "bmforge.installation"
-spec_version: "0.1.0"
+spec_version: "0.1.1"
 spec_status: "draft"
 translation_key: bmforge-component-installation
 ---
@@ -59,7 +59,8 @@ Three executable entry points are **always mandatory** in the application reposi
 
 An application supporting both a client and a server on **different machines** may also provide `scripts/install-server.sh` as a fourth entry point. In that topology, follow DevLog's established names: `install.sh -server HOST` installs **only the client**, while `install-server.sh` installs the server plus any local client functionality the app explicitly requires.
 
-- **Client install:** install only the client's declared executables, Python dependencies, endpoint configuration and version marker. It **must not** provision MariaDB, create systemd services/accounts, write server-only credentials or install server-only dependencies. Validate its `-server` host before making changes; it need not be reachable at installation time.
+- **Operation-specific dependency preflight:** before any host changes, check each external executable actually required by that operation and installed role. `--check` must use the **same prerequisite checks** without making host changes. For example, fresh server provisioning that calls `mariadb` must fail preflight when that executable is absent; client installs and non-provisioning server upgrades must not require a database administrator executable. Test both false success and false refusal paths.
+- **Client install:** install only the client's declared executables, Python dependencies, endpoint configuration and version marker. Its **installed CMDB metadata must describe the client role**, not advertise server databases or local listeners absent from the client. If source constants describe the full server, generate a client-specific *installed metadata copy* while keeping the original source and canonical version/codename unchanged. It **must not** provision MariaDB, create systemd services/accounts, write server-only credentials or install server-only dependencies. Validate its `-server` host before making changes; it need not be reachable at installation time.
 - **Server install:** install the server's declared services and local client only where required. Validate database permissions, service files and readiness and register owned resources for eventual uninstall. Do not copy credentials into the client package.
 - **Upgrade:** inspect the existing installation identity and preserve its role. A client stays a client and a server stays a server, with no opportunistic conversion. Preserve endpoint settings, secrets and data. If a new release cannot start, retain the last-successful version marker and implement the app's required rollback or explicit recovery.
 - **Uninstall:** mirror both role-specific installations. Remove only what that role owns and avoid changing unrelated services or database contents. The absence of a tested uninstall operation is an incomplete lifecycle, even when install and upgrade already work.
@@ -73,7 +74,7 @@ Server-only and library-only applications continue using ordinary `install.sh`, 
 3. Configure the application-owned payload, `BASE_DIR`, role marker if applicable, dependency groups and the preserved state paths. Only then enable readiness and implement **all three** lifecycle operations and any selected `install-server.sh`.
 4. Add tests for each role and each operation in disposable directories. Simulate failure after staging and before readiness, and check the marker/version and rollback boundary. For any real systemd/database changes, test in an explicitly disposable environment.
 5. Before the **first release**, verify that deployment is truly enabled, source files are committed, all mandatory entry points are executable, `--help` works without privilege, and normal install/upgrade/uninstall plus `--check` semantics are tested. `new-release.sh` only checks some preflight mechanics: its success does **not** prove the installer was implemented.
-6. Apply the literal `BMFORGE_COMPONENT = {"id": "bmforge.installation", "spec_version": "0.1.0"}` marker in the owning installation Python module. A marker alone does not certify readiness.
+6. Apply the literal `BMFORGE_COMPONENT = {"id": "bmforge.installation", "spec_version": "0.1.1"}` marker in the owning installation Python module. A marker alone does not certify readiness.
 
 ## Frozen reference examples
 
@@ -87,11 +88,11 @@ Server-only and library-only applications continue using ordinary `install.sh`, 
 1. The fresh repo contains the three executable entry-point scripts plus the configured reusable helper. Bootstrapping itself changes **no installed machine state**.
 2. A minimal library-only installation creates `BASE_DIR`, a readable app identity, an ownership manifest and `.deployment-version` without creating a database or service.
 3. Installing twice is safe according to the application's declared policy; an upgrade preserves user data, config, credentials and the installed role.
-4. Client-only `install.sh -server HOST` refuses missing/invalid hosts before side effects, installs no server-only resources and remembers the endpoint.
+4. Client-only `install.sh -server HOST` refuses missing/invalid hosts before side effects, installs no server-only resources, remembers the endpoint, and does not advertise local server resources in installed CMDB metadata. Fresh server install or `--check` must **not report success** when its required `mariadb` provisioner is absent; non-provisioning upgrades and clients must still pass without it.
 5. Where selected, `install-server.sh` installs the service and any local client deliberately; separate client and server dependencies and tests remain separate.
 6. Upgrades retain client/server roles and record the new version only after verification. Failures do not falsely report success; an application with rolling activation verifies its rollback or recovery contract.
 7. Uninstall removes managed files, units and launchers for each supported role while retaining data and configuration, including repeat-uninstall and reinstall cases.
-8. Installation metadata and `pyproject.toml` package version (when present) match the literal `D<Name>.VERSION`. Successful installation markers never claim an uninstalled or failed version.
+8. Installation metadata and `pyproject.toml` package version (when present) match the literal `D<Name>.VERSION`. The standard `new-release.sh` updates both together and rejects drift before merging. Successful installation markers never claim an uninstalled or failed version.
 9. No alternate installer framework, direct app-to-app imports or new dependencies were introduced without explicit approval. Tested installation and release processes remain separate.
 
 ---

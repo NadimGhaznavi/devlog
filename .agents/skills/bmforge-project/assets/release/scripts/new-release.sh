@@ -115,10 +115,65 @@ else:
 PY
 }
 
+# Keep PEP 621 package metadata in step with the literal application VERSION.
+# A tool-only pyproject.toml (no [project]) has nothing to synchronize.
+package_metadata() {
+    [[ -f pyproject.toml ]] || return 0
+    "${python_command}" - "pyproject.toml" "$@" <<'PY'
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+mode = sys.argv[2]
+old_version = sys.argv[3]
+new_version = sys.argv[4] if len(sys.argv) == 5 else None
+lines = path.read_bytes().splitlines(keepends=True)
+project_seen = False
+in_project = False
+matches = []
+section = re.compile(rb'^[ \t]*\[([^\]\r\n]+)\][ \t]*(?:\#[^\r\n]*)?(?:\r?\n)?$')
+assignment = re.compile(rb'^[ \t]*version[ \t]*=')
+version_line = re.compile(rb'^([ \t]*version[ \t]*=[ \t]*)(["\'])([^"\'\r\n]*)(["\'])([ \t]*(?:\#[^\r\n]*)?)(\r?\n?)$')
+for index, line in enumerate(lines):
+    header = section.fullmatch(line)
+    if header:
+        in_project = header.group(1).strip() == b'project'
+        if in_project:
+            if project_seen:
+                sys.exit('Duplicate [project] table in pyproject.toml')
+            project_seen = True
+        continue
+    if in_project and assignment.match(line):
+        match = version_line.fullmatch(line)
+        if match is None or match.group(2) != match.group(4):
+            sys.exit('Unsupported [project].version: expected a literal quoted string')
+        matches.append((index, match))
+if not project_seen:
+    sys.exit(0)  # Tool-only pyproject.toml, no package metadata.
+if len(matches) != 1:
+    sys.exit('pyproject.toml [project] must define exactly one literal version')
+index, match = matches[0]
+value = match.group(3).decode('utf-8')
+if value != old_version:
+    sys.exit(f'Package version {value!r} differs from application VERSION {old_version!r}')
+if mode == 'update':
+    if not new_version:
+        sys.exit('Missing new package version')
+    encoded = new_version.encode('utf-8')
+    lines[index] = (match.group(1) + match.group(2) + encoded + match.group(4)
+                    + match.group(5) + match.group(6))
+    path.write_bytes(b''.join(lines))
+elif mode != 'check':
+    sys.exit(f'Unknown package metadata operation: {mode}')
+PY
+}
+
 current_version() {
     local value
     value=$(project_metadata read) || fail "Cannot read ${project_name} release constants."
     [[ ${value} =~ ${version_pattern} ]] || fail "Cannot read a single valid ${project_name} version."
+    package_metadata check "${value}" || fail "pyproject.toml version is incompatible with ${project_name} VERSION."
     printf '%s\n' "${value}"
 }
 
@@ -151,7 +206,8 @@ Use a version without a leading v. The next branch defaults to
 ${feature_prefix}<version with patch incremented>.
 
 After interactive confirmation, updates ${version_constant}, ${codename_constant}
-in ${version_file} and ${changelog_file}, merges through ${dev_branch} to
+in ${version_file}, ${changelog_file}, and any PEP 621 [project].version in
+pyproject.toml, then merges through ${dev_branch} to
 ${main_branch}, tags and pushes the release, then creates the next local feature
 branch. Records deployment impact when the optional deployment settings are enabled.
 The message becomes the codename. Requires Git and ${python_command}.
@@ -252,6 +308,7 @@ update_release_files() {
     local previous_version
     previous_version=$(current_version)
     check_changelog
+    package_metadata update "${previous_version}" "${version}" || fail "Could not synchronize pyproject.toml version."
     project_metadata update "${version}" "${description}"
     local release_date
     release_date=$(date '+%Y-%m-%d @ %H:%M')
@@ -259,6 +316,9 @@ update_release_files() {
 \\
 ## [${version}] - ${release_date}" "${changelog_file}"
     git add -- "${version_file}" "${changelog_file}"
+    if [[ -f pyproject.toml ]]; then
+        git add -- pyproject.toml
+    fi
     if [[ -n ${deployment_config} ]]; then
         release_deployment prepare "${previous_version}" "${version}"
         git add -- "$(release_deployment manifest)"

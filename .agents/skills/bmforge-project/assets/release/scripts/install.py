@@ -10,7 +10,7 @@ import shutil
 import tempfile
 
 
-BMFORGE_COMPONENT = {"id": "bmforge.installation", "spec_version": "0.1.0"}
+BMFORGE_COMPONENT = {"id": "bmforge.installation", "spec_version": "0.1.1"}
 
 PROJECT_NAME = "__PROJECT_NAME__"
 # Turn this on only after implementing the project's full deployment contract.

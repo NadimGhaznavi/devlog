@@ -4,7 +4,7 @@ lang: en
 locale: en-US
 language_name: English
 component_id: "bmforge.zmq-server"
-spec_version: "0.3.0"
+spec_version: "0.3.1"
 spec_status: "draft"
 translation_key: bmforge-component-zmq
 ---
@@ -21,7 +21,7 @@ Implement a locally owned `pyzmq` request/reply listener for small JSON control 
 
 ## Approved runtime modules
 
-This is the **complete approved module inventory for the reusable ZeroMQ REQ/REP Server infrastructure** in specification `0.3.0`.
+This is the **complete approved module inventory for the reusable ZeroMQ REQ/REP Server infrastructure** in specification `0.3.1`.
 
 | Origin | Module | Purpose |
 | --- | --- | --- |
@@ -52,6 +52,7 @@ These are Python import modules, not a complete transitive dependency tree. The 
 - Report bind/initialisation failure synchronously to the parent before it claims the listener is ready. Surface later fatal worker failures through an explicit check or equivalent supervisor integration.
 - Receive exactly one JSON frame per request and send exactly one reply per received request, including invalid messages, preserving REQ/REP alternation. Define safe behaviour for malformed frames and handler exceptions; do not allow one bad request to kill the worker silently.
 - A versioned UTF-8 JSON envelope includes `protocol_version` (integer), `sender` (nonempty string), `target` (string or null), `method` (nonempty string), and `payload` (object). Reject incompatible versions or invalid shapes. Bound message size for the application's threat model.
+- **Reject invalid Unicode scalar values before application dispatch.** JSON `\\u` escapes can decode into lone UTF-16 surrogates even when the wire frame is valid UTF-8. Validate all decoded strings and object keys, including nested payloads and envelope correlation fields. Respond with `invalid_request` and keep the listener usable. Valid escaped surrogate *pairs* representing Unicode characters are legal. Invalid external Unicode must never be classified as a fatal application defect.
 - Replies preserve correlation context from the request when available. Define success `status: ok` and error `status: error`, with structured `error.code` and `error.message`. Application handlers define supported `method` values, argument validation, authorisation if required and business operations.
 - Shut down promptly on service stop, release the port, and report fatal errors. Client implementations need a receive timeout and defined retry/reconnect policy, because a failed REQ exchange can require rebuilding a REQ socket.
 - Reserve `method: "health"` with empty object payload on the existing REQ/REP endpoint. A working listener/handler replies with the usual `status: "ok"` envelope; an unavailable listener must fail the bounded client call. Do not add an HTTP server, background supervisor, or automatic recovery solely for monitoring. The application's HTTP `/health` may call this method to report ZeroMQ status to CMDB.
@@ -61,9 +62,10 @@ These are Python import modules, not a complete transitive dependency tree. The 
 
 1. Start on loopback ephemeral port; a client exchanges a valid request/reply envelope, including protocol and routing fields.
 2. Bad JSON, multi-frame message, unsupported protocol version, wrong target and unsupported method return defined errors; worker remains usable afterwards.
-3. A handler exception is handled according to documented failure policy, never a silent hang.
-4. Bind conflict is reported during startup; forced worker failure is observable by its supervisor.
-5. Shutdown releases sockets and threads; client timeout/recovery is tested.
-6. A `health` request gets a normal success reply while the ZeroMQ handler is usable; a stopped listener times out/fails within the configured bound and cannot be reported healthy by the application.
-7. Application code does not import bmgeoip or BMForge at runtime; its message methods and payload schemas are documented locally.
-8. Verify the ZeroMQ transport uses the approved runtime modules only; any proposed replacement or addition was approved by the user before implementation.
+3. Syntactically valid JSON containing escaped lone `\\ud800` / `\\udfff` values in envelope strings, nested payload values or object keys yields `invalid_request`. A subsequent valid request succeeds on the **same server**, and valid Unicode including escaped surrogate pairs remains accepted.
+4. A handler exception is handled according to documented failure policy, never a silent hang.
+5. Bind conflict is reported during startup; forced worker failure is observable by its supervisor.
+6. Shutdown releases sockets and threads; client timeout/recovery is tested.
+7. A `health` request gets a normal success reply while the ZeroMQ handler is usable; a stopped listener times out/fails within the configured bound and cannot be reported healthy by the application.
+8. Application code does not import bmgeoip or BMForge at runtime; its message methods and payload schemas are documented locally.
+9. Verify the ZeroMQ transport uses the approved runtime modules only; any proposed replacement or addition was approved by the user before implementation.

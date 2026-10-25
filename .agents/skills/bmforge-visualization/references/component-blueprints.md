@@ -12,13 +12,15 @@ All implementations follow [Activity / Interface / Entity classification]({{ sit
 
 BMForge is a **standalone specification and reference-code repository**, not a shared runtime library, package registry, or framework dependency. A new application owns its generated/copied code. Do not import BMForge or another project's Python modules in production. Cross-project integration is permitted only via the other project's explicitly documented public API.
 
-Every new application uses the pinned [constants]({{ site.baseurl }}{% link pages/component-constants.md %}) and [application localization]({{ site.baseurl }}{% link pages/component-localization.md %}) **standards** from the beginning. Constants define stable program identifiers; locale catalogues define the user-visible text. Neither adds a server or selects an unrequested technology.
+Every new application uses the pinned [constants]({{ site.baseurl }}{% link pages/component-constants.md %}), [application localization]({{ site.baseurl }}{% link pages/component-localization.md %}), and [installation lifecycle]({{ site.baseurl }}{% link pages/component-installation.md %}) **standards** from the beginning. Constants define stable program identifiers; locale catalogues define the user-visible text. Neither adds a server or selects an unrequested technology.
 
 Display-visualization libraries are selected by requested **capability** (chart, geographic map or relationship graph) under the [visualization component]({{ site.baseurl }}{% link pages/component-visualization.md %}); they do not become dependencies of every HTTP server. **Module lists are mandatory, not suggestions.** The **Approved runtime modules** section of each selected component is the complete technology inventory for that component's reusable infrastructure. Codex may supply local names, constants and bindings, but must pause for user approval if a requirement cannot be met with those modules. No ad hoc replacement with a new server, driver, ORM, broker, or UI library. Application-specific activities and separately approved components have their own dependencies.
 
 ## Project-local Codex skills
 
 Use the [Codex bootstrap]({{ site.baseurl }}{% link pages/codex-skills.md %}) to install selected skills under the consuming application's `.agents/skills/`. Each skill packages the relevant, immutable local reference snapshot and the authoritative contract as it was at installation. Pinned skills remain unchanged until the user approves an update; the installed manager only **checks and notifies**.
+
+Installing the Codex skills does not install an application. After requirements are known, the **installation** skill requires Codex to complete and test all three lifecycle operations before the first release, with a versioned `/opt/prod` footprint even for a custom library or client-only program. Use DevLog's frozen role-aware example only when a genuine split client/server topology is required.
 
 ## Codex workflow
 
@@ -32,14 +34,18 @@ Use the [Codex bootstrap]({{ site.baseurl }}{% link pages/codex-skills.md %}) to
 8. Implement the selected components' on-demand health checks via the application's existing interfaces. CMDB must ask the application rather than the database directly.
 9. Place the chosen component's literal `BMFORGE_COMPONENT` marker in its owning implementation module, using the ID and version shown by the component specification. This is provenance, not a runtime dependency or a compliance certificate.
 
+Animated GIF exports are separately covered by [GIF Animation]({{ site.baseurl }}{% link pages/component-gif-animation.md %}). This backend Pillow encoder does not replace Plotly.js or imply that every browser dashboard needs GIF generation.
+
 ## Blueprints
 
 - [HTTP Display Server]({{ site.baseurl }}{% link pages/component-http.md %})
 - [ZeroMQ Request/Reply Server]({{ site.baseurl }}{% link pages/component-zmq.md %})
 - [DB Server]({{ site.baseurl }}{% link pages/component-db-server.md %})
 - [Display Visualizations: charts, maps and graphs]({{ site.baseurl }}{% link pages/component-visualization.md %})
+- [GIF Animation: rendered frames to animated GIF]({{ site.baseurl }}{% link pages/component-gif-animation.md %})
 - [Constants]({{ site.baseurl }}{% link pages/component-constants.md %})
 - [Application Localization]({{ site.baseurl }}{% link pages/component-localization.md %})
+- [Installation Lifecycle]({{ site.baseurl }}{% link pages/component-installation.md %})
 
 ## Reference provenance
 
