@@ -12,6 +12,10 @@ class Tracking:
         self.tasks = tasks
 
     def execute(self, method, payload):
+        if method == Method.STATUS:
+            if payload:
+                raise TrackingError("invalid_request", DText.INVALID_REQUEST)
+            return self.tasks.status()
         if method == Method.HEALTH:
             if payload:
                 raise TrackingError("invalid_request", DText.INVALID_REQUEST)

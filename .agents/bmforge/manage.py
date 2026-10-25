@@ -48,6 +48,8 @@ SKILLS = {
         "components/reference/bmgeoip/bmgeoip/server/BMGeoIPServer.py",
         "components/reference/bmgeoip/bmgeoip/server/BMGeoIPHandler.py",
         "components/reference/bmgeoip/bmgeoip/server/LookupHandler.py",
+        "components/reference/bmdynip/bmdynip/server/static/index.html",
+        "components/reference/bmdynip/bmdynip/server/static/style.css",
     )),
     "bmforge-zmq": ("pages/component-zmq.md", (
         "components/reference/bmgeoip/bmgeoip/zmq/ZMQServer.py",
@@ -101,7 +103,8 @@ RELEASE_TEMPLATES = {
     "scripts/uninstall.sh": "templates/project/scripts/uninstall.sh",
     "CHANGELOG.md": "templates/project/CHANGELOG.md",
 }
-RELEASE_GUIDES = ("pages/release-setup.md", "pages/creating-a-release.md")
+RELEASE_GUIDES = ("pages/release-setup.md", "pages/creating-a-release.md",
+                  "pages/changelog-maintenance.md")
 INSTALLATION_GUIDES = ("pages/installation-scripts.md", "pages/cmdb-compliance.md")
 LOCK = Path(".agents/bmforge/lock.json")
 MANAGER = Path(".agents/bmforge/manage.py")
@@ -281,6 +284,14 @@ framework, database driver or plotting library as a shortcut.
 
 Component selection and application-specific behaviour belong to this project's
 requirements. A pinned skill is an instruction bundle, not executable app code.
+
+For EVERY completed logical change, including small code, tests, documentation,
+configuration and maintenance work, update `CHANGELOG.md` under the single
+`## [Unreleased]` heading before reporting completion or committing. Do not
+wait for the release. Add or refresh one `### Summary` for each meaningful
+feature, fix or operational improvement, even if only one change has occurred.
+Maintain one Summary heading per section. Follow the pinned
+`.agents/skills/bmforge-project/references/changelog-maintenance.md` guide.
 
 Bootstrap provided `scripts/new-release.sh` with metadata, changelog and
 deployment-disabled install/upgrade/uninstall stubs. Complete and test these

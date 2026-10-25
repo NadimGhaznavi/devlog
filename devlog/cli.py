@@ -31,6 +31,7 @@ def main(argv=None):
     parser.add_argument("--config", help=t(DText.CONFIG_HELP))
     parser.add_argument("--server", help=t(DText.SERVER_HELP))
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser(Method.STATUS, help=t(DText.STATUS_HELP))
     commands.add_parser("start", help=t(DText.START_HELP))
     commands.add_parser("pause", help=t(DText.PAUSE_HELP))
     commit = commands.add_parser("commit", help=t(DText.COMMIT_HELP))
@@ -42,7 +43,7 @@ def main(argv=None):
     if args.command == "commit" and bool(args.message) == bool(args.record):
         parser.error(t(DText.COMMIT_ARGUMENTS))
     try:
-        local = LocalRepository()
+        local = LocalRepository() if args.command != Method.STATUS else None
         if args.command == "publish":
             script = local.release_script()
             if script is None:
@@ -52,6 +53,14 @@ def main(argv=None):
             return subprocess.run(["bash", str(script), *arguments], cwd=local.root).returncode
         config = Configuration(args.config)
         client = ZMQClient(args.server or config.endpoint, timeout_ms=config.timeout_ms)
+        if args.command == Method.STATUS:
+            result = client.call(Method.STATUS, {})
+            if result[DTracking.TASK_ID] is None:
+                print(t(DText.NO_RUNNING_TASK))
+            else:
+                print(t(DText.TASK_RUNNING, repository=result[DTracking.REPOSITORY].rsplit("/", 1)[-1],
+                        task_id=result[DTracking.TASK_ID]))
+            return 0
         repository = local.repository.identity
         if args.command == "commit":
             def show_completed(result):

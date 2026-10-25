@@ -16,6 +16,26 @@ pytestmark = pytest.mark.database
 A, B = "github.com/example/a", "github.com/example/b"
 
 
+def test_status_is_global_and_read_only(tasks):
+    def status(expected):
+        before = {table: tasks.db.query(f"SELECT * FROM {table}")
+                  for table in ("repositories", "tasks", "intervals", "tracker_state")}
+        assert tasks.status() == expected
+        assert {table: tasks.db.query(f"SELECT * FROM {table}") for table in before} == before
+
+    status({"task_id": None, "repository": None})
+    first = tasks.start(A)["task_id"]
+    status({"task_id": first, "repository": A})
+    second = tasks.start(B)["task_id"]
+    status({"task_id": second, "repository": B})
+    tasks.pause(B)
+    status({"task_id": None, "repository": None})
+    tasks.start(A)
+    status({"task_id": first, "repository": A})
+    tasks.complete(A, first, "a" * 40, "done")
+    status({"task_id": None, "repository": None})
+
+
 def test_switch_resume_pause_commit_and_new_task(tasks):
     t = lambda hour: datetime(2026, 10, 24, hour)
     first = tasks.start(A, now=t(10))["task_id"]

@@ -66,6 +66,19 @@ class TaskDb:
     def _lock(self):
         return self.db.query("SELECT active_task_id FROM tracker_state WHERE singleton_id = 1 FOR UPDATE")[0]["active_task_id"]
 
+    def status(self):
+        with self.db.transaction(read_only=True):
+            rows = self.db.query("""
+                SELECT s.active_task_id AS task_id, r.identity AS repository
+                FROM tracker_state s
+                LEFT JOIN tasks t ON t.task_id = s.active_task_id
+                LEFT JOIN repositories r ON r.repository_id = t.repository_id
+                WHERE s.singleton_id = 1
+            """)
+            if len(rows) != 1:
+                raise RuntimeError("DevLog schema is not initialized; run dl-db-init")
+            return rows[0]
+
     @staticmethod
     def _now(now):
         return now if now is not None else datetime.now(timezone.utc).replace(tzinfo=None)
