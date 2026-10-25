@@ -1,6 +1,7 @@
 """Optional real-browser acceptance check; Playwright is test tooling only."""
 
-from datetime import datetime
+import base64
+from datetime import datetime, timedelta
 import os
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -99,6 +100,64 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         page.wait_for_url("**/tasks?**")
         assert parse_qs(urlsplit(page.url).query)["repository"] == ["github.com/nadimghaznavi/beta"]
         assert errors == []
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+def test_completed_task_dividers_have_visible_pixels(service, tasks):
+    playwright = pytest.importorskip("playwright.sync_api")
+    lower, blue = "github.com/example/alpha", "github.com/example/beta"
+    cursor = datetime(2026, 10, 24, 10)
+    first = tasks.start(lower, now=cursor)["task_id"]
+    cursor += timedelta(minutes=47)
+    tasks.complete(lower, first, "f" * 40, "Lower project", now=cursor)
+    # Include a six-second completed task whose boundaries overlap at this scale.
+    durations = (760, 6, 851, 406, 128, 202)
+    for index, seconds in enumerate(durations):
+        task = tasks.start(blue, now=cursor)["task_id"]
+        cursor += timedelta(seconds=seconds)
+        if index < len(durations) - 1:
+            tasks.complete(blue, task, f"{index:040x}", "Completed task", now=cursor)
+        else:
+            tasks.pause(blue, now=cursor)
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page(viewport={"width": 1200, "height": 1000})
+        use_cached_plotly(page)
+        page.goto(service["url"] + "/?start=2026-10-18&end=2026-10-24")
+        page.wait_for_selector("#daily-chart .plot-container")
+        lines = page.locator("#daily-chart .shapelayer path")
+        assert lines.count() == 5
+        bounds = [line.bounding_box() for line in lines.all()]
+        # Read screenshot pixels, so a line element alone cannot pass this check.
+        pixels = page.evaluate("""async ({png, bounds}) => {
+            const image = new Image();
+            image.src = 'data:image/png;base64,' + png;
+            await image.decode();
+            const canvas = document.createElement('canvas');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            const context = canvas.getContext('2d');
+            context.drawImage(image, 0, 0);
+            return bounds.map(box => {
+                const x = Math.round(box.x + box.width / 2);
+                const y = Math.round(box.y);
+                return [-2, -1, 0, 1, 2].map(offset => [...context.getImageData(x, y + offset, 1, 1).data]);
+            });
+        }""", dict(png=base64.b64encode(page.screenshot()).decode(), bounds=bounds))
+        border = page.evaluate("document.getElementById('daily-chart').data[1].marker.line.color")
+        rgb = [int(border[channel:channel + 2], 16) for channel in (1, 3, 5)]
+        for samples in pixels:
+            assert samples.count([*rgb, 255]) >= 2
+
+        def luminance(channels):
+            values = [channel / 255 for channel in channels]
+            linear = [value / 12.92 if value <= .04045 else ((value + .055) / 1.055) ** 2.4
+                      for value in values]
+            return sum(value * weight for value, weight in zip(linear, (.2126, .7152, .0722)))
+
+        assert (luminance(rgb) + .05) / (luminance([0, 188, 212]) + .05) >= 1.8
         browser.close()
 
 

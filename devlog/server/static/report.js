@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const barWidth = 0.8;
   const borderWidth = 4;
   const taskLineWidth = 2;
-  const highlightMix = 0.35;
+  const highlightMix = 0.8;
   const brighter = hex => "#" + hex.slice(1).match(/.{2}/g).map(channel => {
     const value = parseInt(channel, 16);
     return Math.round(value + (255 - value) * highlightMix).toString(16).padStart(2, "0");
@@ -52,6 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
         boundary += hours;
         return {
           type: "line", xref: "x", yref: "y",
+          layer: "above",
           x0: dayIndex - barWidth / 2, x1: dayIndex + barWidth / 2,
           y0: boundary, y1: boundary,
           line: {color: trace.marker.line.color, width: taskLineWidth}

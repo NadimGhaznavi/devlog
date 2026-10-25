@@ -37,6 +37,7 @@ h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.5px; }
 .total { display: grid; text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .total strong { font-size: 36px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
 #daily-chart { height: 340px; width: 100%; }
+#daily-chart .shapelayer path { shape-rendering: crispEdges; }
 .empty, #chart-error { padding: 14px; border-radius: 6px; background: var(--notice); font-size: 14px; }
 a { color: var(--accent); text-underline-offset: 3px; }
 a:hover { color: var(--accent-hover); }
