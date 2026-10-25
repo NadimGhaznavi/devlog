@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-25 @ 06:22
+
 This release is named for the element **Selenium (Se)**. Selenium is essential in 
 tiny amounts for human health but can be toxic in excess.
 
