@@ -6,6 +6,14 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Krypton (Kr)**. Krypton is a noble 
+gas whose name comes from a Greek word meaning “hidden.”
+
+### Changed
+
+- Show elapsed time for pauses in task timelines, using the same `HH:MM:SS`
+  format as active intervals.
+
 ## [0.4.2] - 2026-10-25 @ 06:53
 
 This release is named for the element **Bromine (Br)**. Bromine is one of only two 

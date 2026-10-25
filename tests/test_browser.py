@@ -109,7 +109,8 @@ def test_drilldown_insert_overnight_pause_and_chart_fallback(service, tasks):
         assert page.locator(".total strong").inner_text() == "2.00"
         assert page.locator(".interval").count() == 3
         assert page.locator(".interval.pause").count() == 1
-        assert page.locator(".elapsed").all_text_contents() == ["Elapsed time: 01:00:00", "Elapsed time: 01:00:00"]
+        assert page.locator(".elapsed").all_text_contents() == [
+            "Elapsed time: 01:00:00", "Elapsed time: 10:00:00", "Elapsed time: 01:00:00"]
         assert page.locator(".task-metadata").inner_text().count("e" * 40) == 1
         page.set_viewport_size({"width": 390, "height": 844})
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")

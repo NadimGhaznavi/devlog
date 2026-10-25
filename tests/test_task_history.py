@@ -43,6 +43,7 @@ def test_pause_form_schema_is_validated_before_writing(payload):
         TaskHistory(None, ZoneInfo("UTC")).insert_pause(1, payload)
 
 
+@pytest.mark.parametrize("paused", [False, True])
 @pytest.mark.parametrize("start,end,local_start,local_end,elapsed", [
     (datetime(2026, 10, 25, 2, 21, 21, 836282), datetime(2026, 10, 25, 8, 50, 29, 208005),
      "2026-10-24 22:21:21", "2026-10-25 04:50:29", "06:29:07"),
@@ -53,16 +54,16 @@ def test_pause_form_schema_is_validated_before_writing(payload):
     (datetime(2026, 10, 24, 1), datetime(2026, 10, 25, 13),
      "2026-10-23 21:00:00", "2026-10-25 09:00:00", "36:00:00"),
 ])
-def test_history_formats_local_times_and_actual_elapsed_duration(start, end, local_start, local_end, elapsed):
+def test_history_formats_local_times_and_actual_elapsed_duration(start, end, local_start, local_end, elapsed, paused):
     tasks = SimpleNamespace(task_detail=lambda task_id: dict(
         started_at=start, completed_at=end, status="completed",
-        intervals=[dict(interval_id=1, started_at=start, ended_at=end)]))
+        intervals=[] if paused else [dict(interval_id=1, started_at=start, ended_at=end)]))
     detail = TaskHistory(tasks, ZoneInfo("America/Toronto")).read(1)
     assert detail["started_at"] == local_start
     assert detail["completed_at"] == local_end
-    assert detail["timeline"] == [dict(interval_id=1, started_at=local_start, ended_at=local_end,
+    assert detail["timeline"] == [dict(interval_id=None if paused else 1, started_at=local_start, ended_at=local_end,
                                        elapsed_time=elapsed)]
-    assert detail["total_hours"] == (end - start).total_seconds() / 3600
+    assert detail["total_hours"] == (0 if paused else (end - start).total_seconds() / 3600)
 
 
 def test_running_interval_elapsed_excludes_previous_pause():
@@ -74,7 +75,20 @@ def test_running_interval_elapsed_excludes_previous_pause():
     detail = TaskHistory(tasks, ZoneInfo("America/Toronto")).read(1, now=now)
     assert detail["timeline"] == [
         dict(interval_id=1, started_at="2026-10-24 21:00:00", ended_at="2026-10-24 22:00:00", elapsed_time="01:00:00"),
-        dict(interval_id=None, started_at="2026-10-24 22:00:00", ended_at="2026-10-24 23:00:00"),
+        dict(interval_id=None, started_at="2026-10-24 22:00:00", ended_at="2026-10-24 23:00:00", elapsed_time="01:00:00"),
         dict(interval_id=2, started_at="2026-10-24 23:00:00", ended_at=None, elapsed_time="01:02:03"),
     ]
     assert detail["total_hours"] == 1 + (now - resume).total_seconds() / 3600
+
+
+def test_ongoing_pause_elapsed_excludes_pauses_from_task_total():
+    tasks = SimpleNamespace(task_detail=lambda task_id: dict(
+        started_at=datetime(2026, 10, 25, 0), completed_at=None, status="paused",
+        intervals=[dict(interval_id=1, started_at=datetime(2026, 10, 25, 1), ended_at=datetime(2026, 10, 25, 2))]))
+    detail = TaskHistory(tasks, ZoneInfo("America/Toronto")).read(1, now=datetime(2026, 10, 25, 4, 2, 3))
+    assert detail["timeline"] == [
+        dict(interval_id=None, started_at="2026-10-24 20:00:00", ended_at="2026-10-24 21:00:00", elapsed_time="01:00:00"),
+        dict(interval_id=1, started_at="2026-10-24 21:00:00", ended_at="2026-10-24 22:00:00", elapsed_time="01:00:00"),
+        dict(interval_id=None, started_at="2026-10-24 22:00:00", ended_at=None, elapsed_time="02:02:03"),
+    ]
+    assert detail["total_hours"] == 1

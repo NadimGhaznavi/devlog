@@ -28,7 +28,7 @@
         <li class="interval {% if not interval.interval_id %}pause{% endif %}">
           <strong>{{ t(text.ACTIVE_TIME if interval.interval_id else text.PAUSE_TIME) }}</strong>
           <p><time>{{ interval.started_at }}</time> → <time>{{ interval.ended_at or t(text.NOW) }}</time></p>
-          {% if interval.interval_id %}<p class="elapsed">{{ t(text.ELAPSED_TIME, elapsed=interval.elapsed_time) }}</p>{% endif %}
+          <p class="elapsed">{{ t(text.ELAPSED_TIME, elapsed=interval.elapsed_time) }}</p>
           {% if interval.interval_id and interval.ended_at %}
           {% set editing = form_values is defined and form_values.get('interval_id') == interval.interval_id | string %}
           <details {% if editing %}open{% endif %}><summary>{{ t(text.INSERT_PAUSE) }}</summary>
