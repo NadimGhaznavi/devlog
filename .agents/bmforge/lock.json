@@ -1,6 +1,6 @@
 {
   "branch": "main",
-  "manager_sha256": "33d3a4f4005e3511b1470920285f5f93a8016b61a39d4a4ed518ffc5b1c2dced",
+  "manager_sha256": "10fec60efc8ccaae77b2b2f1ddb22b667d4a76789161f35a7147608e07e5ccab",
   "repository": "https://github.com/NadimGhaznavi/bmforge.git",
   "schema": 1,
   "skills": {
@@ -37,6 +37,11 @@
     "bmforge-project": {
       "sha256": "31a63c041ef37698172cf05b64491eb598ddd18b90f5c0234341b4b478bd917d",
       "source_commit": "fca87103c71010423fd10e769d0ba85988b776a5",
+      "spec_version": "0.1.0"
+    },
+    "bmforge-rca": {
+      "sha256": "dfba691c7117ad6d14481190d8392bd33564a26ad5efa94c98b711c469dc842f",
+      "source_commit": "29f90eb16f119b2509add6aaaffca8b3efe3af98",
       "spec_version": "0.1.0"
     },
     "bmforge-visualization": {

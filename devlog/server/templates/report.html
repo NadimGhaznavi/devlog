@@ -1,5 +1,19 @@
 {% extends "base.html" %}
 {% set active_page = 'report' %}
+{% macro human_duration(elapsed) -%}
+  {%- set seconds = elapsed | round(0, 'ceil') | int -%}
+  {%- if seconds >= 3600 -%}
+    {%- set minutes = (seconds / 60) | round(0, 'ceil') | int -%}
+    {%- set parts = [(minutes // 60, text.DURATION_HOUR, text.DURATION_HOURS), (minutes % 60, text.DURATION_MINUTE, text.DURATION_MINUTES)] -%}
+  {%- else -%}
+    {%- set parts = [(seconds // 60, text.DURATION_MINUTE, text.DURATION_MINUTES), (seconds % 60, text.DURATION_SECOND, text.DURATION_SECONDS)] -%}
+  {%- endif -%}
+  {%- for count, singular, plural in parts if count -%}
+    {{- ' ' if not loop.first else '' -}}{{- t(singular if count == 1 else plural, count=count) -}}
+  {%- else -%}
+    {{- t(text.DURATION_SECONDS, count=0) -}}
+  {%- endfor -%}
+{%- endmacro %}
 {% block page_title %}{{ t(text.DAILY_HOURS) }}{% endblock %}
 {% block head %}
   <script defer src="https://cdn.plot.ly/plotly-4.1.1.min.js" charset="utf-8"></script>
@@ -15,6 +29,10 @@
         {% if languages | length > 1 %}<div class="field"><label for="language">{{ t(text.LANGUAGE_LABEL) }}</label><select id="language" name="lang">{% for language in languages %}<option value="{{ language }}" {% if language == locale %}selected{% endif %}>{{ language }}</option>{% endfor %}</select></div>{% else %}<input type="hidden" name="lang" value="{{ locale }}">{% endif %}
         <button type="submit">{{ t(text.APPLY) }} <span aria-hidden="true">↗</span></button>
       </form>
+    </section>
+    <section class="panel" aria-labelledby="current-task-title">
+      <h2 class="panel-title" id="current-task-title">{{ t(text.CURRENT_TASK) }}</h2>
+      <p id="current-task-status">{% if report.current_task.task_id is none %}{{ t(text.NO_RUNNING_TASK) }}{% else %}{{ t(text.CURRENT_TASK_RUNNING, task_id=report.current_task.task_id, repository=report.current_task.repository.rsplit('/', 1)[-1], duration=human_duration(report.current_task.active_seconds)) }}{% endif %}</p>
     </section>
     <section class="report panel" aria-labelledby="daily-title">
       <div class="report-heading"><div><h1 class="panel-title" id="daily-title">{{ t(text.DAILY_HOURS) }}</h1><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>

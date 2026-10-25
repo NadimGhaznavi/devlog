@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from threading import Barrier
 from zoneinfo import ZoneInfo
 
@@ -17,23 +17,48 @@ A, B = "github.com/example/a", "github.com/example/b"
 
 
 def test_status_is_global_and_read_only(tasks):
-    def status(expected):
+    t = lambda hour: datetime(2026, 10, 24, hour)
+
+    def status(task_id, repository, seconds, now):
         before = {table: tasks.db.query(f"SELECT * FROM {table}")
                   for table in ("repositories", "tasks", "intervals", "tracker_state")}
-        assert tasks.status() == expected
+        assert tasks.status(now=now) == {"task_id": task_id, "repository": repository,
+                                         "active_seconds": seconds}
         assert {table: tasks.db.query(f"SELECT * FROM {table}") for table in before} == before
 
-    status({"task_id": None, "repository": None})
-    first = tasks.start(A)["task_id"]
-    status({"task_id": first, "repository": A})
-    second = tasks.start(B)["task_id"]
-    status({"task_id": second, "repository": B})
-    tasks.pause(B)
-    status({"task_id": None, "repository": None})
-    tasks.start(A)
-    status({"task_id": first, "repository": A})
-    tasks.complete(A, first, "a" * 40, "done")
-    status({"task_id": None, "repository": None})
+    status(None, None, 0, t(10))
+    first = tasks.start(A, now=t(10))["task_id"]
+    status(first, A, 3600, t(11))
+    second = tasks.start(B, now=t(12))["task_id"]
+    status(second, B, 3600, t(13))
+    tasks.pause(B, now=t(14))
+    status(None, None, 0, t(15))
+    tasks.start(A, now=t(16))
+    status(first, A, 10800, t(17))
+    tasks.complete(A, first, "a" * 40, "done", now=t(18))
+    status(None, None, 0, t(19))
+
+
+def test_status_sums_subsecond_intervals_before_formatting(tasks):
+    start = datetime(2026, 10, 24, 10)
+    tasks.start(A, now=start)
+    tasks.pause(A, now=start + timedelta(seconds=30.5))
+    tasks.start(A, now=start + timedelta(hours=1))
+    result = tasks.status(now=start + timedelta(hours=1, seconds=29.6))
+    assert result["active_seconds"] == pytest.approx(60.1)
+
+
+def test_pause_reports_persisted_timestamp_only_when_running(tasks):
+    start = datetime(2026, 10, 24, 10)
+    stop = start + timedelta(hours=2, microseconds=123456)
+    task = tasks.start(A, now=start)
+    result = tasks.pause(A, now=stop)
+    assert result == {"task_id": task["task_id"], "status": "paused",
+                      "paused_at": "2026-10-24T12:00:00.123456+00:00"}
+    before = tasks.task_detail(task["task_id"])
+    assert before["intervals"][0]["ended_at"] == stop
+    assert tasks.pause(A, now=stop + timedelta(hours=1))["paused_at"] is None
+    assert tasks.task_detail(task["task_id"]) == before
 
 
 def test_switch_resume_pause_commit_and_new_task(tasks):

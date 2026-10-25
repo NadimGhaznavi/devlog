@@ -6,6 +6,36 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-25 @ 19:16
+
+This release is named for the element **Indium (In)**. Indium tin oxide forms 
+transparent conductive coatings used in touchscreens and displays.
+
+### Summary
+
+Show active task time in `dl status` and the saved pause timestamp in `dl pause`.
+Show the currently running task and rounded, readable active time on the report page.
+Add pinned guidance for production evidence collection and local root-cause
+analysis.
+
+### Added
+
+- Add a Current Task panel between Reporting and Daily hours, showing the global
+  running task and repository or `No task currently running`. Display active time
+  without pauses, rounded up to minutes for hours or seconds for shorter tasks.
+- Add the optional `bmforge-rca` skill from BMForge revision `29f90eb16f11`,
+  with its supporting references and lock fingerprint; update the project-local
+  manager to recognize it. Collect production evidence through read-only SSH,
+  then reproduce, debug and fix locally.
+
+### Changed
+
+- Format running-task status as `Repository (bmforge): Task #17 running for
+  HH:MM hours`, showing total active time across resumes and excluding pauses.
+- Format pause confirmations as `Repository (mycount): Task #12 paused on
+  YYYY-MM-DD HH:MM:SS` in the configured timezone. Keep messages for already
+  paused tasks and no task unchanged.
+
 ## [0.6.0] - 2026-10-25 @ 11:25
 
 This release is named for the element **Palladium (Pd)**. Palladium can 
