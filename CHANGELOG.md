@@ -6,6 +6,14 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Yttrium (Y)**. Yttrium compounds are 
+used in phosphors and lasers, including the widely used YAG laser.
+
+### Changed
+
+- Use the site background color for the daily-hours chart's 2 px task separators
+  to make divisions within each project bar easier to see.
+
 ## [0.5.0] - 2026-10-25 @ 08:40
 
 This release is named after the element **Strontium (Sr)**. Strontium salts 
