@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-25 @ 06:53
+
 This release is named for the element **Bromine (Br)**. Bromine is one of only two 
 elements that are liquids near room temperature.
 
