@@ -152,17 +152,26 @@ class TaskDb:
         return [row["identity"] for row in self.db.query("SELECT identity FROM repositories ORDER BY identity")]
 
     def daily_totals(self, days, repository, now):
-        """Sum interval overlaps; caller supplies explicit UTC local-day boundaries."""
+        """Sum interval overlaps by day and repository using explicit UTC boundaries."""
         day_table = " UNION ALL ".join("SELECT %s AS day, %s AS day_start, %s AS day_end" for _ in days)
         params = tuple(value for day in days for value in day)
         condition = " AND t.repository_id = (SELECT repository_id FROM repositories WHERE identity = %s)" if repository else ""
         rows = self.db.query(f"""
-            SELECT d.day, COALESCE(SUM(TIMESTAMPDIFF(MICROSECOND,
+            SELECT d.day, r.identity AS repository, COALESCE(SUM(TIMESTAMPDIFF(MICROSECOND,
                 GREATEST(i.started_at, d.day_start),
                 LEAST(COALESCE(i.ended_at, %s), d.day_end))), 0) / 1000000 AS seconds
             FROM ({day_table}) d
             LEFT JOIN intervals i ON i.started_at < d.day_end AND COALESCE(i.ended_at, %s) > d.day_start
                 AND EXISTS (SELECT 1 FROM tasks t WHERE t.task_id = i.task_id {condition})
-            GROUP BY d.day ORDER BY d.day
+            LEFT JOIN tasks t ON t.task_id = i.task_id
+            LEFT JOIN repositories r ON r.repository_id = t.repository_id
+            GROUP BY d.day, r.identity ORDER BY d.day, r.identity
         """, (now, *params, now, *((repository,) if repository else ())))
-        return [{"date": row["day"], "hours": float(row["seconds"]) / 3600} for row in rows]
+        totals = {day: {"date": day, "hours": 0, "projects": {}} for day, _, _ in days}
+        for row in rows:
+            day = totals[row["day"]]
+            hours = float(row["seconds"]) / 3600
+            day["hours"] += hours
+            if row["repository"] is not None:
+                day["projects"][row["repository"]] = hours
+        return list(totals.values())
