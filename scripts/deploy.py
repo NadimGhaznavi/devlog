@@ -3,6 +3,7 @@
 
 import argparse
 import grp
+import hashlib
 import ipaddress
 import importlib.util
 import json
@@ -16,6 +17,7 @@ import sys
 import tempfile
 import time
 import tomllib
+from typing import Final
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -24,6 +26,12 @@ SOURCE = Path(__file__).resolve().parents[1]
 BASE = Path("/opt/prod/devlog")
 UNIT = Path("/etc/systemd/system/devlog.service")
 ACCOUNT = "devlog"
+DATABASE_NAME: Final[str] = "devlog"
+DATABASE_USER: Final[str] = "devlog"
+DATABASE_ENV: Final[Path] = Path("conf/database.env")
+DATABASE_KEYS: Final[tuple[str, ...]] = (
+    "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_SOCKET",
+)
 MANIFEST = ".installation-manifest.json"
 VERSION_MARKER = ".deployment-version"
 CONSTANTS = Path("devlog/constants/DDevLog.py")
@@ -129,55 +137,75 @@ def record_installation(role, version, release, previous_release, old_manifest):
     atomic_write(BASE / VERSION_MARKER, (version + "\n").encode())
 
 
-def uninstall():
-    """Remove managed binaries and service, retaining user configuration and data."""
+def uninstall_plan():
+    """Validate the owned installation and prerequisites before removing anything."""
     current = BASE / "current"
     previous = ownership()
-    if not current.is_symlink():
-        if previous is not None and not previous.get("removed"):
-            raise RuntimeError("Installation marker is inconsistent with current release")
-        print("DevLog is not installed; nothing to uninstall.")
-        return
-    if previous is None or previous.get("removed"):
+    if previous is None:
+        if not current.is_symlink():
+            return None
         raise RuntimeError("Legacy installation has no ownership manifest; upgrade before uninstalling")
-    role = installed_role()
-    if previous.get("role") != role:
+    role = previous.get("role")
+    if role not in ("client", "server"):
+        raise RuntimeError("Unknown DevLog installation role")
+    if (BASE / "conf/installation.json").exists() and installed_role() != role:
         raise RuntimeError("Installed role does not match ownership manifest")
-    owned_constant = BASE / CONSTANTS
-    if owned_constant.is_symlink():
-        raise RuntimeError("Managed CMDB constants must not be a symlink")
+    credentials = BASE / DATABASE_ENV
+    if credentials.is_symlink() or (credentials.exists() and not credentials.is_file()):
+        raise RuntimeError("Expected a regular conf/database.env file")
     if role == "server" and (UNIT.exists() or UNIT.is_symlink()):
         if UNIT.is_symlink() or UNIT.read_bytes() != (SOURCE / "systemd/devlog.service").read_bytes():
             raise RuntimeError("Systemd unit has changed; inspect before uninstalling")
-        run("systemctl", "stop", "devlog.service")
+    if role == "server" and not credentials.is_file():
+        raise RuntimeError("Server uninstall requires conf/database.env to identify its local database")
+    required = ("systemctl", "mariadb", "getent", "userdel", "groupdel") if role == "server" else ()
+    require_executables(required)
+    return role
+
+
+def uninstall(role):
+    """Remove all DevLog installation state and data, preserving only credentials."""
+    credentials = BASE / DATABASE_ENV
+    values = database_credentials() if role == "server" else None
+    if credentials.exists():
+        # The service group is removed below; only root may read retained secrets.
+        credentials.chmod(0o600)
+        os.chown(credentials, 0, 0)
+    if role == "server":
+        if UNIT.exists():
+            run("systemctl", "stop", "devlog.service")
+        database_admin(
+            f"DROP DATABASE IF EXISTS `{DATABASE_NAME}`;\n"
+            f"DROP USER IF EXISTS '{DATABASE_USER}'@'localhost';\n", values)
+    if role == "server" and UNIT.exists():
         run("systemctl", "disable", "devlog.service")
         UNIT.unlink()
         run("systemctl", "daemon-reload")
-    for name in (("dl", "dl-server", "dl-db-init") if role == "server" else ("dl",)):
-        target = BASE / "bin" / name
-        if target.is_symlink():
-            target.unlink()
-        elif target.exists():
-            raise RuntimeError(f"Refusing to remove non-symlink launcher: {target}")
-    current.unlink()
-    for relative in previous["releases"]:
-        target = BASE / relative
-        if target.is_dir():
-            shutil.rmtree(target)
-    owned_constant.unlink(missing_ok=True)
-    for folder in (owned_constant.parent, owned_constant.parent.parent, BASE / "bin", BASE / "releases"):
-        if folder.is_dir():
-            try:
-                folder.rmdir()
-            except OSError:
-                pass
-    (BASE / "conf/installation.json").unlink(missing_ok=True)
-    (BASE / VERSION_MARKER).unlink(missing_ok=True)
-    # Configuration, credentials and the MariaDB database remain intact.
-    atomic_write(BASE / MANIFEST, (json.dumps({
-        "project": "DevLog", "files": [], "releases": [],
-        "role": role, "removed": True}, indent=2) + "\n").encode())
-    print(f"DevLog {role} executable installation removed; configuration and data retained.")
+    if role == "server":
+        if subprocess.run(["getent", "passwd", ACCOUNT], stdout=subprocess.DEVNULL).returncode == 0:
+            run("userdel", ACCOUNT)
+        if subprocess.run(["getent", "group", ACCOUNT], stdout=subprocess.DEVNULL).returncode == 0:
+            run("groupdel", ACCOUNT)
+    # BASE is the application's installation directory. Remove obsolete releases,
+    # configuration and metadata too, without following symlinks outside it.
+    conf = BASE / "conf"
+    for folder in (conf, BASE):
+        if not folder.is_dir():
+            continue
+        for path in folder.iterdir():
+            if path in (credentials, conf, BASE / MANIFEST):
+                continue
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+    (BASE / MANIFEST).unlink(missing_ok=True)
+    if not credentials.exists():
+        if conf.exists():
+            conf.rmdir()
+        BASE.rmdir()
+    retained = " Credentials retained." if credentials.exists() else ""
+    print(f"DevLog {role} uninstalled; all application files and data removed.{retained}")
 
 
 def server_host(value):
@@ -206,7 +234,7 @@ def arguments(argv=None):
                         help="DevLog server IPv4 address or hostname (ZMQ port 19701)")
     actions.add_parser("install-server", help="Install the server, database, service, and local CLI")
     actions.add_parser("upgrade", help="Upgrade this machine's installed client or server")
-    actions.add_parser("uninstall", help="Remove installed client/server code, retaining configuration and data")
+    actions.add_parser("uninstall", help="Remove all DevLog files and data, preserving only credentials")
     for action in actions.choices.values():
         action.add_argument("--check", action="store_true", help="Validate without changing installed files")
     return parser, parser.parse_args(argv)
@@ -229,21 +257,71 @@ def run(*command, **kwargs):
     return subprocess.run(command, check=True, **kwargs)
 
 
+def require_executables(names):
+    for name in names:
+        if shutil.which(name) is None:
+            raise RuntimeError(f"Required executable is missing: {name}")
+
+
+def database_credentials():
+    """Read installation credentials without sourcing shell or environment values."""
+    credentials = BASE / DATABASE_ENV
+    if credentials.is_symlink() or not credentials.is_file():
+        raise RuntimeError("Expected a regular conf/database.env file")
+    values = {}
+    for line in credentials.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, separator, value = line.partition("=")
+        if not separator or key not in DATABASE_KEYS or key in values:
+            raise RuntimeError("Invalid database.env keys")
+        values[key] = value
+    # These are the local resources provisioned and owned by this installer.
+    # Never infer authority to drop another database from an edited secret file.
+    if (values.get("DB_HOST") not in ("localhost", "127.0.0.1")
+            or values.get("DB_NAME") != DATABASE_NAME or values.get("DB_USER") != DATABASE_USER):
+        raise RuntimeError("Expected the installer-owned local DevLog database and user in database.env")
+    if not values.get("DB_PASSWORD") or values["DB_PASSWORD"] == "CHANGE_ME":
+        raise RuntimeError("Configure DB_PASSWORD in database.env")
+    port = int(values.get("DB_PORT", "3306"))
+    if not 1 <= port <= 65535:
+        raise RuntimeError("DB_PORT must be between 1 and 65535")
+    return values
+
+
+def database_admin(sql, values):
+    command = ["mariadb", "--protocol=socket", "--skip-ssl", "--user=root", "--batch"]
+    if values.get("DB_SOCKET"):
+        command.append(f"--socket={values['DB_SOCKET']}")
+    try:
+        run(*command, input=sql, text=True, capture_output=True)
+    except subprocess.CalledProcessError as error:
+        # SQL diagnostics can contain authentication material; do not print them.
+        raise RuntimeError(f"MariaDB administration failed (exit {error.returncode}); "
+                           "check local root socket access") from None
+
+
 def provision():
-    """New installs use local MariaDB admin socket access; upgrades never do."""
-    credentials = BASE / "conf/database.env"
-    if credentials.exists():
-        return
-    password = secrets.token_hex(32)
-    sql = ("CREATE DATABASE IF NOT EXISTS `devlog` CHARACTER SET utf8mb4;\n"
-           f"CREATE USER 'devlog'@'localhost' IDENTIFIED BY '{password}';\n"
+    """Create local resources on installation, reusing retained credentials."""
+    credentials = BASE / DATABASE_ENV
+    if not credentials.exists():
+        password = secrets.token_hex(32)
+        fd = os.open(credentials, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as stream:
+            stream.write(f"DB_HOST=localhost\nDB_PORT=3306\nDB_NAME={DATABASE_NAME}\n"
+                         f"DB_USER={DATABASE_USER}\nDB_PASSWORD={password}\n")
+    values = database_credentials()
+    # Match PyMySQL's Latin-1 password bytes and MariaDB's native password hash.
+    # Plaintext passwords never enter SQL, shell arguments or error messages.
+    digest = hashlib.sha1(values["DB_PASSWORD"].encode("latin1")).digest()
+    password_hash = "*" + hashlib.sha1(digest).hexdigest().upper()
+    sql = (f"CREATE DATABASE IF NOT EXISTS `{DATABASE_NAME}` CHARACTER SET utf8mb4;\n"
+           f"CREATE USER IF NOT EXISTS '{DATABASE_USER}'@'localhost' IDENTIFIED BY PASSWORD '{password_hash}';\n"
+           f"ALTER USER '{DATABASE_USER}'@'localhost' IDENTIFIED BY PASSWORD '{password_hash}';\n"
            "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES "
-           "ON `devlog`.* TO 'devlog'@'localhost';\n")
-    run("mariadb", "--protocol=socket", "--skip-ssl", "--user=root", input=sql, text=True)
-    fd = os.open(credentials, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o640)
-    with os.fdopen(fd, "w") as stream:
-        stream.write(f"DB_HOST=localhost\nDB_PORT=3306\nDB_NAME=devlog\nDB_USER=devlog\nDB_PASSWORD={password}\n")
-    os.chown(credentials, 0, grp.getgrnam(ACCOUNT).gr_gid)
+           f"ON `{DATABASE_NAME}`.* TO '{DATABASE_USER}'@'localhost';\n")
+    database_admin(sql, values)
 
 
 def select_release(release):
@@ -311,23 +389,16 @@ def main(argv=None):
     if current.is_symlink() and not current.resolve().is_dir() and args.action == "upgrade":
         raise RuntimeError("Installed current release is missing; inspect the installation")
     if args.action == "uninstall":
+        role = uninstall_plan()
         if args.check:
-            if current.is_symlink():
-                previous = ownership()
-                if previous is None or previous.get("removed"):
-                    raise RuntimeError("Legacy installation needs upgrade before uninstall")
-                role = installed_role()
-                if previous.get("role") != role:
-                    raise RuntimeError("Installed role does not match ownership manifest")
-                if role == "server" and (UNIT.exists() or UNIT.is_symlink()):
-                    if (UNIT.is_symlink() or
-                            UNIT.read_bytes() != (SOURCE / "systemd/devlog.service").read_bytes()):
-                        raise RuntimeError("Systemd unit has changed; inspect before uninstalling")
             print("uninstall: checks passed; no files changed.")
             return
         if os.geteuid() != 0:
             parser.error("Run this script with sudo")
-        return uninstall()
+        if role is None:
+            print("DevLog is not installed; nothing to uninstall.")
+            return
+        return uninstall(role)
     role = installed_role() if args.action == "upgrade" else ("client" if args.action == "install" else "server")
     server = role == "server"
     version = package_version()
@@ -341,11 +412,11 @@ def main(argv=None):
         if previous_manifest.get("role") != role:
             raise RuntimeError("Existing manifest belongs to a different installation role")
     # Validate dependencies for this operation before touching host state.
-    # Fresh server provisioning needs MariaDB only when credentials are absent;
+    # Every server installation recreates missing resources using saved secrets;
     # upgrades and client installations never invoke the database admin CLI.
     required = ("git", "systemctl", "runuser") if server else ("git",)
-    if args.action == "install-server" and not (BASE / "conf/database.env").exists():
-        required += ("mariadb",)
+    if args.action == "install-server":
+        required += ("mariadb", "getent", "groupadd", "useradd")
     for command in required:
         if shutil.which(command) is None:
             parser.error(f"Required executable is missing: {command}")
@@ -358,6 +429,15 @@ def main(argv=None):
         return
     if os.geteuid() != 0:
         parser.error("Run this script with sudo")
+    credentials = BASE / DATABASE_ENV
+    if server and (args.action == "upgrade" or credentials.exists() or credentials.is_symlink()):
+        if not credentials.is_file() or credentials.is_symlink():
+            raise RuntimeError("Expected a regular conf/database.env file")
+        metadata = credentials.stat()
+        if metadata.st_uid != 0 or metadata.st_mode & 0o777 not in (0o600, 0o640):
+            raise RuntimeError("database.env must be root-owned and mode 640 or 600")
+        if args.action == "install-server":
+            database_credentials()
     os.umask(0o022)
     previous_release = current.resolve() if current.is_symlink() else None
     previous_unit = UNIT.read_bytes() if server and UNIT.exists() else None
@@ -385,11 +465,6 @@ def main(argv=None):
     else:
         if args.action == "install-server":
             provision()
-        credentials = BASE / "conf/database.env"
-        if not credentials.is_file() or credentials.is_symlink():
-            raise RuntimeError("Expected a regular conf/database.env file")
-        if credentials.stat().st_uid != 0 or credentials.stat().st_mode & 0o777 not in (0o600, 0o640):
-            raise RuntimeError("database.env must be root-owned and mode 640 or 600")
         os.chown(credentials, 0, grp.getgrnam(ACCOUNT).gr_gid)
         credentials.chmod(0o640)
     release = BASE / "releases" / f"{version}-{time.time_ns()}"
