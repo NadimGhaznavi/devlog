@@ -4,6 +4,7 @@
   "app.reports": "Reports",
   "app.main_navigation": "Main navigation",
   "app.version": "Bear & Moose · Version {version}",
+  "app.last_updated": "Last updated: {timestamp}",
   "language.label": "Language",
   "language.name": "English",
   "report.repository": "Repository",

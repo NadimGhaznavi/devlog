@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
 import pytest
 import pymysql
@@ -38,6 +39,7 @@ def display(application):
 
 class ReportApplication:
     localizer = Localizer(Path(__file__).parents[1] / "devlog/locales")
+    config = SimpleNamespace(zone=ZoneInfo("America/Toronto"))
 
     def report(self, **filters):
         return dict(repositories=['<script>alert("unsafe")</script>'], repository="", start="2026-10-24",

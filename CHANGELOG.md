@@ -6,6 +6,22 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-10-25 @ 10:13
+
+This release is named for the element **Ruthenium (Ru)**. Ruthenium belongs 
+to the platinum group and can improve the hardness and wear resistance of 
+electrical contacts.
+
+### Added
+
+- Show a **Last updated** timestamp in the footer of report and task pages,
+  using the page render time in the configured local timezone.
+
+### Changed
+
+- Move the application subtitle into the header and tighten introduction and
+  filter spacing.
+
 ## [0.5.6] - 2026-10-25 @ 09:42
 
 This release is named for the element **Technetium (Tc)**. Technetium was the

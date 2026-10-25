@@ -2,7 +2,7 @@ from typing import Final
 
 
 class DDevLog:
-    VERSION: Final[str] = "0.5.6"
+    VERSION: Final[str] = "0.5.7"
     NAME: Final[str] = "devlog"
     SERVICE_USER: Final[str] = "devlog"
     BASE_DIR: Final[str] = "/opt/prod/devlog"
@@ -11,7 +11,7 @@ class DDevLog:
     CMDB_TYPE: Final[str] = "application"
     CMDB_SUBTYPE: Final[str] = "time-tracker"
     CMDB_SUPPLIER: Final[str] = "Nadim-Daniel"
-    CMDB_CODENAME: Final[str] = "Technelium"
+    CMDB_CODENAME: Final[str] = "Ruthenium"
     CMDB_COMPONENTS = (("Configuration", "/opt/prod/devlog/conf"),)
     CMDB_DATABASES = (("DevLog", "devlog"),)
     CMDB_NETWORK = (("http", "0.0.0.0", 19700), ("zmq", "0.0.0.0", 19701))
