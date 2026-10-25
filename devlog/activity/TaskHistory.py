@@ -14,7 +14,7 @@ class TaskHistory:
         self.zone = zone
 
     def _time(self, value):
-        return value.replace(tzinfo=timezone.utc).astimezone(self.zone).isoformat()
+        return value.replace(tzinfo=timezone.utc).astimezone(self.zone).strftime(DTracking.HISTORY_TIME_FORMAT)
 
     def _present(self, row):
         return {key: self._time(value) if isinstance(value, datetime) else value for key, value in row.items()}
@@ -34,9 +34,12 @@ class TaskHistory:
         for interval in task.pop("intervals"):
             if cursor < interval["started_at"]:
                 timeline.append(dict(interval_id=None, started_at=cursor, ended_at=interval["started_at"]))
-            timeline.append(interval)
             cursor = interval["ended_at"] or now
-            total += (cursor - interval["started_at"]).total_seconds()
+            elapsed = (cursor - interval["started_at"]).total_seconds()
+            hours, remainder = divmod(int(elapsed), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            timeline.append(dict(interval, elapsed_time=f"{hours:02}:{minutes:02}:{seconds:02}"))
+            total += elapsed
         end = task["completed_at"] or now
         if cursor < end and task["status"] != TaskStatus.RUNNING:
             timeline.append(dict(interval_id=None, started_at=cursor, ended_at=task["completed_at"]))
