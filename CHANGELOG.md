@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-25 @ 11:25
+
 This release is named for the element **Palladium (Pd)**. Palladium can 
 absorb remarkably large quantities of hydrogen relative to its own volume.
 
