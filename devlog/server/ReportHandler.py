@@ -20,7 +20,8 @@ DIRECTORY = Path(__file__).parent
 TEMPLATES = Environment(loader=FileSystemLoader(DIRECTORY / "templates"),
                         autoescape=select_autoescape(("html",)), undefined=StrictUndefined)
 STATIC = {"/static/style.css": ("style.css", "text/css; charset=utf-8"),
-          "/static/report.js": ("report.js", "text/javascript; charset=utf-8")}
+          "/static/report.js": ("report.js", "text/javascript; charset=utf-8"),
+          "/static/timing.js": ("timing.js", "text/javascript; charset=utf-8")}
 
 
 class ReportHandler(BaseHTTPRequestHandler):
@@ -45,11 +46,12 @@ class ReportHandler(BaseHTTPRequestHandler):
             explicit=query.get("lang"), accept_language=self.headers.get("Accept-Language", ""))
 
     @staticmethod
-    def task_route(path, *, pause=False):
+    def task_route(path, *, pause=False, timing=False):
         parts = path.split("/")
-        if (len(parts) == (4 if pause else 3) and parts[1] == "tasks"
+        action = "timing" if timing else "pause" if pause else None
+        if (len(parts) == (4 if action else 3) and parts[1] == "tasks"
                 and parts[2].isascii() and parts[2].isdecimal()
-                and (not pause or parts[3] == "pause")):
+                and (not action or parts[3] == action)):
             task_id = int(parts[2])
             if 0 < task_id < 2 ** 64:
                 return task_id
@@ -79,9 +81,12 @@ class ReportHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         app = self.server.application
         locale = app.localizer.default_language
+        timing = False
         try:
             parsed = urlsplit(self.path)
-            task_id = self.task_route(parsed.path, pause=True)
+            timing_id = self.task_route(parsed.path, timing=True)
+            timing = timing_id is not None
+            task_id = timing_id if timing else self.task_route(parsed.path, pause=True)
             if task_id is None:
                 self.send_error(501, "Unsupported method")
                 return
@@ -95,16 +100,28 @@ class ReportHandler(BaseHTTPRequestHandler):
                     or self.headers.get("Sec-Fetch-Site") == "cross-site"):
                 self.problem(403, DText.EDIT_ORIGIN, locale)
                 return
-            if (self.headers.get_content_type() != "application/x-www-form-urlencoded"
+            content_type = "application/json" if timing else "application/x-www-form-urlencoded"
+            if (self.headers.get_content_type() != content_type
                     or self.headers.get("Transfer-Encoding")
                     or len(self.headers.get_all("Content-Length", [])) != 1):
                 raise ValueError("Invalid form encoding")
             length = int(self.headers["Content-Length"])
-            if not 0 < length <= DNetwork.MAX_FORM_BYTES:
+            if not 0 < length <= (DNetwork.MAX_TIMING_BYTES if timing else DNetwork.MAX_FORM_BYTES):
                 raise ValueError("Invalid form length")
             body = self.rfile.read(length)
             if len(body) != length:
                 raise ValueError("Incomplete form")
+            if timing:
+                def unique_object(pairs):
+                    result = dict(pairs)
+                    if len(result) != len(pairs):
+                        raise ValueError("Repeated JSON field")
+                    return result
+
+                payload = json.loads(body.decode("utf-8"), object_pairs_hook=unique_object)
+                app.save_timing(task_id, payload)
+                self.respond(200, json.dumps({"saved": True}).encode("utf-8"), "application/json; charset=utf-8")
+                return
             payload = self.query(body.decode("utf-8"))
             try:
                 app.insert_pause(task_id, payload)
@@ -119,9 +136,11 @@ class ReportHandler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
         except TrackingError as error:
-            self.problem(409 if error.key == DText.PAUSE_CONFLICT else 400, error.key, locale)
-        except (ValueError, UnicodeError, TimeoutError):
-            self.problem(400, DText.BAD_EDIT, locale)
+            status = (404 if error.key == DText.NOT_FOUND else 409 if error.key in {
+                DText.PAUSE_CONFLICT, DText.TIMING_CONFLICT, DText.TIMING_OVERLAP} else 400)
+            self.problem(status, error.key, locale, code=timing)
+        except (ValueError, UnicodeError, TimeoutError, RecursionError):
+            self.problem(400, DText.BAD_TIMING if timing else DText.BAD_EDIT, locale)
         except ServiceUnavailable:
             self.problem(503, DText.UNAVAILABLE, locale)
         except Exception:
@@ -156,7 +175,7 @@ class ReportHandler(BaseHTTPRequestHandler):
                 if set(query) - {"repository", "start", "end", "day", "lang", "saved"}:
                     raise ValueError("Unknown task field")
                 self.render("history.html", locale, report=None, task=app.task_detail(task_id),
-                            link=link, saved=query.get("saved") == "1")
+                            link=link, saved=query.get("saved", ""))
             elif parsed.path in STATIC:
                 filename, content_type = STATIC[parsed.path]
                 self.respond(200, (DIRECTORY / "static" / filename).read_bytes(), content_type)
@@ -173,8 +192,11 @@ class ReportHandler(BaseHTTPRequestHandler):
             logging.exception("DevLog HTTP request failed")
             self.problem(500, DText.UNAVAILABLE, locale)
 
-    def problem(self, status, key, locale):
-        self.respond(status, json.dumps({"error": self.server.application.localizer.text(key, locale=locale)}).encode(), "application/json")
+    def problem(self, status, key, locale, *, code=False):
+        body = {"error": self.server.application.localizer.text(key, locale=locale)}
+        if code:
+            body["code"] = str(key)
+        self.respond(status, json.dumps(body).encode(), "application/json")
 
     def respond(self, status, body, content_type):
         self.send_response(status)

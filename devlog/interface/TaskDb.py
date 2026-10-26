@@ -1,6 +1,8 @@
 """DevLog schema and atomic task transitions, through the canonical DbMgr."""
 
 from datetime import datetime, timezone
+from hashlib import sha256
+import json
 
 from devlog.constants.DText import DText
 from devlog.constants.DTracking import DTracking, TaskStatus
@@ -183,29 +185,96 @@ class TaskDb:
             FROM tasks t JOIN repositories r ON r.repository_id = t.repository_id
             LEFT JOIN intervals i ON i.task_id = t.task_id
                 AND i.started_at < %s AND COALESCE(i.ended_at, %s) > %s
-            WHERE t.started_at < %s AND COALESCE(t.completed_at, CAST(%s AS DATETIME(6))) > %s {condition}
+            WHERE ((t.started_at < %s AND COALESCE(t.completed_at, CAST(%s AS DATETIME(6))) > %s)
+                OR EXISTS (SELECT 1 FROM intervals corrected WHERE corrected.task_id = t.task_id
+                    AND corrected.started_at < %s
+                    AND COALESCE(corrected.ended_at, CAST(%s AS DATETIME(6))) > %s)) {condition}
             GROUP BY t.task_id, r.identity, t.status, t.started_at, t.completed_at,
                 t.commit_sha, t.commit_message
             ORDER BY t.started_at DESC, t.task_id DESC
-        """, (lower, now, upper, upper, now, lower, upper, now, lower,
+        """, (lower, now, upper, upper, now, lower, upper, now, lower, upper, now, lower,
               *((repository,) if repository else ())))
         return [dict(row, hours=float(row["hours"])) for row in rows]
 
-    def task_detail(self, task_id):
+    def task_detail(self, task_id, *, context_at=None):
         with self.db.transaction(read_only=True):
-            rows = self.db.query("""
-                SELECT t.task_id, r.identity AS repository, t.status, t.started_at,
-                    t.completed_at, t.commit_sha, t.commit_message
-                FROM tasks t JOIN repositories r ON r.repository_id = t.repository_id
-                WHERE t.task_id = %s
-            """, (task_id,))
-            if not rows:
-                raise TrackingError("not_found", DText.NOT_FOUND)
-            intervals = self.db.query("""
-                SELECT interval_id, started_at, ended_at FROM intervals
-                WHERE task_id = %s ORDER BY started_at, interval_id
-            """, (task_id,))
+            task = self._task_detail(task_id)
+            if context_at is not None and task["status"] == TaskStatus.COMPLETED:
+                lower = min([task["started_at"], *(i["started_at"] for i in task["intervals"])])
+                previous = self.db.query("""
+                    SELECT started_at FROM intervals WHERE task_id <> %s AND ended_at <= %s
+                    ORDER BY ended_at DESC, started_at DESC, interval_id DESC LIMIT 1
+                """, (task_id, lower))
+                lower = previous[0]["started_at"] if previous else lower
+                task["context"] = self.db.query("""
+                    SELECT i.interval_id, i.task_id, r.identity AS repository, i.started_at, i.ended_at
+                    FROM intervals i JOIN tasks t ON t.task_id = i.task_id
+                    JOIN repositories r ON r.repository_id = t.repository_id
+                    WHERE i.task_id <> %s AND i.started_at < %s
+                        AND COALESCE(i.ended_at, CAST(%s AS DATETIME(6))) > %s
+                    ORDER BY i.started_at, i.interval_id
+                """, (task_id, context_at, context_at, lower))
+                task[DTracking.REVISION] = self.timing_revision(task)
+        return task
+
+    def _task_detail(self, task_id):
+        """Read within the caller's transaction, including when the writer lock is held."""
+        rows = self.db.query("""
+            SELECT t.task_id, r.identity AS repository, t.status, t.started_at,
+                t.completed_at, t.commit_sha, t.commit_message
+            FROM tasks t JOIN repositories r ON r.repository_id = t.repository_id
+            WHERE t.task_id = %s
+        """, (task_id,))
+        if not rows:
+            raise TrackingError("not_found", DText.NOT_FOUND)
+        intervals = self.db.query("""
+            SELECT interval_id, started_at, ended_at FROM intervals
+            WHERE task_id = %s ORDER BY started_at, interval_id
+        """, (task_id,))
         return dict(rows[0], intervals=intervals)
+
+    @staticmethod
+    def timing_revision(task):
+        values = [task["task_id"], task["status"], task["started_at"], task["completed_at"],
+                  task["commit_sha"], task["commit_message"], task["intervals"]]
+        return sha256(json.dumps(values, default=lambda value: value.isoformat(),
+                                 sort_keys=True).encode("utf-8")).hexdigest()
+
+    def save_timing(self, task_id, revision, intervals, loaded_at):
+        """Correct completed work intervals atomically; lifecycle and commit events stay intact."""
+        with self.db.transaction():
+            self._lock()
+            task = self._task_detail(task_id)
+            if (task["status"] != TaskStatus.COMPLETED
+                    or any(i["ended_at"] is None for i in task["intervals"])
+                    or revision != self.timing_revision(task)):
+                raise TrackingError("timing_conflict", DText.TIMING_CONFLICT)
+            if ([i[DTracking.INTERVAL_ID] for i in intervals]
+                    != [i[DTracking.INTERVAL_ID] for i in task["intervals"]]):
+                raise TrackingError("bad_timing", DText.BAD_TIMING)
+            if loaded_at > self._now(None):
+                raise TrackingError("bad_timing", DText.BAD_TIMING)
+            upper = min(loaded_at, task["completed_at"])
+            previous_end = datetime(DTracking.MIN_TIMING_YEAR, 1, 1)
+            for interval in intervals:
+                start, end = interval[DTracking.STARTED_AT], interval[DTracking.ENDED_AT]
+                if not previous_end <= start < end <= upper:
+                    raise TrackingError("bad_timing", DText.BAD_TIMING)
+                previous_end = end
+                overlaps = self.db.query("""
+                    SELECT interval_id FROM intervals
+                    WHERE task_id <> %s AND started_at < %s
+                        AND (ended_at IS NULL OR ended_at > %s) LIMIT 1
+                """, (task_id, end, start))
+                if overlaps:
+                    raise TrackingError("timing_overlap", DText.TIMING_OVERLAP)
+            for original, interval in zip(task["intervals"], intervals):
+                if interval != original:
+                    self.db.execute("""
+                        UPDATE intervals SET started_at = %s, ended_at = %s
+                        WHERE interval_id = %s AND task_id = %s
+                    """, (interval[DTracking.STARTED_AT], interval[DTracking.ENDED_AT],
+                          interval[DTracking.INTERVAL_ID], task_id))
 
     def insert_pause(self, task_id, interval_id, start, end):
         """Subtract a break from one closed interval without changing task/commit state."""

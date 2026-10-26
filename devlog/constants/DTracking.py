@@ -40,3 +40,12 @@ class DTracking:
     INTERVAL_ID: Final[str] = "interval_id"
     PAUSE_START: Final[str] = "pause_start"
     PAUSE_END: Final[str] = "pause_end"
+    REVISION: Final[str] = "revision"
+    INTERVALS: Final[str] = "intervals"
+    STARTED_AT: Final[str] = "started_at"
+    ENDED_AT: Final[str] = "ended_at"
+    LOADED_AT: Final[str] = "loaded_at"
+    RANGE_START: Final[str] = "range_start"
+    TIMING_CONTEXT_SECONDS: Final[int] = 3600
+    MAX_TIMING_INTERVALS: Final[int] = 1024
+    MIN_TIMING_YEAR: Final[int] = 1000

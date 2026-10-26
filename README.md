@@ -183,7 +183,7 @@ defaults are in `conf/devlog.json`. Edit the file and restart the service to
 change interfaces, ports, client host, timeouts, or report timezone (initially
 `America/Toronto`). Keep these unauthenticated listeners on your trusted network.
 
-### Correcting a forgotten pause
+### Correcting completed task timing
 
 Click a date in the report table to see its tasks, or click a colored chart
 segment to see that day's tasks for that repository. **Tasks** opens the whole
@@ -191,22 +191,37 @@ filtered period. Open a task to inspect its commit, active intervals and pauses.
 Task-list hours cover the selected period; task details show the whole task.
 **Back to report** shows all repositories for the selected period.
 
-Under the affected active interval, choose **Insert a pause**, enter **Pause
-began** and **Work resumed**, and save. For example, an overnight break might run
-from `2026-10-24 22:00` to `2026-10-25 08:00` (`yyyy-mm-dd hh:mm`). Leave **Work resumed** blank to
-exclude time through that interval's recorded end. Times without an offset use
-the configured report timezone; an explicit offset such as `-04:00` resolves
-ambiguous daylight-saving times.
+Completed tasks have a horizontal timing editor. Filled blocks show active
+work; gaps show pauses or time when `dl` was not running. Other recorded work,
+including the previous task according to time, is fixed context. The right
+edge marks the server time when the page loaded and stays fixed while editing.
+The recorded completion time is a second fixed marker and an upper limit for
+work; the editor does not access Git or change commit timestamps.
+
+Drag a vertical boundary to change when work started, paused, resumed or ended.
+For example, if work stopped at 17:00 but the timer ran until 21:00, drag the
+last block's end back to 17:00. Its work duration shrinks and the following idle
+gap grows. For a task with a pause, the two blocks have four editable boundaries;
+moving the inner boundaries adjusts that existing pause.
+
+**Focus task**, **Zoom in**, **Zoom out** and **Show all** make long timelines
+easier to adjust. Focus a boundary and use arrow keys for minute adjustments,
+or Shift plus an arrow for seconds. Boundary labels include the UTC offset to
+distinguish repeated daylight-saving times. The total hours and elapsed work
+duration preview each adjustment. **Save timing** records all adjustments
+together; **Cancel** restores the loaded timing. Dragging alone never writes to
+the database. The read-only recorded intervals remain available without JavaScript.
 
 Task timestamps display as `yyyy-mm-dd hh:mm:ss` in the configured report
 timezone. Each active interval and pause also shows elapsed time as `HH:MM:SS`, with
 hours continuing beyond 24 for longer intervals.
 
-Saving subtracts the break from active time and recalculates the daily/project
-totals. The task's original start, completion time and Git commit remain intact.
-Only closed active intervals can be corrected; run `dl pause` first if the
-affected interval is still running. A pause must fit within one active interval.
-Corrections commit atomically, and stale forms must be reloaded before editing.
+Saving recalculates daily/project totals and rejects crossed boundaries,
+overlaps with other tasks, and stale edits. The task's original lifecycle
+timestamps and Git commit remain intact; corrected work remains discoverable
+in date-filtered task lists. This editor adjusts existing work blocks on
+completed tasks. Unfinished tasks retain the closed-interval pause form; open
+intervals must be paused with `dl pause` before using that form.
 
 The service does not access Git checkouts. The CLI derives repository identity
 from its GitHub `origin`, supporting HTTPS and SSH remotes; checkout paths are
