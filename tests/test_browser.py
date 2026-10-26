@@ -33,27 +33,44 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         page = browser.new_page(viewport={"width": 1200, "height": 900}, ignore_https_errors=True)
         use_cached_plotly(page)
         page.on("pageerror", lambda error: errors.append(str(error)))
-        page.goto(service["url"] + "/?start=2026-10-23&end=2026-10-25")
+        page.goto(service["url"] + "/?start=2026-10-19&end=2026-10-25")
         page.wait_for_selector("#daily-chart .plot-container")
         assert page.evaluate("Plotly.version") == "4.1.1"
         assert page.locator(".total strong").inner_text() == "3.00"
-        assert page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.y)") == [[0, 2, 0], [0, 1, 0]]
+        assert page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.y)") == [[0, 0, 0, 0, 0, 2, 0], [0, 0, 0, 0, 0, 1, 0]]
         assert page.evaluate("document.getElementById('daily-chart').layout.barmode") == "stack"
+        assert page.locator("#daily-chart .annotation-text").all_text_contents() == ["0.00"] * 5 + ["3.00", "0.00"]
+        label = page.locator("#daily-chart .annotation-text").nth(5)
+        total_font = page.locator(".total strong").evaluate("""node => {
+            const style = getComputedStyle(node);
+            return {family: style.fontFamily, weight: style.fontWeight, size: parseFloat(style.fontSize), color: style.color};
+        }""")
+        label_font = label.evaluate("""node => {
+            const style = getComputedStyle(node);
+            return {family: style.fontFamily, weight: style.fontWeight, size: parseFloat(style.fontSize), color: style.fill};
+        }""")
+        assert label_font["family"] == total_font["family"]
+        assert label_font["weight"] == total_font["weight"]
+        assert label_font["color"] == total_font["color"]
+        assert 0 < label_font["size"] < total_font["size"]
+        bar = page.locator("#daily-chart .barlayer .point").nth(5).bounding_box()
+        label_box = label.bounding_box()
+        assert label_box["y"] + label_box["height"] < bar["y"]
         colors = page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.marker.color)")
         assert colors == ["#E63946", "#00BCD4"]
         borders = page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.marker.line)")
-        assert [border["width"] for border in borders] == [[0, 4, 0], [0, 4, 0]]
+        assert [border["width"] for border in borders] == [[0, 0, 0, 0, 0, 4, 0], [0, 0, 0, 0, 0, 4, 0]]
         for fill, border in zip(colors, borders):
             assert all(int(border["color"][channel:channel + 2], 16) <= int(fill[channel:channel + 2], 16)
                        for channel in (1, 3, 5))
             assert border["color"] != fill
         assert page.locator("#daily-chart .barlayer .point path").first.evaluate(
             "node => getComputedStyle(node).strokeWidth") == "0px"
-        assert page.locator("#daily-chart .barlayer .point path").nth(1).evaluate(
+        assert page.locator("#daily-chart .barlayer .point path").nth(5).evaluate(
             "node => getComputedStyle(node).strokeWidth") == "4px"
         separator = page.evaluate("document.getElementById('daily-chart').layout.shapes[0]")
         assert separator["y0"] == separator["y1"] == 2.25
-        assert separator["x0"] == .6 and separator["x1"] == 1.4
+        assert separator["x0"] == 4.6 and separator["x1"] == 5.4
         assert separator["line"] == {"color": borders[1]["color"], "width": 2}
         assert page.locator("#daily-chart .shapelayer path").count() == 1
         assert page.locator("#daily-chart .shapelayer path").evaluate(
@@ -63,12 +80,32 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         # Hiding a lower project must move the separator with the remaining bar.
         page.locator("#daily-chart .legendtoggle").nth(0).click()
         page.wait_for_function("document.getElementById('daily-chart').layout.shapes[0].y0 === .25")
+        page.wait_for_function("document.getElementById('daily-chart').layout.annotations[5].text === '1.00'")
         page.locator("#daily-chart .legendtoggle").nth(0).click()
         page.wait_for_function("document.getElementById('daily-chart').layout.shapes[0].y0 === 2.25")
+        page.wait_for_function("document.getElementById('daily-chart').layout.annotations[5].text === '3.00'")
         page.locator("#daily-chart .legendtoggle").nth(1).click()
         page.wait_for_function("document.getElementById('daily-chart').layout.shapes.length === 0")
+        page.wait_for_function("document.getElementById('daily-chart').layout.annotations[5].text === '2.00'")
         page.locator("#daily-chart .legendtoggle").nth(1).click()
         page.wait_for_function("document.getElementById('daily-chart').layout.shapes.length === 1")
+
+        # Every section collapses to its heading and supports keyboard toggling.
+        panels = page.locator("main > details.panel")
+        assert panels.count() == 4
+        contents = [".filters", "#current-task-status", "#daily-chart", ".table-wrap"]
+        for panel, content in zip(panels.all(), contents):
+            summary = panel.locator("summary")
+            summary.click()
+            assert panel.get_attribute("open") is None
+            assert summary.is_visible()
+            assert not panel.locator(content).is_visible()
+            if content == "#daily-chart":
+                assert not panel.locator(".total").is_visible()
+            summary.focus()
+            summary.press("Enter")
+            assert panel.get_attribute("open") is not None
+            assert panel.locator(content).is_visible()
 
         def assert_legend_below_date():
             title = page.locator("#daily-chart .xtitle").bounding_box()
@@ -81,10 +118,18 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         assert_legend_below_date()
         if screenshot:
             page.screenshot(path=str(Path(screenshot) / "devlog-desktop.png"), full_page=True)
+        daily_summary = page.locator(".report > summary")
+        daily_summary.click()
         page.set_viewport_size({"width": 390, "height": 844})
+        daily_summary.click()
         page.wait_for_timeout(300)
         assert_legend_below_date()
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+        chart_box = page.locator("#daily-chart").bounding_box()
+        plot_box = page.locator("#daily-chart .svg-container").bounding_box()
+        assert abs(chart_box["width"] - plot_box["width"]) < 1
+        label_boxes = [node.bounding_box() for node in page.locator("#daily-chart .annotation-text").all()]
+        assert all(left["x"] + left["width"] < right["x"] for left, right in zip(label_boxes, label_boxes[1:]))
         if screenshot:
             page.screenshot(path=str(Path(screenshot) / "devlog-mobile.png"), full_page=True)
         page.set_viewport_size({"width": 1200, "height": 900})
@@ -92,7 +137,8 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         page.get_by_role("button", name="Show report").click()
         page.wait_for_selector("#daily-chart .plot-container")
         assert page.locator(".total strong").inner_text() == "1.00"
-        assert page.evaluate("document.getElementById('daily-chart').data[0].y") == [0, 1, 0]
+        assert page.evaluate("document.getElementById('daily-chart').data[0].y") == [0, 0, 0, 0, 0, 1, 0]
+        assert page.locator("#daily-chart .annotation-text").all_text_contents() == ["0.00"] * 5 + ["1.00", "0.00"]
         assert page.evaluate("document.getElementById('daily-chart').data[0].marker.color") == colors[1]
         assert page.evaluate("document.getElementById('daily-chart').layout.shapes[0].y0") == .25
         line = page.locator("#daily-chart .shapelayer path").bounding_box()
