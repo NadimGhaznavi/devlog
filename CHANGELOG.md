@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-26 @ 18:25
+
 This release is named for the element **Xenon (Xe)**. Xenon is used in powerful 
 lamps and some spacecraft ion thrusters.
 
