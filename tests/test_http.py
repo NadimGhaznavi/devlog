@@ -219,13 +219,13 @@ def test_history_drilldown_and_pause_form_recalculate_report(service, tasks):
         assert "9.00" in html
     with urlopen(service["url"] + f"/tasks/{task_id}" + query) as response:
         html = response.read().decode()
-        assert 'name="pause_start"' in html and 'name="pause_end"' in html
+        assert 'id="timing-editor"' in html and '/static/timing.js' in html
+        assert 'name="pause_start"' not in html and 'name="pause_end"' not in html
         assert "America/Toronto" in html and "12.00" in html
         assert "<time>2026-10-24 21:00:00</time>" in html
         assert "<time>2026-10-25 09:00:00</time>" in html
         assert "Elapsed time: 12:00:00" in html
-        assert 'placeholder="2026-10-24 21:00"' in html
-        assert 'placeholder="2026-10-25 09:00"' in html
+        assert 'id="timing-data"' in html
     data = urlencode(dict(interval_id=interval, pause_start="2026-10-24 22:00",
                           pause_end="2026-10-25 08:00")).encode()
     request = Request(service["url"] + f"/tasks/{task_id}/pause" + query, data=data,

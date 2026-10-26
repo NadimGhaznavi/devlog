@@ -44,7 +44,11 @@ class Application:
 
     def task_detail(self, task_id):
         with self.tasks() as tasks:
-            return TaskHistory(tasks, self.config.zone).read(task_id)
+            return TaskHistory(tasks, self.config.zone).read(task_id, include_editor=True)
+
+    def save_timing(self, task_id, payload):
+        with self.tasks() as tasks:
+            TaskHistory(tasks, self.config.zone).save_timing(task_id, payload)
 
     def insert_pause(self, task_id, payload):
         with self.tasks() as tasks:

@@ -14,3 +14,4 @@ class DNetwork:
     MAX_MESSAGE_BYTES: Final[int] = 65536
     MAX_QUERY_FIELDS: Final[int] = 10
     MAX_FORM_BYTES: Final[int] = 8192
+    MAX_TIMING_BYTES: Final[int] = 262144

@@ -70,6 +70,28 @@ schema migration or change to report calculations. Replacement interval IDs
 reject repeated/stale edits. Open intervals and task/commit metadata remain
 unchanged; the task timeline also shows gaps at either end of a completed task.
 
+Completed task pages replace pause-entry forms with a DevLog-owned HTML/CSS and
+ordinary JavaScript timing control. `TaskHistory.read(include_editor=True)`
+supplies UTC timestamps with full persisted precision, string IDs, an interval
+revision digest, fixed neighbouring work and a server page-load timestamp.
+The browser draws proportional work blocks and gaps, handles pointer/touch and
+keyboard boundary adjustments, and previews elapsed work without database writes.
+Zoom changes only the visible time range. Other tasks and page-load time stay fixed.
+The stored task completion time is a fixed marker and an upper bound for work.
+This is the server's completion event, not a separately retrieved Git committer
+timestamp; the editor never invokes Git or modifies commit metadata.
+
+`POST /tasks/<id>/timing` accepts bounded, same-origin JSON. `TaskHistory` validates
+the payload and explicit timestamp offsets; `TaskDb.save_timing` holds the existing
+singleton write lock, verifies the loaded revision and completed state, validates
+interval order, the fixed completion bound and overlaps against all other tasks, then updates the existing
+intervals in one transaction. Commit and lifecycle events remain unchanged; the
+revision includes microseconds and all original interval IDs/timestamps. Task-list
+date selection includes corrected intervals outside the original lifecycle span.
+No schema change, frontend framework or new runtime dependency is introduced.
+The original pause endpoint remains available for unfinished-task forms and
+existing clients. Completed interval records remain readable without JavaScript.
+
 Pinned skill versions and source hashes are recorded in `.agents/bmforge/lock.json`.
 There are no BMForge or reference-application imports at runtime.
 
