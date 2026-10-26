@@ -3,26 +3,57 @@
 {% block page_title %}{{ t(text.TASKS) }}{% endblock %}
 {% block content %}
     <nav class="history-nav"><a href="{{ link('/') }}">← {{ t(text.BACK_REPORT) }}</a>{% if task %}<a href="{{ link('/tasks') }}">← {{ t(text.BACK_TASKS) }}</a>{% endif %}</nav>
-    {% if saved %}<p class="notice" role="status">{{ t(text.PAUSE_SAVED) }}</p>{% endif %}
+    {% if saved %}<p class="notice" role="status">{{ t(text.TIMING_SAVED if saved == 'timing' else text.PAUSE_SAVED) }}</p>{% endif %}
     {% if form_error is defined %}<p class="notice" role="alert">{{ t(form_error) }}</p>{% endif %}
     <section class="report panel">
     {% if task %}
       <div class="report-heading"><div><h1>{{ t(text.TASK, task_id=task.task_id) }}</h1><p>{{ task.repository }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(task.total_hours) }}</strong></div></div>
       <dl class="task-metadata">
         <dt>{{ t(text.STATUS) }}</dt><dd>{{ t(text['STATUS_' ~ task.status.upper()]) }}</dd>
-        <dt>{{ t(text.STARTED_AT) }}</dt><dd><time>{{ task.started_at }}</time></dd>
-        {% if task.completed_at %}<dt>{{ t(text.COMPLETED_AT) }}</dt><dd><time>{{ task.completed_at }}</time></dd>{% endif %}
+        <dt>{{ t(text.ORIGINAL_STARTED_AT if task.status == 'completed' else text.STARTED_AT) }}</dt><dd><time>{{ task.started_at }}</time></dd>
+        {% if task.completed_at %}<dt>{{ t(text.COMMIT_RECORDED_AT) }}</dt><dd><time>{{ task.completed_at }}</time></dd>{% endif %}
         {% if task.commit_sha %}<dt>{{ t(text.COMMIT) }}</dt><dd><code>{{ task.commit_sha }}</code><p class="commit-message">{{ task.commit_message }}</p></dd>{% endif %}
       </dl>
       <h3>{{ t(text.TIMELINE) }}</h3>
+      {% if task.editor is defined and task.editor %}
+      <section id="timing-editor" hidden aria-label="{{ t(text.TIMELINE) }}">
+        <p id="timing-help" class="note">{{ t(text.TIMING_HELP) }}</p>
+        <p class="note">{{ t(text.TIMEZONE, timezone=task.timezone) }} <span id="timing-loaded"></span></p>
+        <div class="timing-toolbar">
+          <button type="button" id="timing-focus" class="secondary">{{ t(text.TIMING_FOCUS) }}</button>
+          <button type="button" id="timing-zoom-in" class="secondary">{{ t(text.TIMING_ZOOM_IN) }}</button>
+          <button type="button" id="timing-zoom-out" class="secondary">{{ t(text.TIMING_ZOOM_OUT) }}</button>
+          <button type="button" id="timing-show-all" class="secondary">{{ t(text.TIMING_SHOW_ALL) }}</button>
+        </div>
+        <div id="timing-axis" class="timing-axis" aria-hidden="true"></div>
+        <div id="timing-track" class="timing-track" aria-describedby="timing-help">
+          <div id="timing-spans"></div>
+          <div id="timing-handles"></div>
+          <div id="timing-completed" class="timing-completed"><span>{{ t(text.COMMIT) }}</span></div>
+          <div id="timing-now" class="timing-now"><span>{{ t(text.NOW) }}</span></div>
+        </div>
+        <output id="timing-selection" class="timing-selection" aria-live="polite"></output>
+        <p id="timing-total" class="timing-total"></p>
+        <div class="timing-actions">
+          <button type="button" id="timing-save" disabled>{{ t(text.TIMING_SAVE) }}</button>
+          <button type="button" id="timing-cancel" class="secondary" disabled>{{ t(text.TIMING_CANCEL) }}</button>
+          <span id="timing-status" role="status" aria-live="polite">{{ t(text.TIMING_CLEAN) }}</span>
+        </div>
+        <p id="timing-error" class="notice" role="alert" hidden></p>
+        <a id="timing-reload" href="{{ link('/tasks/' ~ task.task_id) }}" hidden>{{ t(text.TIMING_RELOAD) }}</a>
+      </section>
+      <p id="timing-no-script" class="note">{{ t(text.TIMING_NO_SCRIPT) }}</p>
+      <details id="timing-records" open><summary>{{ t(text.TIMING_RECORDS) }}</summary>
+      {% else %}
       <p class="muted">{{ t(text.TIME_FORMAT, timezone=task.timezone) }}</p>
+      {% endif %}
       <ol class="timeline">
       {% for interval in task.timeline %}
         <li class="interval {% if not interval.interval_id %}pause{% endif %}">
           <strong>{{ t(text.ACTIVE_TIME if interval.interval_id else text.PAUSE_TIME) }}</strong>
           <p><time>{{ interval.started_at }}</time> → <time>{{ interval.ended_at or t(text.NOW) }}</time></p>
           <p class="elapsed">{{ t(text.ELAPSED_TIME, elapsed=interval.elapsed_time) }}</p>
-          {% if interval.interval_id and interval.ended_at %}
+          {% if interval.interval_id and interval.ended_at and task.status != 'completed' %}
           {% set editing = form_values is defined and form_values.get('interval_id') == interval.interval_id | string %}
           <details {% if editing %}open{% endif %}><summary>{{ t(text.INSERT_PAUSE) }}</summary>
             <form method="post" action="{{ link('/tasks/' ~ task.task_id ~ '/pause') }}" class="pause-form">
@@ -33,10 +64,11 @@
               <button type="submit">{{ t(text.SAVE_PAUSE) }}</button>
             </form>
           </details>
-          {% elif interval.interval_id %}<p class="muted">{{ t(text.OPEN_INTERVAL) }}</p>{% endif %}
+          {% elif interval.interval_id and not interval.ended_at %}<p class="muted">{{ t(text.OPEN_INTERVAL) }}</p>{% endif %}
         </li>
       {% endfor %}
       </ol>
+      {% if task.editor is defined and task.editor %}</details>{% endif %}
     {% else %}
       <div class="report-heading"><div><h1>{{ t(text.TASKS) }}</h1><p>{{ t(text.TASK_RANGE, start=report.start, end=report.end) }}</p><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>
       {% if not report.tasks %}<p class="empty">{{ t(text.NO_TASKS) }}</p>{% endif %}
@@ -47,4 +79,20 @@
       </ol>
     {% endif %}
     </section>
+{% endblock %}
+{% block scripts %}
+{% if task and task.editor is defined and task.editor %}
+{% set labels = {
+  'idle': t(text.TIMING_IDLE), 'pause': t(text.PAUSE_TIME), 'task': t(text.TASK, task_id='{task_id}'),
+  'part': t(text.TIMING_PART, part='{part}'), 'start': t(text.STARTED_AT),
+  'paused': t(text.PAUSE_START), 'resumed': t(text.TIMING_RESUMED), 'end': t(text.TIMING_WORK_END),
+  'boundary': t(text.TIMING_BOUNDARY, part='{part}', boundary='{boundary}'),
+  'elapsed': t(text.ELAPSED_TIME, elapsed='{elapsed}'),
+  'loaded': t(text.TIMING_LOADED, timestamp='{timestamp}'), 'clean': t(text.TIMING_CLEAN),
+  'commitRecorded': t(text.COMMIT_RECORDED_AT),
+  'dirty': t(text.TIMING_DIRTY), 'saving': t(text.TIMING_SAVING), 'unconfirmed': t(text.TIMING_UNCONFIRMED)
+} %}
+<script id="timing-data" type="application/json">{{ {'task': task.editor, 'labels': labels, 'locale': locale}|tojson }}</script>
+<script src="/static/timing.js" defer></script>
+{% endif %}
 {% endblock %}

@@ -6,6 +6,27 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-26 @ 19:14
+
+This release is named for the element **Caesium (Cs)** The precise frequency 
+of a transition in caesium-133 defines the SI second.
+
+### Summary
+
+Correct completed task timing by dragging work boundaries on a timeline, with
+live elapsed-time previews and an explicit Save or Cancel.
+
+### Changed
+
+- Replace completed tasks' pause-entry forms with proportional work blocks,
+  pause and idle gaps, draggable start/stop boundaries, fixed neighbouring work,
+  a fixed vertical Commit line and a page-load-time marker. Keep all work before
+  the recorded commit/completion time. Add zoom, keyboard adjustments and
+  read-only recorded intervals when JavaScript is unavailable.
+- Save boundary corrections atomically, reject stale edits and overlapping
+  work, preserve task/commit events and timestamp precision, and include corrected
+  work in date-filtered task lists even outside its original lifecycle dates.
+
 ## [0.7.1] - 2026-10-26 @ 18:25
 
 This release is named for the element **Xenon (Xe)**. Xenon is used in powerful 

@@ -12,6 +12,7 @@
   --action-hover: #ffc473;
   --on-accent: var(--background);
   --notice: var(--surface);
+  --timing-work: #07576b;
   font-family: system-ui, sans-serif;
   color: var(--text);
   background: var(--background);
@@ -79,6 +80,38 @@ summary { cursor: pointer; color: var(--accent); padding: 8px 0; }
 .pause-form .field { min-width: 0; }
 .pause-form input { width: 100%; min-width: 0; }
 .pause-form button { justify-self: start; }
+.timing-toolbar, .timing-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin: 1rem 0; }
+.secondary { background: var(--surface); color: var(--text); border-color: var(--muted); }
+.secondary:hover { background: var(--background); border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+.timing-axis { position: relative; height: 3.5rem; margin: 1.75rem 14px 0; font-size: .75rem; color: var(--muted); }
+.timing-tick { position: absolute; display: grid; gap: .2rem; white-space: nowrap; transform: translateX(-50%); }
+.timing-tick:first-child { transform: none; }
+.timing-tick:last-child { transform: translateX(-100%); text-align: right; }
+.timing-track { position: relative; height: 108px; border-block: 1px solid var(--muted); margin-inline: 14px; }
+.timing-span { position: absolute; inset-block: 0; display: flex; flex-direction: column; justify-content: center; gap: .5rem; padding: 12px; overflow: hidden; white-space: nowrap; font-size: .85rem; }
+.timing-span strong, .timing-span span { overflow: hidden; text-overflow: ellipsis; }
+.timing-span.active { background: var(--timing-work); border-block: 3px solid var(--accent); }
+.timing-span.fixed { background: var(--surface); border-inline: 2px solid var(--muted); color: var(--muted); }
+.timing-span.idle, .timing-span.pause { color: var(--muted); }
+.timing-span.pause { background: repeating-linear-gradient(135deg, transparent 0 10px, var(--surface) 10px 12px); }
+.timing-handle { position: absolute; top: -7px; width: 28px; height: 120px; min-height: 0; margin-left: -14px; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: ew-resize; touch-action: none; z-index: 2; }
+.timing-handle::before { content: ""; position: absolute; inset-block: 5px; left: 12px; width: 4px; background: var(--accent); border-radius: 2px; }
+.timing-handle::after { content: ""; position: absolute; left: 8px; width: 12px; height: 12px; background: var(--accent); border: 2px solid var(--background); border-radius: 2px; }
+.timing-handle[data-edge="start"]::after { top: 0; }
+.timing-handle[data-edge="end"]::after { bottom: 0; }
+.timing-handle:hover, .timing-handle:focus-visible, .timing-handle.selected { background: transparent; z-index: 3; }
+.timing-handle:hover::before, .timing-handle.selected::before, .timing-handle.selected::after { background: var(--action); }
+.timing-handle[hidden], .timing-now[hidden], .timing-completed[hidden] { display: none; }
+.timing-completed { position: absolute; inset-block: -14px; border-left: 2px solid var(--action); pointer-events: none; z-index: 1; }
+.timing-completed span { position: absolute; right: .3rem; bottom: -1.5rem; white-space: nowrap; font-size: .75rem; color: var(--action); }
+.timing-now { position: absolute; right: 0; inset-block: -7px; width: 2px; background: var(--muted); pointer-events: none; }
+.timing-now span { position: absolute; right: 0; bottom: -1.5rem; white-space: nowrap; font-size: .75rem; color: var(--muted); }
+.timing-selection { display: block; min-height: 3rem; margin-top: 2.75rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.timing-total { color: var(--action); font-size: 1.2rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+#timing-status { color: var(--muted); font-size: .9rem; }
+#timing-error { overflow-wrap: anywhere; }
+#timing-records { margin-top: 1.5rem; }
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: .4rem; margin-top: 1rem; }
 table { border-collapse: collapse; width: 100%; font-size: .9rem; }
 th, td { text-align: left; padding: .8rem; border-bottom: 1px solid var(--border); }
