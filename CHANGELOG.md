@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-26 @ 19:14
+
 This release is named for the element **Caesium (Cs)** The precise frequency 
 of a transition in caesium-133 defines the SI second.
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devlog"
-version = "0.7.1"
+version = "0.8.0"
 description = "Personal Git repository task and time tracker"
 requires-python = ">=3.11"
 dependencies = ["pyzmq==26.4.0"]
