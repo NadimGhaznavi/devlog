@@ -60,18 +60,51 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   });
+  const chartMargin = {t: 40, r: 20, b: 100, l: 55};
+  const dayLabels = visibleTraces => {
+    const totalStyle = getComputedStyle(document.querySelector(".total strong"));
+    const dayWidth = (document.getElementById("daily-chart").clientWidth - chartMargin.l - chartMargin.r) / data.days.length;
+    // Reserve enough width for a daily total such as 24.00 on narrow charts.
+    const fontSize = Math.min(parseFloat(totalStyle.fontSize) * 2 / 3, Math.max(12, dayWidth / 3.5));
+    return data.days.map((day, dayIndex) => {
+      const hours = visibleTraces.reduce((sum, trace) =>
+        sum + (trace.visible === "legendonly" || trace.visible === false ? 0 : trace.y[dayIndex]), 0);
+      return {
+        x: day.date, y: hours, xref: "x", yref: "y",
+        text: hours.toFixed(2), showarrow: false, yanchor: "bottom", yshift: 8,
+        font: {
+          family: totalStyle.fontFamily, weight: Number(totalStyle.fontWeight),
+          size: fontSize, color: totalStyle.color
+        }
+      };
+    });
+  };
   Plotly.newPlot("daily-chart", traces, {
     barmode: "stack", showlegend: true,
     shapes: taskSeparators(traces),
-    legend: {orientation: "h", x: 0.5, xanchor: "center", y: -0.3, yanchor: "top", traceorder: "normal"},
+    annotations: dayLabels(traces),
+    legend: {orientation: "h", x: 0.5, xanchor: "center", y: -0.4, yanchor: "top", traceorder: "normal"},
     paper_bgcolor: color("--background"), plot_bgcolor: color("--background"),
     font: {family: "system-ui, sans-serif", color: color("--text")},
     hoverlabel: {bgcolor: color("--surface"), bordercolor: color("--accent"), font: {color: color("--text")}},
-    margin: {t: 20, r: 20, b: 100, l: 55},
+    margin: chartMargin,
     xaxis: {type: "category", categoryorder: "array", categoryarray: data.days.map(day => day.date), title: {text: data.dateLabel}, fixedrange: true},
     yaxis: {title: {text: data.hoursLabel}, rangemode: "tozero", gridcolor: color("--grid"), zerolinecolor: color("--border"), fixedrange: true}
   }, {responsive: true, displayModeBar: false}).then(chart => {
-    chart.on("plotly_restyle", () => Plotly.relayout(chart, {shapes: taskSeparators(chart.data)}));
+    chart.on("plotly_restyle", () => Plotly.relayout(chart, {
+      shapes: taskSeparators(chart.data), annotations: dayLabels(chart.data)
+    }));
+    const panel = chart.closest("details");
+    const resizeLabels = () => {
+      if (panel.open) Plotly.relayout(chart, {annotations: dayLabels(chart.data)});
+    };
+    window.addEventListener("resize", resizeLabels);
+    panel.addEventListener("toggle", () => {
+      if (panel.open) {
+        Plotly.Plots.resize(chart);
+        resizeLabels();
+      }
+    });
     chart.on("plotly_click", event => {
       const point = event.points[0];
       const target = new URL(data.taskUrl, window.location.origin);

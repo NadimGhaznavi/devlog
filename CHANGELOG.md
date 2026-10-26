@@ -6,6 +6,21 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Xenon (Xe)**. Xenon is used in powerful 
+lamps and some spacecraft ion thrusters.
+
+### Summary
+
+Make report sections collapsible and show each day's total above its chart bar.
+
+### Changed
+
+- Let Reporting, Current Task, Daily hours and Tasks collapse to their headings,
+  with mouse or keyboard controls. Keep sections expanded on initial load.
+- Label each daily bar with its hours, using a smaller version of the Total
+  hours font and color. Fit labels to narrow screens and update them when
+  projects are toggled in the legend.
+
 ## [0.7.0] - 2026-10-25 @ 19:16
 
 This release is named for the element **Indium (In)**. Indium tin oxide forms 
