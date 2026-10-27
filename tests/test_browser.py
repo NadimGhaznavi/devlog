@@ -359,8 +359,9 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         back_to_report = page.get_by_role("link", name="Back to report").get_attribute("href")
         assert parse_qs(urlsplit(back_to_report).query) == {
             "start": ["2026-10-24"], "end": ["2026-10-25"], "lang": ["en"]}
-        assert page.get_by_role("heading", level=1).inner_text() == "overnight Tasks - 25 Oct 2026"
-        assert page.locator(".report-heading p").inner_text() == "Total time: 9 hours"
+        assert page.get_by_role("heading", level=1).inner_text() == "Repository (overnight) Tasks - 25 Oct 2026"
+        assert page.locator(".task-total span").inner_text() == "Total time"
+        assert page.locator(".task-total strong").inner_text() == "9 hours"
         assert page.locator(".tasks-table th").all_text_contents() == ["Task #", "Start Time", "Description", "Duration"]
         assert page.locator(".tasks-table tbody tr").first.locator("td").all_text_contents() == [
             str(task_id), "21:00", "Overnight correction", "09:00"]

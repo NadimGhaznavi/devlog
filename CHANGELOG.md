@@ -6,6 +6,26 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-27 @ 18:17
+
+This release is named for the element **Neodymium (Nd)**. Neodymium is a key 
+ingredient in extremely powerful permanent magnets found in motors and headphones.
+
+### Summary
+
+Bring the Tasks screen in line with the main report's visual style, with an
+explicit repository heading, a prominent total-time summary and alternating
+row backgrounds for easier reading.
+
+### Changed
+
+- Alternate task table row backgrounds using the existing dark palette to make
+  descriptions and times easier to follow across each row.
+- Title project task lists as `Repository (name) Tasks` while retaining the
+  selected date. Display Total time as a small label above a large orange
+  duration, matching the main report; carry its cyan and orange accents into
+  table headings and durations, and highlight hovered or focused task rows.
+
 ## [0.9.0] - 2026-10-27 @ 18:03
 
 This release is named for the element **Praseodymium (Pr)**. Praseodymium compounds 
