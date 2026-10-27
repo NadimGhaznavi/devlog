@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-27 @ 18:03
+
 This release is named for the element **Praseodymium (Pr)**. Praseodymium compounds 
 can color glass yellow-green and are used in some strong permanent magnets.
 
