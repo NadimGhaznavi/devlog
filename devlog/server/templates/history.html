@@ -88,7 +88,10 @@
       </ol>
       {% if task.editor is defined and task.editor %}</details>{% endif %}
     {% else %}
-      <div class="report-heading"><div><h1 id="tasks-heading">{{ history_title }}</h1><p>{{ t(text.TOTAL_TIME, duration=total_duration(report.total_hours)) }}</p></div></div>
+      <div class="report-heading">
+        <div><h1 id="tasks-heading">{{ history_title }}</h1></div>
+        <div class="total task-total"><span>{{ t(text.TOTAL_TIME) }}</span><strong>{{ total_duration(report.total_hours) }}</strong></div>
+      </div>
       {% if not report.tasks %}<p class="empty">{{ t(text.NO_TASKS) }}</p>{% endif %}
       <div class="table-wrap" tabindex="0" role="region" aria-labelledby="tasks-heading">
       <table class="tasks-table">

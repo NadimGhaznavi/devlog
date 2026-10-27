@@ -89,9 +89,9 @@ def test_tasks_table_title_total_and_time_formats(seconds, total, duration):
     with display(app) as url:
         with urlopen(url + "/tasks" + query) as response:
             html = response.read().decode()
-    assert '<h1 id="tasks-heading">MyCount Tasks - 27 Oct 2026</h1>' in html
-    assert '<title>DevLog · MyCount Tasks - 27 Oct 2026</title>' in html
-    assert f'<p>Total time: {total}</p>' in html
+    assert '<h1 id="tasks-heading">Repository (MyCount) Tasks - 27 Oct 2026</h1>' in html
+    assert '<title>DevLog · Repository (MyCount) Tasks - 27 Oct 2026</title>' in html
+    assert f'<div class="total task-total"><span>Total time</span><strong>{total}</strong></div>' in html
     headings = [f'<th scope="col">{label}</th>' for label in ("Task #", "Start Time", "Description", "Duration")]
     assert all(heading in html for heading in headings)
     assert [html.index(heading) for heading in headings] == sorted(html.index(heading) for heading in headings)
@@ -107,7 +107,7 @@ def test_tasks_table_title_total_and_time_formats(seconds, total, duration):
     ({"day": "2026-10-27"}, "Tasks - 27 Oct 2026"),
     ({"start": "2026-10-26", "end": "2026-10-27"}, "Tasks - 26 Oct 2026 to 27 Oct 2026"),
     ({"repository": "github.com/example/MyCount", "start": "2026-10-26", "end": "2026-10-27"},
-     "MyCount Tasks - 26 Oct 2026 to 27 Oct 2026"),
+     "Repository (MyCount) Tasks - 26 Oct 2026 to 27 Oct 2026"),
 ])
 def test_tasks_title_keeps_day_and_range_navigation_usable(filters, title):
     app = TaskListApplication()
@@ -283,7 +283,7 @@ def test_history_drilldown_and_pause_form_recalculate_report(service, tasks):
         html = response.read().decode()
         assert f"/tasks/{task_id}?" in html
         assert "&lt;script&gt;" in html
-        assert "Total time: 9 hours" in html
+        assert "<span>Total time</span><strong>9 hours</strong>" in html
         assert "<td>09:00</td>" in html
         assert "<time>21:00</time>" in html
     with urlopen(service["url"] + f"/tasks/{task_id}" + query) as response:
