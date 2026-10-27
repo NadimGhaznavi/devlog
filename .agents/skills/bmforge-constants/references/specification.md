@@ -9,8 +9,6 @@ spec_status: "draft"
 translation_key: bmforge-component-constants
 ---
 
-# Constants
-
 **Component ID:** `{{ page.component_id }}` · **Specification:** `{{ page.spec_version }}` ({{ page.spec_status }})
 
 ## Intent

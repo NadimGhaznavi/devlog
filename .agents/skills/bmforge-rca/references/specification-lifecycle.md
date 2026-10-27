@@ -6,8 +6,6 @@ language_name: English
 translation_key: bmforge-specification-lifecycle
 ---
 
-# Specification Lifecycle and Traceability
-
 BMForge defines the **current preferred contracts** for new implementations. Each application owns its implementation and may upgrade deliberately, without any runtime link to BMForge.
 
 ## Identify the implemented contract
