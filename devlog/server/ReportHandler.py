@@ -19,6 +19,11 @@ BMFORGE_COMPONENT = {"id": "bmforge.visualization", "spec_version": "0.1.0"}
 DIRECTORY = Path(__file__).parent
 TEMPLATES = Environment(loader=FileSystemLoader(DIRECTORY / "templates"),
                         autoescape=select_autoescape(("html",)), undefined=StrictUndefined)
+TEMPLATES.filters["history_date"] = lambda value: datetime.fromisoformat(value).strftime(DTracking.TASK_DATE_FORMAT)
+# Recover database timestamp precision before dropping fractional seconds; float
+# hours can otherwise turn an exact minute into 59.99999999999999 seconds.
+TEMPLATES.filters["elapsed_seconds"] = lambda hours: int(round(hours * 3600, 6))
+TEMPLATES.globals["task_seconds_limit"] = DTracking.TASK_TOTAL_SECONDS_LIMIT
 STATIC = {"/static/style.css": ("style.css", "text/css; charset=utf-8"),
           "/static/report.js": ("report.js", "text/javascript; charset=utf-8"),
           "/static/timing.js": ("timing.js", "text/javascript; charset=utf-8")}

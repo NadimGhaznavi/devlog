@@ -359,6 +359,26 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         back_to_report = page.get_by_role("link", name="Back to report").get_attribute("href")
         assert parse_qs(urlsplit(back_to_report).query) == {
             "start": ["2026-10-24"], "end": ["2026-10-25"], "lang": ["en"]}
+        assert page.get_by_role("heading", level=1).inner_text() == "overnight Tasks - 25 Oct 2026"
+        assert page.locator(".report-heading p").inner_text() == "Total time: 9 hours"
+        assert page.locator(".tasks-table th").all_text_contents() == ["Task #", "Start Time", "Description", "Duration"]
+        assert page.locator(".tasks-table tbody tr").first.locator("td").all_text_contents() == [
+            str(task_id), "21:00", "Overnight correction", "09:00"]
+        screenshot = os.environ.get("DEVLOG_SCREENSHOT_DIR")
+        if screenshot:
+            Path(screenshot).mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(Path(screenshot) / "tasks-desktop.png"), full_page=True)
+        page.set_viewport_size({"width": 390, "height": 844})
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        table_wrap = page.locator(".table-wrap")
+        assert table_wrap.evaluate("element => element.scrollWidth > element.clientWidth")
+        table_wrap.focus()
+        table_wrap.press("ArrowRight")
+        page.wait_for_function("document.querySelector('.table-wrap').scrollLeft > 0")
+        page.locator(".tasks-table th").last.scroll_into_view_if_needed()
+        if screenshot:
+            page.screenshot(path=str(Path(screenshot) / "tasks-mobile.png"), full_page=True)
+        page.set_viewport_size({"width": 1200, "height": 900})
         page.locator(".task-link").click()
         page.wait_for_url(f"**/tasks/{task_id}?**")
         assert page.locator(".total strong").inner_text() == "12.00"

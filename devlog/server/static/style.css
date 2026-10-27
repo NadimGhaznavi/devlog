@@ -68,11 +68,13 @@ a:hover { color: var(--accent-hover); }
 .task-metadata dt { color: var(--muted); }
 .task-metadata dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .commit-message { white-space: pre-wrap; margin-bottom: 0; }
-.task-list, .timeline { list-style: none; padding: 0; }
-.task-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 8px; border-bottom: 1px solid var(--grid); text-decoration: none; overflow-wrap: anywhere; }
-.task-link > span:first-child { min-width: 0; display: grid; gap: 8px; }
-.task-link > span:last-child { flex-shrink: 0; font-variant-numeric: tabular-nums; }
-.task-link time { font-size: 13px; color: var(--muted); }
+.timeline { list-style: none; padding: 0; }
+.task-link { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; font-weight: 600; }
+.tasks-table { min-width: 34rem; }
+.tasks-table th { white-space: nowrap; }
+.tasks-table td { vertical-align: middle; }
+.tasks-table td:not(.task-description) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tasks-table .task-description { width: 100%; min-width: 16rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .interval { border-left: 3px solid var(--accent); padding: 16px; margin: 16px 0; background: var(--surface); overflow-wrap: anywhere; }
 .interval.pause { border-color: var(--muted); color: var(--muted); }
 summary { cursor: pointer; color: var(--accent); padding: 8px 0; }
@@ -128,5 +130,4 @@ th:last-child, td:last-child { text-align: right; font-variant-numeric: tabular-
   .total strong { font-size: 30px; }
   .task-metadata { grid-template-columns: 1fr; gap: 8px; }
   .task-metadata dd { margin-bottom: 8px; }
-  .task-link { align-items: start; flex-direction: column; }
 }
