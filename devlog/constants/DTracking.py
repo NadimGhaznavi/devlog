@@ -32,6 +32,8 @@ class DTracking:
     COMPLETE: Final[str] = "complete"
     TIMEZONE: Final[str] = "America/Toronto"
     HISTORY_TIME_FORMAT: Final[str] = "%Y-%m-%d %H:%M:%S"
+    TASK_DATE_FORMAT: Final[str] = "%d %b %Y"
+    TASK_TOTAL_SECONDS_LIMIT: Final[int] = 5 * 60
     REPORT_DAYS: Final[int] = 7
     MAX_REPORT_DAYS: Final[int] = 366
     TASK_HOURS: Final[str] = "task_hours"

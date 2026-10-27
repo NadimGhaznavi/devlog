@@ -9,8 +9,6 @@ spec_status: "draft"
 translation_key: bmforge-component-installation
 ---
 
-# Installation Lifecycle
-
 **Component ID:** `{{ page.component_id }}` · **Specification:** `{{ page.spec_version }}` ({{ page.spec_status }})
 
 ## Purpose and scope

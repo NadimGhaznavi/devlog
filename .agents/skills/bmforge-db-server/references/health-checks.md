@@ -6,8 +6,6 @@ language_name: English
 translation_key: bmforge-health-checks
 ---
 
-# Application Health Checks
-
 **One simple application-owned health interface for monitoring.** CMDB asks the application whether its required components can do their jobs; CMDB does **not** connect directly to MariaDB. A health check reports state. It must not restart processes, repair connections, retry operations, or invent monitoring infrastructure.
 
 ## What CMDB probes
