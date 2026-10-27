@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-27 @ 18:17
+
 This release is named for the element **Neodymium (Nd)**. Neodymium is a key 
 ingredient in extremely powerful permanent magnets found in motors and headphones.
 
