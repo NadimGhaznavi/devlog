@@ -52,6 +52,73 @@ class ReportApplication:
         return dict(status="ok", components={"http": "ok", "zmq": "ok", "db-server": "ok"})
 
 
+class TaskListApplication(ReportApplication):
+    total_seconds = 2 * 3600 + 32 * 60
+    commit_message = '<script>alert("unsafe")</script>\nKeep the full commit message'
+
+    def task_list(self, **filters):
+        day = filters.get("day")
+        return dict(repository=filters.get("repository", ""),
+                    start=day or filters.get("start", "2026-10-27"),
+                    end=day or filters.get("end", "2026-10-27"),
+                    timezone="America/Toronto", total_hours=self.total_seconds / 3600,
+                    tasks=[dict(task_id=123, started_at="2026-10-27 09:15:42",
+                                commit_message=self.commit_message, status="running",
+                                hours=self.total_seconds / 3600)])
+
+
+@pytest.mark.parametrize("seconds, total, duration", [
+    (0, "0 seconds", "00:00"),
+    (1, "1 second", "00:00"),
+    (59.999999, "59 seconds", "00:00"),
+    (60, "1 minute", "00:01"),
+    (152, "2 minutes 32 seconds", "00:02"),
+    (299.999999, "4 minutes 59 seconds", "00:04"),
+    (300, "5 minutes", "00:05"),
+    (301, "5 minutes", "00:05"),
+    (3599, "59 minutes", "00:59"),
+    (3600, "1 hour", "01:00"),
+    (7260, "2 hours 1 minute", "02:01"),
+    (9120, "2 hours 32 minutes", "02:32"),
+    (129600, "36 hours", "36:00"),
+])
+def test_tasks_table_title_total_and_time_formats(seconds, total, duration):
+    app = TaskListApplication()
+    app.total_seconds = seconds
+    query = "?" + urlencode(dict(repository="github.com/example/MyCount", day="2026-10-27", lang="en"))
+    with display(app) as url:
+        with urlopen(url + "/tasks" + query) as response:
+            html = response.read().decode()
+    assert '<h1 id="tasks-heading">MyCount Tasks - 27 Oct 2026</h1>' in html
+    assert '<title>DevLog · MyCount Tasks - 27 Oct 2026</title>' in html
+    assert f'<p>Total time: {total}</p>' in html
+    headings = [f'<th scope="col">{label}</th>' for label in ("Task #", "Start Time", "Description", "Duration")]
+    assert all(heading in html for heading in headings)
+    assert [html.index(heading) for heading in headings] == sorted(html.index(heading) for heading in headings)
+    assert '<time>09:15</time>' in html
+    assert f'<td>{duration}</td>' in html
+    assert '/tasks/123?repository=github.com%2Fexample%2FMyCount&amp;day=2026-10-27&amp;lang=en' in html
+    assert 'aria-label="Task #123">123</a>' in html
+    assert '&lt;script&gt;alert(&#34;unsafe&#34;)&lt;/script&gt;\nKeep the full commit message' in html
+    assert '<script>alert("unsafe")</script>' not in html
+
+
+@pytest.mark.parametrize("filters, title", [
+    ({"day": "2026-10-27"}, "Tasks - 27 Oct 2026"),
+    ({"start": "2026-10-26", "end": "2026-10-27"}, "Tasks - 26 Oct 2026 to 27 Oct 2026"),
+    ({"repository": "github.com/example/MyCount", "start": "2026-10-26", "end": "2026-10-27"},
+     "MyCount Tasks - 26 Oct 2026 to 27 Oct 2026"),
+])
+def test_tasks_title_keeps_day_and_range_navigation_usable(filters, title):
+    app = TaskListApplication()
+    app.commit_message = None
+    with display(app) as url:
+        with urlopen(url + "/tasks?" + urlencode(filters)) as response:
+            html = response.read().decode()
+    assert f'<h1 id="tasks-heading">{title}</h1>' in html
+    assert '<td class="task-description">Running</td>' in html
+
+
 def test_report_html_json_head_and_asset_boundaries():
     with display(ReportApplication()) as url:
         with urlopen(url) as response:
@@ -216,7 +283,9 @@ def test_history_drilldown_and_pause_form_recalculate_report(service, tasks):
         html = response.read().decode()
         assert f"/tasks/{task_id}?" in html
         assert "&lt;script&gt;" in html
-        assert "9.00" in html
+        assert "Total time: 9 hours" in html
+        assert "<td>09:00</td>" in html
+        assert "<time>21:00</time>" in html
     with urlopen(service["url"] + f"/tasks/{task_id}" + query) as response:
         html = response.read().decode()
         assert 'id="timing-editor"' in html and '/static/timing.js' in html

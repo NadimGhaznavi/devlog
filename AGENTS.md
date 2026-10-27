@@ -31,6 +31,25 @@ framework, database driver or plotting library as a shortcut.
 Component selection and application-specific behaviour belong to this project's
 requirements. A pinned skill is an instruction bundle, not executable app code.
 
+Implementation authorization gate: discussion, brainstorming, design and
+proposed specifications do not authorize implementation. Read-only investigation
+is permitted, but do not modify project files (including code, tests,
+configuration or documentation), install dependencies or perform other
+mutating work until the user explicitly authorizes the agreed scope.
+A direct request to implement or fix counts; no magic words are required.
+Once authorized, complete that scope, its tests and its changelog without
+asking about every file. Pause for unapproved dependencies, architecture
+or material scope expansion. Permission to implement does not authorize
+commits, pushes, releases or deployments.
+
+For EVERY completed logical change, including small code, tests, documentation,
+configuration and maintenance work, update `CHANGELOG.md` under the single
+`## [Unreleased]` heading before reporting completion or committing. Do not
+wait for the release. Add or refresh one `### Summary` for each meaningful
+feature, fix or operational improvement, even if only one change has occurred.
+Maintain one Summary heading per section. Follow the pinned
+`.agents/skills/bmforge-project/references/changelog-maintenance.md` guide.
+
 Bootstrap provided `scripts/new-release.sh` with metadata, changelog and
 deployment-disabled install/upgrade/uninstall stubs. Complete and test these
 stubs through `bmforge-installation` once the application topology is known.

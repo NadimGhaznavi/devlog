@@ -9,8 +9,6 @@ spec_status: "draft"
 translation_key: bmforge-component-git
 ---
 
-# Git
-
 **Component ID:** `{{ page.component_id }}` · **Specification:** `{{ page.spec_version }}` ({{ page.spec_status }})
 
 This is a small, **application-owned** interface for two Git operations: **Publish** and **Commit**. Copy the [local template]({{ '/components/templates/git/Git.py' | relative_url }}) into the consuming application's own package; do not import BMForge or another application at runtime. Follow the [engineering contract]({{ site.baseurl }}{% link pages/engineering-contract.md %}) and [component traceability]({{ site.baseurl }}{% link pages/specification-lifecycle.md %}).

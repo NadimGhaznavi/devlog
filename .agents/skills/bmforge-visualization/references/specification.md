@@ -9,8 +9,6 @@ spec_status: "draft"
 translation_key: bmforge-component-visualization
 ---
 
-# Display Visualizations
-
 **Component ID:** `{{ page.component_id }}` · **Specification:** `{{ page.spec_version }}` ({{ page.spec_status }})
 
 This component fixes the **approved browser visualization libraries** for application dashboards. It is not another HTTP server, plotting service, Python package, JavaScript framework, or reusable data-access abstraction. Select only the visualization capability the application's requirements actually need. Backend HTTP, Jinja2 template rendering and MariaDB access remain governed by their own BMForge contracts.

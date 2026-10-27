@@ -6,6 +6,27 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-27 @ 18:03
+
+This release is named for the element **Praseodymium (Pr)**. Praseodymium compounds 
+can color glass yellow-green and are used in some strong permanent magnets.
+
+### Summary
+
+Refresh DevLog's pinned BMForge guidance to 0.14.0 and restore offline update
+checks after the upstream manager moved. Make project task drill-downs easier
+to scan with a dated title, readable total time and a compact task table.
+
+### Changed
+
+- Redesign the Tasks screen with a project/date title and a Total time subtitle,
+  showing seconds only for totals under five minutes. List Task #, 24-hour Start
+  Time, commit-message Description and Duration in a scrollable table; durations
+  use whole hours and minutes, and task numbers link to their details.
+- Update all 10 pinned BMForge skills, the project-local manager and lock
+  fingerprints to BMForge 0.14.0 (`87ba468ffb83`); align project instructions
+  with its implementation authorization and changelog guidance.
+
 ## [0.8.0] - 2026-10-26 @ 19:14
 
 This release is named for the element **Caesium (Cs)** The precise frequency 

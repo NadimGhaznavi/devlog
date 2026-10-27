@@ -1,6 +1,24 @@
 {% extends "base.html" %}
 {% set active_page = 'tasks' %}
-{% block page_title %}{{ t(text.TASKS) }}{% endblock %}
+{% if report %}
+  {% set first_date = report.start | history_date %}
+  {% set date_label = first_date if report.start == report.end else t(text.TASK_DATE_RANGE, start=first_date, end=report.end | history_date) %}
+  {% set history_title = t(text.PROJECT_TASKS_TITLE, project=report.repository.rsplit('/', 1)[-1], date=date_label) if report.repository else t(text.DATED_TASKS_TITLE, date=date_label) %}
+{% endif %}
+{% macro total_duration(hours) -%}
+  {%- set seconds = hours | elapsed_seconds -%}
+  {%- if seconds < task_seconds_limit -%}
+    {%- set parts = [(seconds // 60, text.DURATION_MINUTE, text.DURATION_MINUTES), (seconds % 60, text.DURATION_SECOND, text.DURATION_SECONDS)] -%}
+  {%- else -%}
+    {%- set parts = [(seconds // 3600, text.DURATION_HOUR, text.DURATION_HOURS), (seconds // 60 % 60, text.DURATION_MINUTE, text.DURATION_MINUTES)] -%}
+  {%- endif -%}
+  {%- for count, singular, plural in parts if count -%}
+    {{- ' ' if not loop.first else '' -}}{{- t(singular if count == 1 else plural, count=count) -}}
+  {%- else -%}
+    {{- t(text.DURATION_SECONDS, count=0) -}}
+  {%- endfor -%}
+{%- endmacro %}
+{% block page_title %}{{ history_title if report else t(text.TASKS) }}{% endblock %}
 {% block content %}
     <nav class="history-nav"><a href="{{ link('/') }}">← {{ t(text.BACK_REPORT) }}</a>{% if task %}<a href="{{ link('/tasks') }}">← {{ t(text.BACK_TASKS) }}</a>{% endif %}</nav>
     {% if saved %}<p class="notice" role="status">{{ t(text.TIMING_SAVED if saved == 'timing' else text.PAUSE_SAVED) }}</p>{% endif %}
@@ -70,13 +88,24 @@
       </ol>
       {% if task.editor is defined and task.editor %}</details>{% endif %}
     {% else %}
-      <div class="report-heading"><div><h1>{{ t(text.TASKS) }}</h1><p>{{ t(text.TASK_RANGE, start=report.start, end=report.end) }}</p><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>
+      <div class="report-heading"><div><h1 id="tasks-heading">{{ history_title }}</h1><p>{{ t(text.TOTAL_TIME, duration=total_duration(report.total_hours)) }}</p></div></div>
       {% if not report.tasks %}<p class="empty">{{ t(text.NO_TASKS) }}</p>{% endif %}
-      <ol class="task-list">
+      <div class="table-wrap" tabindex="0" role="region" aria-labelledby="tasks-heading">
+      <table class="tasks-table">
+        <thead><tr><th scope="col">{{ t(text.TASK_NUMBER) }}</th><th scope="col">{{ t(text.TASK_START_TIME) }}</th><th scope="col">{{ t(text.TASK_DESCRIPTION) }}</th><th scope="col">{{ t(text.TASK_DURATION) }}</th></tr></thead>
+        <tbody>
       {% for item in report.tasks %}
-        <li><a class="task-link" href="{{ link('/tasks/' ~ item.task_id) }}"><span><strong>{{ t(text.TASK, task_id=item.task_id) }} · {{ item.repository.removeprefix('github.com/') }}</strong><span class="muted">{{ item.commit_message or t(text['STATUS_' ~ item.status.upper()]) }}</span><time>{{ item.started_at }}</time></span><span>{{ '%.2f' | format(item.hours) }} {{ t(text.HOURS) }} →</span></a></li>
+        {% set minutes = (item.hours | elapsed_seconds) // 60 %}
+        <tr>
+          <td><a class="task-link" href="{{ link('/tasks/' ~ item.task_id) }}" aria-label="{{ t(text.TASK, task_id=item.task_id) }}">{{ item.task_id }}</a></td>
+          <td><time>{{ item.started_at[11:16] }}</time></td>
+          <td class="task-description">{{ item.commit_message or t(text['STATUS_' ~ item.status.upper()]) }}</td>
+          <td>{{ '%02d:%02d' | format(minutes // 60, minutes % 60) }}</td>
+        </tr>
       {% endfor %}
-      </ol>
+        </tbody>
+      </table>
+      </div>
     {% endif %}
     </section>
 {% endblock %}

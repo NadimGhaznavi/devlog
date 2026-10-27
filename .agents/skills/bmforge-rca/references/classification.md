@@ -6,8 +6,6 @@ language_name: English
 translation_key: bmforge-classification
 ---
 
-# Activity / Interface / Entity
-
 BMForge adopts an **Activity / Interface / Entity** classification inspired by the *Unified Software Development Process* (USDP). It uses the familiar separation of control, boundary, and entity responsibilities, with the names and conventions used in the existing applications. The goal is a readable design, not a framework.
 
 **Classify each substantial application class by what it owns**, then put it in the corresponding application-owned package:

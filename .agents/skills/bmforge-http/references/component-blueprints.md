@@ -6,8 +6,6 @@ language_name: English
 translation_key: bmforge-component-blueprints
 ---
 
-# Component Blueprints
-
 All implementations follow [Activity / Interface / Entity classification]({{ site.baseurl }}{% link pages/classification.md %}) and the [engineering contract]({{ site.baseurl }}{% link pages/engineering-contract.md %}) and, for running applications, [application health checks]({{ site.baseurl }}{% link pages/health-checks.md %}). For stable IDs, version tags, and specification changes see [traceability]({{ site.baseurl }}{% link pages/specification-lifecycle.md %}).
 
 BMForge is a **standalone specification and reference-code repository**, not a shared runtime library, package registry, or framework dependency. A new application owns its generated/copied code. Do not import BMForge or another project's Python modules in production. Cross-project integration is permitted only via the other project's explicitly documented public API.
