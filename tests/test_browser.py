@@ -57,7 +57,9 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         assert page.locator(".total strong").inner_text() == "3.00"
         assert page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.y)") == [[0, 0, 0, 0, 0, 2, 0], [0, 0, 0, 0, 0, 1, 0]]
         assert page.evaluate("document.getElementById('daily-chart').layout.barmode") == "stack"
-        assert page.locator("#daily-chart .annotation-text").all_text_contents() == ["0.00"] * 5 + ["3.00", "0.00"]
+        assert page.locator("#daily-chart .annotation-text").all_text_contents() == ["00:00"] * 5 + ["03:00", "00:00"]
+        assert page.locator("#daily-title").inner_text() == "Daily Tasks"
+        assert page.locator("#daily-chart").bounding_box()["height"] == 680
         label = page.locator("#daily-chart .annotation-text").nth(5)
         total_font = page.locator(".total strong").evaluate("""node => {
             const style = getComputedStyle(node);
@@ -94,27 +96,29 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         assert page.locator("#daily-chart .shapelayer path").evaluate(
             "node => getComputedStyle(node).strokeWidth") == "2px"
         assert page.locator("#daily-chart .legendtext").all_text_contents() == ["alpha", "beta"]
+        page.locator("#daily-chart .barlayer .point").nth(5).scroll_into_view_if_needed()
+        bar = page.locator("#daily-chart .barlayer .point").nth(5).bounding_box()
         page.mouse.move(bar["x"] + bar["width"] / 2, bar["y"] + bar["height"] / 2)
         page.wait_for_selector("#daily-chart .hovertext")
-        assert page.locator("#daily-chart .hovertext").all_text_contents() == ["alpha: 2.00 Hours"]
+        assert page.locator("#daily-chart .hovertext").all_text_contents() == ["alpha: 02:00"]
 
         # Hiding a lower project must move the separator with the remaining bar.
         page.locator("#daily-chart .legendtoggle").nth(0).click()
         page.wait_for_function("document.getElementById('daily-chart').layout.shapes[0].y0 === .25")
-        page.wait_for_function("document.getElementById('daily-chart').layout.annotations[5].text === '1.00'")
+        page.wait_for_function("document.querySelectorAll('#daily-chart .annotation-text')[5].textContent === '01:00'")
         page.locator("#daily-chart .legendtoggle").nth(0).click()
         page.wait_for_function("document.getElementById('daily-chart').layout.shapes[0].y0 === 2.25")
-        page.wait_for_function("document.getElementById('daily-chart').layout.annotations[5].text === '3.00'")
+        page.wait_for_function("document.querySelectorAll('#daily-chart .annotation-text')[5].textContent === '03:00'")
         page.locator("#daily-chart .legendtoggle").nth(1).click()
         page.wait_for_function("document.getElementById('daily-chart').layout.shapes.length === 0")
-        page.wait_for_function("document.getElementById('daily-chart').layout.annotations[5].text === '2.00'")
+        page.wait_for_function("document.querySelectorAll('#daily-chart .annotation-text')[5].textContent === '02:00'")
         page.locator("#daily-chart .legendtoggle").nth(1).click()
         page.wait_for_function("document.getElementById('daily-chart').layout.shapes.length === 1")
 
         # Every section collapses to its heading and supports keyboard toggling.
         panels = page.locator("main > details.panel")
-        assert panels.count() == 4
-        contents = [".filters", "#current-task-status", "#daily-chart", ".table-wrap"]
+        assert panels.count() == 3
+        contents = [".filters", "#current-task-status", "#daily-chart"]
         for panel, content in zip(panels.all(), contents):
             summary = panel.locator("summary")
             summary.click()
@@ -155,18 +159,52 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
             page.screenshot(path=str(Path(screenshot) / "devlog-mobile.png"), full_page=True)
         page.set_viewport_size({"width": 1200, "height": 900})
         page.get_by_role("combobox", name="Reporting", exact=True).select_option("github.com/nadimghaznavi/beta")
-        page.get_by_role("button", name="Show report").click()
+        page.get_by_role("button", name="Show Report").click()
         page.wait_for_selector("#daily-chart .plot-container")
         assert page.locator(".total strong").inner_text() == "1.00"
         assert page.evaluate("document.getElementById('daily-chart').data[0].y") == [0, 0, 0, 0, 0, 1, 0]
-        assert page.locator("#daily-chart .annotation-text").all_text_contents() == ["0.00"] * 5 + ["1.00", "0.00"]
+        assert page.locator("#daily-chart .annotation-text").all_text_contents() == ["00:00"] * 5 + ["01:00", "00:00"]
         assert page.evaluate("document.getElementById('daily-chart').data[0].marker.color") == colors[1]
         assert page.evaluate("document.getElementById('daily-chart').layout.shapes[0].y0") == .25
+        page.locator("#daily-chart .shapelayer path").scroll_into_view_if_needed()
         line = page.locator("#daily-chart .shapelayer path").bounding_box()
         page.mouse.click(line["x"] + line["width"] / 2, line["y"])
         page.wait_for_url("**/tasks?**")
         assert parse_qs(urlsplit(page.url).query)["repository"] == ["github.com/nadimghaznavi/beta"]
         assert errors == []
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+def test_chart_durations_round_to_minutes_and_empty_day_link_supports_keyboard(service, tasks):
+    playwright = pytest.importorskip("playwright.sync_api")
+    durations = [timedelta(hours=.51), timedelta(hours=6.21), timedelta(minutes=59, seconds=29),
+                 timedelta(minutes=59, seconds=30), timedelta(seconds=29), timedelta(seconds=30)]
+    labels = ["00:31", "06:13", "00:59", "01:00", "00:00", "00:01", "00:00"]
+    repository = "github.com/nadimghaznavi/rounded"
+    for index, duration in enumerate(durations):
+        start = datetime(2026, 10, 19 + index, 10)
+        task_id = tasks.start(repository, now=start)["task_id"]
+        tasks.complete(repository, task_id, f"{index:040x}", "Work", now=start + duration)
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page(viewport={"width": 1200, "height": 1100}, ignore_https_errors=True)
+        use_cached_plotly(page)
+        page.goto(service["url"] + "/?start=2026-10-19&end=2026-10-25&lang=en")
+        page.wait_for_selector("#daily-chart .plot-container")
+        assert page.locator("#daily-chart .annotation-text").all_text_contents() == labels
+        for index, label in enumerate(labels[:-1]):
+            page.evaluate("""index => Plotly.Fx.hover(document.getElementById('daily-chart'),
+                [{curveNumber: 0, pointNumber: index}])""", index)
+            playwright.expect(page.locator("#daily-chart .hovertext")).to_have_text(["rounded: " + label])
+        page.evaluate("Plotly.Fx.unhover(document.getElementById('daily-chart'))")
+        link = page.get_by_role("link", name="Daily Task Report - 2026-10-25", exact=True)
+        link.focus()
+        link.press("Enter")
+        page.wait_for_url("**/daily?**")
+        assert parse_qs(urlsplit(page.url).query) == {"day": ["2026-10-25"], "lang": ["en"]}
+        assert page.locator(".empty").is_visible()
         browser.close()
 
 
@@ -179,6 +217,13 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         task_id = tasks.start(repository, now=datetime(2026, 10, 24, start))["task_id"]
         tasks.complete(repository, task_id, "a" * 40, "Work on " + repository.rsplit("/", 1)[-1],
                        now=datetime(2026, 10, 24, end))
+    for repository, start, elapsed in (
+        ("tiny", datetime(2026, 10, 24, 14), timedelta(seconds=10)),
+        ("otherday", datetime(2026, 10, 25, 10), timedelta(hours=1)),
+    ):
+        repository = "github.com/example/" + repository
+        task_id = tasks.start(repository, now=start)["task_id"]
+        tasks.complete(repository, task_id, "a" * 40, "Short work", now=start + elapsed)
     errors = []
     with playwright.sync_playwright() as runtime:
         browser = runtime.chromium.launch()
@@ -186,20 +231,36 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         use_cached_plotly(page)
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(service["url"] + "/?repository=github.com/example/alpha&start=2026-10-24&end=2026-10-24")
-        page.get_by_role("link", name="2026-10-24", exact=True).click()
+        page.get_by_role("link", name="Daily Task Report - 2026-10-24", exact=True).click()
         page.wait_for_url("**/daily?**")
         assert parse_qs(urlsplit(page.url).query) == {"day": ["2026-10-24"], "lang": ["en"]}
         assert page.get_by_role("link", name="Daily", exact=True).get_attribute("aria-current") == "page"
-        assert page.locator("#tasks-heading").inner_text() == "Daily Tasks - 24 Oct 2026"
+        assert page.locator("#tasks-heading").inner_text() == "Daily Task Report - 24 Oct 2026"
         assert page.locator(".task-total strong").inner_text() == "3 hours"
         assert page.locator(".tasks-table th").all_text_contents() == [
             "Task #", "Project", "Start Time", "Description", "Duration"]
-        assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["beta", "alpha"]
-        assert page.locator(".tasks-table tbody tr td:last-child").all_text_contents() == ["01:00", "02:00"]
+        assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["tiny", "beta", "alpha"]
+        assert page.locator(".tasks-table tbody tr td:last-child").all_text_contents() == ["00:00", "01:00", "02:00"]
+        project = page.get_by_role("combobox", name="Project", exact=True)
+        assert project.locator("option").all_text_contents() == ["*", "alpha", "beta", "tiny"]
+        assert project.input_value() == ""
+        date_box = page.get_by_label("Date", exact=True).bounding_box()
+        project_box = project.bounding_box()
+        button_box = page.get_by_role("button", name="Show Report", exact=True).bounding_box()
+        assert date_box["x"] < project_box["x"] < button_box["x"]
+        project.select_option("github.com/example/tiny")
+        page.get_by_role("button", name="Show Report", exact=True).click()
+        assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["tiny"]
+        assert page.locator(".task-total strong").inner_text() == "10 seconds"
+        assert project.input_value() == "github.com/example/tiny"
+        assert project.locator("option").all_text_contents() == ["*", "alpha", "beta", "tiny"]
         screenshot = os.environ.get("DEVLOG_SCREENSHOT_DIR")
         if screenshot:
             Path(screenshot).mkdir(parents=True, exist_ok=True)
             page.screenshot(path=str(Path(screenshot) / "daily-desktop.png"), full_page=True)
+        project.select_option("github.com/example/beta")
+        page.get_by_role("button", name="Show Report", exact=True).click()
+        assert page.locator(".task-total strong").inner_text() == "1 hour"
         page.set_viewport_size({"width": 390, "height": 844})
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         table_wrap = page.locator(".table-wrap")
@@ -213,9 +274,17 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         assert page.locator(".total strong").inner_text() == "1.00"
         page.get_by_role("link", name="Daily", exact=True).click()
         assert page.get_by_label("Date", exact=True).input_value() == "2026-10-24"
+        project.select_option("github.com/example/tiny")
         page.get_by_label("Date", exact=True).fill("2026-10-25")
-        page.get_by_role("button", name="Show report", exact=True).click()
-        assert parse_qs(urlsplit(page.url).query) == {"day": ["2026-10-25"], "lang": ["en"]}
+        page.get_by_role("button", name="Show Report", exact=True).click()
+        assert project.input_value() == ""
+        assert project.locator("option").all_text_contents() == ["*", "otherday"]
+        assert page.locator(".task-total strong").inner_text() == "1 hour"
+        assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["otherday"]
+        page.get_by_label("Date", exact=True).fill("2026-10-26")
+        page.get_by_role("button", name="Show Report", exact=True).click()
+        assert parse_qs(urlsplit(page.url).query) == {"day": ["2026-10-26"], "lang": ["en"]}
+        assert project.locator("option").all_text_contents() == ["*"]
         assert page.locator(".tasks-table tbody tr").count() == 0
         assert page.locator(".empty").is_visible()
         assert page.locator(".task-total strong").inner_text() == "0 seconds"
@@ -415,7 +484,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         back_to_report = page.get_by_role("link", name="Back to report").get_attribute("href")
         assert parse_qs(urlsplit(back_to_report).query) == {
             "start": ["2026-10-24"], "end": ["2026-10-25"], "lang": ["en"]}
-        assert page.get_by_role("heading", level=1).inner_text() == "Repository Tasks - 25 Oct 2026"
+        assert page.get_by_role("heading", level=1).inner_text() == "Repository (overnight) Tasks - 25 Oct 2026"
         assert page.locator(".task-total span").inner_text() == "Total time"
         assert page.locator(".task-total strong").inner_text() == "9 hours"
         assert page.locator(".tasks-table th").all_text_contents() == ["Task #", "Start Time", "Description", "Duration"]
@@ -472,7 +541,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         page.route("https://cdn.plot.ly/plotly-4.1.1.min.js", lambda route: route.abort())
         page.reload()
         assert page.locator("#chart-error").is_visible()
-        page.get_by_role("link", name="2026-10-25", exact=True).click()
+        page.locator("#chart-error a").click()
         page.locator(".task-link").click()
         assert page.locator(".total strong").inner_text() == "1.00"
         assert page.locator("#timing-editor").is_visible()

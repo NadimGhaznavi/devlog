@@ -176,14 +176,20 @@ class ReportHandler(BaseHTTPRequestHandler):
                     self.render("report.html", locale, report=report, link=link)
             elif parsed.path in ("/tasks", "/daily"):
                 daily = parsed.path == "/daily"
-                allowed = {"day", "lang"} if daily else {"repository", "start", "end", "day", "lang"}
+                allowed = {"day", "repository", "lang"} if daily else {"repository", "start", "end", "day", "lang"}
                 if set(query) - allowed:
                     raise ValueError("Unknown task filter")
                 filters = {key: value for key, value in query.items() if key != "lang"}
                 if daily:
                     filters["day"] = query.get("day") or datetime.now(app.config.zone).date().isoformat()
+                    report = app.daily_task_list(**filters)
+                    if report["repository"]:
+                        filters["repository"] = report["repository"]
+                    else:
+                        filters.pop("repository", None)
                     link = self.link(filters, locale)
-                report = app.task_list(**filters)
+                else:
+                    report = app.task_list(**filters)
                 self.render("history.html", locale, report=report, task=None, link=link, saved=False, daily=daily)
             elif (task_id := self.task_route(parsed.path)) is not None:
                 if set(query) - {"repository", "start", "end", "day", "lang", "saved"}:
