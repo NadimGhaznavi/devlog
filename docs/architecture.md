@@ -56,9 +56,11 @@ hidden using the legend.
 Horizontal separator strokes use crisp rendering and a darkened
 version of the project color, shared with the bar border, for visibility.
 
-Report dates and chart segments link to `/tasks`, filtered by day and optionally
-repository. `/tasks/<id>` presents the complete task timeline through
-`activity/TaskHistory`. The application-owned form endpoint
+Report dates link to `/daily`, which lists one local day's tasks across all
+repositories and defaults to today in the configured timezone. It reuses the
+Tasks template, adds a Project column and offers a date picker. Chart segments
+link to `/tasks`, filtered by day and repository. `/tasks/<id>` presents the
+complete task timeline through `activity/TaskHistory`. The application-owned form endpoint
 `POST /tasks/<id>/pause` validates a bounded same-origin form and passes its
 timestamps through the configured report timezone. Ambiguous local DST times
 require an explicit offset. These routes retain report filters and locale.

@@ -185,9 +185,12 @@ change interfaces, ports, client host, timeouts, or report timezone (initially
 
 ### Correcting completed task timing
 
-Click a date in the report table to see its tasks, or click a colored chart
-segment to see that day's tasks for that repository. **Tasks** opens the whole
-filtered period. Open a task to inspect its commit, active intervals and pauses.
+**Daily** lists today's tasks across all projects, with a date picker for other
+days and a Project column after Task #. Click a date in the report table to open
+that day's Daily page, or click a colored chart segment to see that day's tasks
+for that repository. Chart hover labels combine the repository and hours in one
+label. **Tasks** opens the whole filtered period. Open a task to inspect its
+commit, active intervals and pauses.
 Task-list hours cover the selected period; task details show the whole task.
 **Back to report** shows all repositories for the selected period.
 

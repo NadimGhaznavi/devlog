@@ -6,6 +6,27 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Samarium (Sm)**. Samarium-cobalt magnets
+maintain their magnetism at temperatures that can trouble many other magnets.
+
+### Summary
+
+Review a day's tasks across all projects on a dedicated Daily page. Simplify
+chart hover details and repository task headings.
+
+### Added
+
+- Add Daily navigation and a date picker, defaulting to today in the configured
+  timezone. Reuse the Tasks table and total time, adding Project after Task #;
+  report-table dates open the selected day across all projects.
+
+### Changed
+
+- Combine repository names and elapsed hours into one chart hover label and
+  remove the redundant date and separate repository label.
+- Shorten repository task headings to `Repository Tasks`, retaining the date
+  or selected date range.
+
 ## [0.9.2] - 2026-10-28 @ 01:28
 
 This release is named for the element **Promethium (Pm)**. Promethium has no 

@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
           width: data.days.map(day => day.projects[repository] > 0 ? borderWidth : 0)
         }
       },
-      hovertemplate: "%{x}<br>%{y:.2f} " + data.hoursLabel + "<extra>%{fullData.name}</extra>"
+      hovertemplate: "%{fullData.name}: %{y:.2f} " + data.hoursLabel + "<extra></extra>"
     }];
   });
   const taskSeparators = visibleTraces => data.days.flatMap((day, dayIndex) => {

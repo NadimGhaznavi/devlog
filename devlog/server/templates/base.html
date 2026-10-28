@@ -16,6 +16,7 @@
     <div class="masthead-details">
       <nav aria-label="{{ t(text.MAIN_NAVIGATION) }}">
         <a href="{{ link('/') }}"{% if active_page == 'report' %} aria-current="page"{% endif %}>{{ t(text.DAILY_HOURS) }}</a>
+        <a href="{{ link('/daily') }}"{% if active_page == 'daily' %} aria-current="page"{% endif %}>{{ t(text.DAILY) }}</a>
         <a href="{{ link('/tasks') }}"{% if active_page == 'tasks' %} aria-current="page"{% endif %}>{{ t(text.TASKS) }}</a>
       </nav>
       <span class="version">{{ t(text.APP_VERSION, version=version) }}</span>

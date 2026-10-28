@@ -44,7 +44,7 @@
     <details class="panel" aria-labelledby="tasks-title" open>
       <summary><h2 class="panel-title" id="tasks-title">{{ t(text.TASKS) }}</h2></summary>
       <p><a href="{{ link('/tasks') }}">{{ t(text.TASKS) }} <span aria-hidden="true">→</span></a></p>
-      <div class="table-wrap"><table><thead><tr><th scope="col">{{ t(text.DATE) }}</th><th scope="col">{{ t(text.HOURS) }}</th></tr></thead><tbody>{% for day in report.days %}<tr><td><a href="{{ link('/tasks', day=day.date) }}">{{ day.date }}</a></td><td>{{ '%.2f' | format(day.hours) }}</td></tr>{% endfor %}</tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th scope="col">{{ t(text.DATE) }}</th><th scope="col">{{ t(text.HOURS) }}</th></tr></thead><tbody>{% for day in report.days %}<tr><td><a href="{{ link('/daily', day=day.date) }}">{{ day.date }}</a></td><td>{{ '%.2f' | format(day.hours) }}</td></tr>{% endfor %}</tbody></table></div>
     </details>
 {% endblock %}
 {% block scripts %}
