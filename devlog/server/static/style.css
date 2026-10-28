@@ -54,7 +54,7 @@ h2 { font-size: 1.15rem; }
 .report-heading p { margin: .5rem 0 0; }
 #current-task-status { margin: .75rem 0 0; overflow-wrap: anywhere; }
 .total { display: grid; text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
-.total strong { font-size: 36px; color: var(--action); font-weight: 600; font-variant-numeric: tabular-nums; }
+.total strong, #tasks-heading { font-size: 36px; color: var(--action); font-weight: 600; font-variant-numeric: tabular-nums; }
 #daily-chart { height: 340px; width: 100%; }
 #daily-chart .shapelayer path { shape-rendering: crispEdges; }
 #daily-chart .annotation-text { font-variant-numeric: tabular-nums; }
@@ -69,8 +69,11 @@ a:hover { color: var(--accent-hover); }
 .task-metadata dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .commit-message { white-space: pre-wrap; margin-bottom: 0; }
 .timeline { list-style: none; padding: 0; }
-.task-link { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; font-weight: 600; }
+.task-link { display: inline-flex; align-items: center; min-width: 44px; min-height: 24px; font-weight: 600; }
 .tasks-table { min-width: 34rem; }
+.tasks-table th, .tasks-table td { padding-block: .2rem; }
+.tasks-heading { align-items: end; }
+.tasks-heading > div:first-child { flex: 1 1 20rem; }
 .task-total { margin-left: auto; max-width: 100%; white-space: normal; }
 .tasks-table th { white-space: nowrap; color: var(--accent); }
 .tasks-table td { vertical-align: middle; }
@@ -131,7 +134,7 @@ th:last-child, td:last-child { text-align: right; font-variant-numeric: tabular-
   .panel { padding: 1rem; }
   .filters .field { flex: 1 1 9rem; min-width: 0; }
   .filters .field:first-child { flex-basis: 100%; min-width: 0; }
-  .total strong { font-size: 30px; }
+  .total strong, #tasks-heading { font-size: 30px; }
   .task-total { margin-left: 0; text-align: left; }
   .task-metadata { grid-template-columns: 1fr; gap: 8px; }
   .task-metadata dd { margin-bottom: 8px; }

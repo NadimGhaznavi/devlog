@@ -6,6 +6,24 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Promethium (Pm)**. Promethium has no 
+stable isotopes, and even its longest-lived isotopes decay on human timescales.
+
+### Summary
+
+Match the Tasks page's repository title to its total-time display and align
+their bottom edges for a consistent heading row. Tighten task table spacing
+so more tasks fit on screen.
+
+### Changed
+
+- Use the total's orange color, font size and weight for the Tasks title,
+  retaining left alignment and matching the smaller size on mobile screens.
+- Bottom align the title with the total duration and let long titles wrap
+  within the heading row.
+- Reduce vertical padding in task table headers and cells, and shorten the
+  task-number links' minimum height for more compact rows.
+
 ## [0.9.1] - 2026-10-27 @ 18:17
 
 This release is named for the element **Neodymium (Nd)**. Neodymium is a key 
