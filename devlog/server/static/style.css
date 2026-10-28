@@ -75,6 +75,7 @@ a:hover { color: var(--accent-hover); }
 .tasks-heading { align-items: end; }
 .tasks-heading > div:first-child { flex: 1 1 20rem; }
 .task-total { margin-left: auto; max-width: 100%; white-space: normal; }
+.daily-filters .field:first-child { flex: 0 1 14rem; }
 .tasks-table th { white-space: nowrap; color: var(--accent); }
 .tasks-table td { vertical-align: middle; }
 .tasks-table td:last-child { color: var(--action); font-weight: 600; }

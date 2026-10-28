@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% set active_page = 'tasks' %}
+{% set daily = daily | default(false) %}
+{% set active_page = 'daily' if daily else 'tasks' %}
 {% if report %}
   {% set first_date = report.start | history_date %}
   {% set date_label = first_date if report.start == report.end else t(text.TASK_DATE_RANGE, start=first_date, end=report.end | history_date) %}
-  {% set history_title = t(text.PROJECT_TASKS_TITLE, project=report.repository.rsplit('/', 1)[-1], date=date_label) if report.repository else t(text.DATED_TASKS_TITLE, date=date_label) %}
+  {% set history_title = t(text.DAILY_TASKS_TITLE if daily else text.PROJECT_TASKS_TITLE if report.repository else text.DATED_TASKS_TITLE, date=date_label) %}
 {% endif %}
 {% macro total_duration(hours) -%}
   {%- set seconds = hours | elapsed_seconds -%}
@@ -92,15 +93,23 @@
         <div><h1 id="tasks-heading">{{ history_title }}</h1></div>
         <div class="total task-total"><span>{{ t(text.TOTAL_TIME) }}</span><strong>{{ total_duration(report.total_hours) }}</strong></div>
       </div>
+      {% if daily %}
+      <form method="get" action="/daily" class="filters daily-filters">
+        <div class="field"><label for="day">{{ t(text.DATE) }}</label><input id="day" type="date" name="day" value="{{ report.start }}" required></div>
+        <input type="hidden" name="lang" value="{{ locale }}">
+        <button type="submit">{{ t(text.APPLY) }}</button>
+      </form>
+      {% endif %}
       {% if not report.tasks %}<p class="empty">{{ t(text.NO_TASKS) }}</p>{% endif %}
       <div class="table-wrap" tabindex="0" role="region" aria-labelledby="tasks-heading">
       <table class="tasks-table">
-        <thead><tr><th scope="col">{{ t(text.TASK_NUMBER) }}</th><th scope="col">{{ t(text.TASK_START_TIME) }}</th><th scope="col">{{ t(text.TASK_DESCRIPTION) }}</th><th scope="col">{{ t(text.TASK_DURATION) }}</th></tr></thead>
+        <thead><tr><th scope="col">{{ t(text.TASK_NUMBER) }}</th>{% if daily %}<th scope="col">{{ t(text.TASK_PROJECT) }}</th>{% endif %}<th scope="col">{{ t(text.TASK_START_TIME) }}</th><th scope="col">{{ t(text.TASK_DESCRIPTION) }}</th><th scope="col">{{ t(text.TASK_DURATION) }}</th></tr></thead>
         <tbody>
       {% for item in report.tasks %}
         {% set minutes = (item.hours | elapsed_seconds) // 60 %}
         <tr>
           <td><a class="task-link" href="{{ link('/tasks/' ~ item.task_id) }}" aria-label="{{ t(text.TASK, task_id=item.task_id) }}">{{ item.task_id }}</a></td>
+          {% if daily %}<td>{{ item.repository.rsplit('/', 1)[-1] }}</td>{% endif %}
           <td><time>{{ item.started_at[11:16] }}</time></td>
           <td class="task-description">{{ item.commit_message or t(text['STATUS_' ~ item.status.upper()]) }}</td>
           <td>{{ '%02d:%02d' | format(minutes // 60, minutes % 60) }}</td>
