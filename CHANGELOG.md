@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-10-28 @ 01:42
+
 This release is named for the element **Samarium (Sm)**. Samarium-cobalt magnets
 maintain their magnetism at temperatures that can trouble many other magnets.
 
