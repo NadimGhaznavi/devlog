@@ -4,7 +4,11 @@
 {% if report %}
   {% set first_date = report.start | history_date %}
   {% set date_label = first_date if report.start == report.end else t(text.TASK_DATE_RANGE, start=first_date, end=report.end | history_date) %}
-  {% set history_title = t(text.DAILY_TASKS_TITLE if daily else text.PROJECT_TASKS_TITLE if report.repository else text.DATED_TASKS_TITLE, date=date_label) %}
+  {% if report.repository and not daily %}
+    {% set history_title = t(text.PROJECT_TASKS_TITLE, project=report.repository.rsplit('/', 1)[-1], date=date_label) %}
+  {% else %}
+    {% set history_title = t(text.DAILY_TASKS_TITLE if daily else text.DATED_TASKS_TITLE, date=date_label) %}
+  {% endif %}
 {% endif %}
 {% macro total_duration(hours) -%}
   {%- set seconds = hours | elapsed_seconds -%}
@@ -96,6 +100,7 @@
       {% if daily %}
       <form method="get" action="/daily" class="filters daily-filters">
         <div class="field"><label for="day">{{ t(text.DATE) }}</label><input id="day" type="date" name="day" value="{{ report.start }}" required></div>
+        <div class="field"><label for="project">{{ t(text.TASK_PROJECT) }}</label><select id="project" name="repository"><option value="">{{ t(text.ALL_PROJECTS) }}</option>{% for repository in report.repositories %}<option value="{{ repository }}"{% if report.repository == repository %} selected{% endif %}>{{ repository.rsplit('/', 1)[-1] }}</option>{% endfor %}</select></div>
         <input type="hidden" name="lang" value="{{ locale }}">
         <button type="submit">{{ t(text.APPLY) }}</button>
       </form>

@@ -55,9 +55,10 @@ h2 { font-size: 1.15rem; }
 #current-task-status { margin: .75rem 0 0; overflow-wrap: anywhere; }
 .total { display: grid; text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .total strong, #tasks-heading { font-size: 36px; color: var(--action); font-weight: 600; font-variant-numeric: tabular-nums; }
-#daily-chart { height: 340px; width: 100%; }
+#daily-chart { height: 680px; width: 100%; }
 #daily-chart .shapelayer path { shape-rendering: crispEdges; }
 #daily-chart .annotation-text { font-variant-numeric: tabular-nums; }
+#daily-chart .annotation-text a { fill: var(--action); text-decoration: underline; }
 .empty, #chart-error { padding: 14px; border-radius: 6px; background: var(--notice); font-size: 14px; }
 a { color: var(--accent); text-underline-offset: 3px; }
 a:hover { color: var(--accent-hover); }
@@ -75,7 +76,7 @@ a:hover { color: var(--accent-hover); }
 .tasks-heading { align-items: end; }
 .tasks-heading > div:first-child { flex: 1 1 20rem; }
 .task-total { margin-left: auto; max-width: 100%; white-space: normal; }
-.daily-filters .field:first-child { flex: 0 1 14rem; }
+.daily-filters .field, .daily-filters .field:first-child { flex: 0 1 14rem; }
 .tasks-table th { white-space: nowrap; color: var(--accent); }
 .tasks-table td { vertical-align: middle; }
 .tasks-table td:last-child { color: var(--action); font-weight: 600; }

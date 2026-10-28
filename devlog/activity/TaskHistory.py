@@ -26,6 +26,19 @@ class TaskHistory:
         report["tasks"] = [self._present(task) for task in report["tasks"]]
         return report
 
+    def daily(self, *, day, repository=""):
+        report = self.list(day=day)
+        if repository and repository not in report["repositories"]:
+            raise ValueError("Unknown repository")
+        projects = report["days"][0]["projects"]
+        report["repositories"] = sorted(project for project, hours in projects.items() if hours > 0)
+        # Changing the date can leave a previously selected project without work.
+        report["repository"] = repository if repository in report["repositories"] else ""
+        if report["repository"]:
+            report["tasks"] = [task for task in report["tasks"] if task["repository"] == repository]
+            report["total_hours"] = projects[repository]
+        return report
+
     def read(self, task_id, *, now=None, include_editor=False):
         now = now or datetime.now(timezone.utc).replace(tzinfo=None)
         task = self.tasks.task_detail(task_id, context_at=now) if include_editor else self.tasks.task_detail(task_id)
