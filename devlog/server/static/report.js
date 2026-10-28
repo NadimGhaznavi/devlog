@@ -8,6 +8,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   const theme = getComputedStyle(document.documentElement);
   const color = name => theme.getPropertyValue(name).trim();
+  const duration = hours => {
+    const minutes = Math.round(hours * 60);
+    return String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
+  };
+  const dailyUrl = day => {
+    const target = new URL(data.dailyUrl, window.location.origin);
+    target.searchParams.set("day", day);
+    return target.href;
+  };
   const barWidth = 0.8;
   const borderWidth = 4;
   const taskLineWidth = 2;
@@ -38,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
           width: data.days.map(day => day.projects[repository] > 0 ? borderWidth : 0)
         }
       },
-      hovertemplate: "%{fullData.name}: %{y:.2f} " + data.hoursLabel + "<extra></extra>"
+      hovertemplate: data.days.map(day => "%{fullData.name}: " + duration(day.projects[repository] || 0) + "<extra></extra>")
     }];
   });
   const taskSeparators = visibleTraces => data.days.flatMap((day, dayIndex) => {
@@ -64,14 +73,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const dayLabels = visibleTraces => {
     const totalStyle = getComputedStyle(document.querySelector(".total strong"));
     const dayWidth = (document.getElementById("daily-chart").clientWidth - chartMargin.l - chartMargin.r) / data.days.length;
-    // Reserve enough width for a daily total such as 24.00 on narrow charts.
-    const fontSize = Math.min(parseFloat(totalStyle.fontSize) * 2 / 3, Math.max(12, dayWidth / 3.5));
+    // Reserve enough width for a daily total such as 24:00 on narrow charts.
+    const fontSize = Math.min(parseFloat(totalStyle.fontSize) * 2 / 3, Math.max(10, dayWidth / 3.5));
     return data.days.map((day, dayIndex) => {
       const hours = visibleTraces.reduce((sum, trace) =>
         sum + (trace.visible === "legendonly" || trace.visible === false ? 0 : trace.y[dayIndex]), 0);
       return {
         x: day.date, y: hours, xref: "x", yref: "y",
-        text: hours.toFixed(2), showarrow: false, yanchor: "bottom", yshift: 8,
+        text: `<a href="${escapeLabel(dailyUrl(day.date))}" target="_self">${duration(hours)}</a>`,
+        showarrow: false, captureevents: true, yanchor: "bottom", yshift: 8,
         font: {
           family: totalStyle.fontFamily, weight: Number(totalStyle.fontWeight),
           size: fontSize, color: totalStyle.color
@@ -91,6 +101,21 @@ document.addEventListener("DOMContentLoaded", () => {
     xaxis: {type: "category", categoryorder: "array", categoryarray: data.days.map(day => day.date), title: {text: data.dateLabel}, fixedrange: true},
     yaxis: {title: {text: data.hoursLabel}, rangemode: "tozero", gridcolor: color("--grid"), zerolinecolor: color("--border"), fixedrange: true}
   }, {responsive: true, displayModeBar: false}).then(chart => {
+    const labelLinks = () => chart.querySelectorAll(".annotation").forEach((annotation, index) => {
+      // Plotly wraps the annotation background in its own link above the text.
+      const anchor = annotation.querySelector(".bg").parentElement;
+      anchor.setAttribute("href", dailyUrl(data.days[index].date));
+      anchor.setAttribute("target", "_self");
+      anchor.setAttribute("role", "link");
+      anchor.setAttribute("tabindex", "0");
+      anchor.setAttribute("aria-label", data.dailyLabel.replace("{date}", data.days[index].date));
+      annotation.querySelectorAll(".annotation-text a").forEach(textLink => {
+        textLink.setAttribute("aria-hidden", "true");
+        textLink.setAttribute("tabindex", "-1");
+      });
+    });
+    chart.on("plotly_afterplot", labelLinks);
+    labelLinks();
     chart.on("plotly_restyle", () => Plotly.relayout(chart, {
       shapes: taskSeparators(chart.data), annotations: dayLabels(chart.data)
     }));

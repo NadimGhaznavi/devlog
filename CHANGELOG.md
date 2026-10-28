@@ -6,6 +6,34 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Europium (Eu)**. Europium compounds 
+provide red and blue phosphors for display and lighting technologies.
+
+### Summary
+
+Open each day's report directly from the Daily Tasks chart, with readable
+hours-and-minutes labels and more plotting space, then filter that day's tasks
+by project. Restore project names in repository task headings.
+
+### Added
+
+- Add a Project dropdown between the Daily report's date and Show Report
+  button, offering `*` for all projects and the projects with recorded work that
+  day. Filter rows and total time while keeping all of that day's project choices
+  available; reset to `*` when a new date has no work for the selected project.
+
+### Changed
+
+- Rename the main chart section to Daily Tasks, remove the main-page Tasks
+  section and double the chart height to 680 px.
+- Format chart hover values and totals above daily bars as `HH:MM`, rounded to
+  the nearest minute. Make each daily total a keyboard-accessible link to that
+  day's Daily Task Report across all projects, preserving the selected language.
+- Restore `Repository (project) Tasks` headings and retain the selected date
+  or date range. Label daily task pages as `Daily Task Report`.
+- When the chart cannot load, link to the selected end date's Daily Task Report.
+- Capitalize the report buttons as `Show Report`.
+
 ## [0.9.3] - 2026-10-28 @ 01:42
 
 This release is named for the element **Samarium (Sm)**. Samarium-cobalt magnets

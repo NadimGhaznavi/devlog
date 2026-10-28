@@ -14,7 +14,7 @@
     {{- t(text.DURATION_SECONDS, count=0) -}}
   {%- endfor -%}
 {%- endmacro %}
-{% block page_title %}{{ t(text.DAILY_HOURS) }}{% endblock %}
+{% block page_title %}{{ t(text.DAILY_TASKS) }}{% endblock %}
 {% block head %}
   <script defer src="https://cdn.plot.ly/plotly-4.1.1.min.js" charset="utf-8"></script>
   <script defer src="/static/report.js"></script>
@@ -35,18 +35,13 @@
       <p id="current-task-status">{% if report.current_task.task_id is none %}{{ t(text.NO_RUNNING_TASK) }}{% else %}{{ t(text.CURRENT_TASK_RUNNING, task_id=report.current_task.task_id, repository=report.current_task.repository.rsplit('/', 1)[-1], duration=human_duration(report.current_task.active_seconds)) }}{% endif %}</p>
     </details>
     <details class="report panel" aria-labelledby="daily-title" open>
-      <summary><h1 class="panel-title" id="daily-title">{{ t(text.DAILY_HOURS) }}</h1></summary>
+      <summary><h1 class="panel-title" id="daily-title">{{ t(text.DAILY_TASKS) }}</h1></summary>
       <div class="report-heading"><div><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>
       {% if report.total_hours == 0 %}<p class="empty">{{ t(text.EMPTY) }}</p>{% endif %}
-      <div id="daily-chart" aria-label="{{ t(text.DAILY_HOURS) }}"></div>
-      <p id="chart-error" hidden>{{ t(text.CHART_UNAVAILABLE) }}</p>
-    </details>
-    <details class="panel" aria-labelledby="tasks-title" open>
-      <summary><h2 class="panel-title" id="tasks-title">{{ t(text.TASKS) }}</h2></summary>
-      <p><a href="{{ link('/tasks') }}">{{ t(text.TASKS) }} <span aria-hidden="true">→</span></a></p>
-      <div class="table-wrap"><table><thead><tr><th scope="col">{{ t(text.DATE) }}</th><th scope="col">{{ t(text.HOURS) }}</th></tr></thead><tbody>{% for day in report.days %}<tr><td><a href="{{ link('/daily', day=day.date) }}">{{ day.date }}</a></td><td>{{ '%.2f' | format(day.hours) }}</td></tr>{% endfor %}</tbody></table></div>
+      <div id="daily-chart" aria-label="{{ t(text.DAILY_TASKS) }}"></div>
+      <p id="chart-error" hidden>{{ t(text.CHART_UNAVAILABLE) }} <a href="{{ link('/daily', day=report.end) }}">{{ t(text.DAILY_TASKS_TITLE, date=report.end | history_date) }}</a></p>
     </details>
 {% endblock %}
 {% block scripts %}
-  <script id="chart-data" type="application/json">{{ {'days': report.days, 'repositories': report.repositories, 'hoursLabel': t(text.HOURS), 'dateLabel': t(text.DATE), 'taskUrl': link('/tasks')} | tojson }}</script>
+  <script id="chart-data" type="application/json">{{ {'days': report.days, 'repositories': report.repositories, 'hoursLabel': t(text.HOURS), 'dateLabel': t(text.DATE), 'taskUrl': link('/tasks'), 'dailyUrl': link('/daily'), 'dailyLabel': t(text.DAILY_TASKS_TITLE, date='{date}')} | tojson }}</script>
 {% endblock %}

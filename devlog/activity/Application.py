@@ -42,6 +42,10 @@ class Application:
         with self.tasks() as tasks:
             return TaskHistory(tasks, self.config.zone).list(**filters)
 
+    def daily_task_list(self, **filters):
+        with self.tasks() as tasks:
+            return TaskHistory(tasks, self.config.zone).daily(**filters)
+
     def task_detail(self, task_id):
         with self.tasks() as tasks:
             return TaskHistory(tasks, self.config.zone).read(task_id, include_editor=True)

@@ -41,9 +41,9 @@ supplied translations. Human UI labels and CLI application messages use stable
 `DText` keys. Wire fields, statuses, Git output, and service logs stay untranslated.
 
 The report uses Jinja2 autoescaping and browser-side Plotly.js **4.1.1** from the
-exact approved CDN URL. An HTML daily-hours table remains available if that asset
-cannot load. No frontend build, Python plotting package, maps, or graph library is
-introduced.
+exact approved CDN URL. If the chart cannot load, a link opens the Daily Task
+Report for the selected end date. No frontend build, Python plotting package,
+maps, or graph library is introduced.
 
 Daily report rows include total hours and a `projects` mapping of repository
 identities to hours. A `task_hours` mapping contains each project's positive task
@@ -56,9 +56,19 @@ hidden using the legend.
 Horizontal separator strokes use crisp rendering and a darkened
 version of the project color, shared with the bar border, for visibility.
 
-Report dates link to `/daily`, which lists one local day's tasks across all
+The 680 px Daily Tasks chart displays hover durations and totals above each bar
+as `HH:MM`, rounded to the nearest minute. Each total is a keyboard-accessible
+link to `/daily` for its date, with repository and range filters removed. Totals
+continue to reflect visible projects when the legend changes. The main page's
+separate Tasks section and daily-hours table have been removed.
+
+Daily total links open `/daily`, which lists one local day's tasks across all
 repositories and defaults to today in the configured timezone. It reuses the
-Tasks template, adds a Project column and offers a date picker. Chart segments
+Tasks template, adds a Project column and offers date and project filters.
+`TaskHistory.daily` derives the project choices from the unfiltered local day's
+recorded hours, then filters tasks and total time by the selection. The default
+`*` includes all projects; changing to a date without work for the selected
+project resets the selection to all projects. Chart segments
 link to `/tasks`, filtered by day and repository. `/tasks/<id>` presents the
 complete task timeline through `activity/TaskHistory`. The application-owned form endpoint
 `POST /tasks/<id>/pause` validates a bounded same-origin form and passes its

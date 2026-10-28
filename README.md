@@ -186,11 +186,17 @@ change interfaces, ports, client host, timeouts, or report timezone (initially
 ### Correcting completed task timing
 
 **Daily** lists today's tasks across all projects, with a date picker for other
-days and a Project column after Task #. Click a date in the report table to open
-that day's Daily page, or click a colored chart segment to see that day's tasks
-for that repository. Chart hover labels combine the repository and hours in one
-label. **Tasks** opens the whole filtered period. Open a task to inspect its
-commit, active intervals and pauses.
+days and a Project column after Task #. Between the date and **Show Report**, a
+Project dropdown lists `*` for all projects plus projects with recorded work on
+that day. Selecting a project filters the task rows and total time; changing to
+a day without work for that project resets the selection to `*`.
+Click the total above a chart bar to open
+that day's Daily Task Report across all projects, or click a colored chart
+segment to see that day's tasks for that repository. Hover labels and daily
+totals show hours and minutes (`HH:MM`), rounded to the nearest minute. The main
+Daily Tasks chart is 680 px tall; its former Tasks section is removed.
+**Tasks** opens the whole filtered period and includes the selected project in
+its title. Open a task to inspect its commit, active intervals and pauses.
 Task-list hours cover the selected period; task details show the whole task.
 **Back to report** shows all repositories for the selected period.
 
