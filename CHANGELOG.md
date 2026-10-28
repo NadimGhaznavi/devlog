@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-28 @ 02:19
+
 This release is named for the element **Europium (Eu)**. Europium compounds 
 provide red and blue phosphors for display and lighting technologies.
 
