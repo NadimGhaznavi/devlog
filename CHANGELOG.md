@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-10-28 @ 17:05
+
 This release is named for the element **Hafnium (Hf)**. Hafnium is excellent at 
 absorbing neutrons, making it useful in nuclear reactor control rods.
 
