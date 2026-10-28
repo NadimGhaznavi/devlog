@@ -36,7 +36,8 @@
     </details>
     <details class="report panel" aria-labelledby="daily-title" open>
       <summary><h1 class="panel-title" id="daily-title">{{ t(text.DAILY_TASKS) }}</h1></summary>
-      <div class="report-heading"><div><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(report.total_hours) }}</strong></div></div>
+      {% set total_minutes = (report.total_hours | elapsed_seconds) // 60 %}
+      <div class="report-heading"><div><p>{{ t(text.TIMEZONE, timezone=report.timezone) }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%02d:%02d' | format(total_minutes // 60, total_minutes % 60) }}</strong></div></div>
       {% if report.total_hours == 0 %}<p class="empty">{{ t(text.EMPTY) }}</p>{% endif %}
       <div id="daily-chart" aria-label="{{ t(text.DAILY_TASKS) }}"></div>
       <p id="chart-error" hidden>{{ t(text.CHART_UNAVAILABLE) }} <a href="{{ link('/daily', day=report.end) }}">{{ t(text.DAILY_TASKS_TITLE, date=report.end | history_date) }}</a></p>
