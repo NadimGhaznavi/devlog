@@ -6,6 +6,20 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-10-28 @ 17:05
+
+This release is named for the element **Hafnium (Hf)**. Hafnium is excellent at 
+absorbing neutrons, making it useful in nuclear reactor control rods.
+
+### Summary
+
+Show the Daily Tasks total in hours and minutes for easier reading.
+
+### Fixed
+
+- Format the Daily Tasks total as `HH:MM` using completed minutes, so decimal
+  hours such as `13.53` display as `13:31`.
+
 ## [0.10.0] - 2026-10-28 @ 02:19
 
 This release is named for the element **Europium (Eu)**. Europium compounds 
