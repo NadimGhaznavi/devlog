@@ -41,12 +41,13 @@ class ReportApplication:
     localizer = Localizer(Path(__file__).parents[1] / "devlog/locales")
     config = SimpleNamespace(zone=ZoneInfo("America/Toronto"))
     current_task = dict(task_id=None, repository=None, active_seconds=0)
+    total_hours = 2.5
 
     def report(self, **filters):
         return dict(repositories=['<script>alert("unsafe")</script>'], repository="", start="2026-10-24",
-                    end="2026-10-24", timezone="America/Toronto", total_hours=2.5, current_task=self.current_task,
-                    days=[dict(date="2026-10-24", hours=2.5,
-                               projects={'<script>alert("unsafe")</script>': 2.5})])
+                    end="2026-10-24", timezone="America/Toronto", total_hours=self.total_hours, current_task=self.current_task,
+                    days=[dict(date="2026-10-24", hours=self.total_hours,
+                               projects={'<script>alert("unsafe")</script>': self.total_hours})])
 
     def health(self):
         return dict(status="ok", components={"http": "ok", "zmq": "ok", "db-server": "ok"})
@@ -238,7 +239,7 @@ def test_report_html_json_head_and_asset_boundaries():
             length = int(response.headers["Content-Length"])
             assert len(body) == length
             assert b"plotly-4.1.1.min.js" in body
-            assert b"2.50" in body
+            assert b'<span>Total hours</span><strong>02:30</strong>' in body
             assert b'<h1 class="panel-title" id="daily-title">Daily Tasks</h1>' in body
             assert b'id="tasks-title"' not in body and b'<table' not in body
             assert b'<p id="current-task-status">No task currently running</p>' in body
@@ -258,6 +259,24 @@ def test_report_html_json_head_and_asset_boundaries():
         with pytest.raises(HTTPError) as error:
             urlopen(Request(url + "/api/report", data=b"{", method="POST"))
         assert error.value.code == 501
+
+
+@pytest.mark.parametrize("hours, duration", [
+    (0, "00:00"),
+    (59.999999 / 3600, "00:00"),
+    (1 / 60, "00:01"),
+    (13.53, "13:31"),
+    (13 + 31 / 60, "13:31"),
+    (1 - 1 / 3600, "00:59"),
+    (36.5, "36:30"),
+])
+def test_report_total_uses_hours_and_completed_minutes(hours, duration):
+    app = ReportApplication()
+    app.total_hours = hours
+    with display(app) as url:
+        with urlopen(url) as response:
+            html = response.read().decode()
+    assert f'<span>Total hours</span><strong>{duration}</strong>' in html
 
 
 @pytest.mark.parametrize("seconds, duration", [

@@ -54,7 +54,7 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         page.goto(service["url"] + "/?start=2026-10-19&end=2026-10-25")
         page.wait_for_selector("#daily-chart .plot-container")
         assert page.evaluate("Plotly.version") == "4.1.1"
-        assert page.locator(".total strong").inner_text() == "3.00"
+        assert page.locator(".total strong").inner_text() == "03:00"
         assert page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.y)") == [[0, 0, 0, 0, 0, 2, 0], [0, 0, 0, 0, 0, 1, 0]]
         assert page.evaluate("document.getElementById('daily-chart').layout.barmode") == "stack"
         assert page.locator("#daily-chart .annotation-text").all_text_contents() == ["00:00"] * 5 + ["03:00", "00:00"]
@@ -161,7 +161,7 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         page.get_by_role("combobox", name="Reporting", exact=True).select_option("github.com/nadimghaznavi/beta")
         page.get_by_role("button", name="Show Report").click()
         page.wait_for_selector("#daily-chart .plot-container")
-        assert page.locator(".total strong").inner_text() == "1.00"
+        assert page.locator(".total strong").inner_text() == "01:00"
         assert page.evaluate("document.getElementById('daily-chart').data[0].y") == [0, 0, 0, 0, 0, 1, 0]
         assert page.locator("#daily-chart .annotation-text").all_text_contents() == ["00:00"] * 5 + ["01:00", "00:00"]
         assert page.evaluate("document.getElementById('daily-chart').data[0].marker.color") == colors[1]
@@ -475,7 +475,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(service["url"] + "/?start=2026-10-24&end=2026-10-25")
         page.wait_for_selector("#daily-chart .plot-container")
-        assert page.locator(".total strong").inner_text() == "14.00"
+        assert page.locator(".total strong").inner_text() == "14:00"
         bar = page.locator("#daily-chart .barlayer .point").last.bounding_box()
         page.mouse.click(bar["x"] + bar["width"] / 2, bar["y"] + bar["height"] / 2)
         page.wait_for_url("**/tasks?**")
@@ -535,7 +535,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         assert page.get_by_role("combobox", name="Reporting", exact=True).input_value() == ""
         assert page.get_by_label("From", exact=True).input_value() == "2026-10-24"
         assert page.get_by_label("Through", exact=True).input_value() == "2026-10-25"
-        assert page.locator(".total strong").inner_text() == "3.00"
+        assert page.locator(".total strong").inner_text() == "03:00"
         assert page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.y)") == [[2, 0], [1, 0]]
         # The table drill-down and editor work even when the CDN cannot be reached.
         page.route("https://cdn.plot.ly/plotly-4.1.1.min.js", lambda route: route.abort())
