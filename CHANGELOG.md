@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-28 @ 01:28
+
 This release is named for the element **Promethium (Pm)**. Promethium has no 
 stable isotopes, and even its longest-lived isotopes decay on human timescales.
 
