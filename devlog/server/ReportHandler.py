@@ -70,6 +70,9 @@ class ReportHandler(BaseHTTPRequestHandler):
             if path == "/":
                 values.pop("day", None)
                 values.pop("repository", None)
+            elif path == "/daily":
+                for key in ("repository", "start", "end"):
+                    values.pop(key, None)
             return path + "?" + urlencode(values)
         return build
 
@@ -171,11 +174,17 @@ class ReportHandler(BaseHTTPRequestHandler):
                     self.respond(200, json.dumps(report, allow_nan=False).encode(), "application/json")
                 else:
                     self.render("report.html", locale, report=report, link=link)
-            elif parsed.path == "/tasks":
-                if set(query) - {"repository", "start", "end", "day", "lang"}:
+            elif parsed.path in ("/tasks", "/daily"):
+                daily = parsed.path == "/daily"
+                allowed = {"day", "lang"} if daily else {"repository", "start", "end", "day", "lang"}
+                if set(query) - allowed:
                     raise ValueError("Unknown task filter")
-                report = app.task_list(**{key: value for key, value in query.items() if key != "lang"})
-                self.render("history.html", locale, report=report, task=None, link=link, saved=False)
+                filters = {key: value for key, value in query.items() if key != "lang"}
+                if daily:
+                    filters["day"] = query.get("day") or datetime.now(app.config.zone).date().isoformat()
+                    link = self.link(filters, locale)
+                report = app.task_list(**filters)
+                self.render("history.html", locale, report=report, task=None, link=link, saved=False, daily=daily)
             elif (task_id := self.task_route(parsed.path)) is not None:
                 if set(query) - {"repository", "start", "end", "day", "lang", "saved"}:
                     raise ValueError("Unknown task field")

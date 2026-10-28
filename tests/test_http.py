@@ -63,6 +63,7 @@ class TaskListApplication(ReportApplication):
                     end=day or filters.get("end", "2026-10-27"),
                     timezone="America/Toronto", total_hours=self.total_seconds / 3600,
                     tasks=[dict(task_id=123, started_at="2026-10-27 09:15:42",
+                                repository="github.com/example/MyCount",
                                 commit_message=self.commit_message, status="running",
                                 hours=self.total_seconds / 3600)])
 
@@ -89,8 +90,8 @@ def test_tasks_table_title_total_and_time_formats(seconds, total, duration):
     with display(app) as url:
         with urlopen(url + "/tasks" + query) as response:
             html = response.read().decode()
-    assert '<h1 id="tasks-heading">Repository (MyCount) Tasks - 27 Oct 2026</h1>' in html
-    assert '<title>DevLog · Repository (MyCount) Tasks - 27 Oct 2026</title>' in html
+    assert '<h1 id="tasks-heading">Repository Tasks - 27 Oct 2026</h1>' in html
+    assert '<title>DevLog · Repository Tasks - 27 Oct 2026</title>' in html
     assert f'<div class="total task-total"><span>Total time</span><strong>{total}</strong></div>' in html
     headings = [f'<th scope="col">{label}</th>' for label in ("Task #", "Start Time", "Description", "Duration")]
     assert all(heading in html for heading in headings)
@@ -107,7 +108,7 @@ def test_tasks_table_title_total_and_time_formats(seconds, total, duration):
     ({"day": "2026-10-27"}, "Tasks - 27 Oct 2026"),
     ({"start": "2026-10-26", "end": "2026-10-27"}, "Tasks - 26 Oct 2026 to 27 Oct 2026"),
     ({"repository": "github.com/example/MyCount", "start": "2026-10-26", "end": "2026-10-27"},
-     "Repository (MyCount) Tasks - 26 Oct 2026 to 27 Oct 2026"),
+     "Repository Tasks - 26 Oct 2026 to 27 Oct 2026"),
 ])
 def test_tasks_title_keeps_day_and_range_navigation_usable(filters, title):
     app = TaskListApplication()
@@ -117,6 +118,83 @@ def test_tasks_title_keeps_day_and_range_navigation_usable(filters, title):
             html = response.read().decode()
     assert f'<h1 id="tasks-heading">{title}</h1>' in html
     assert '<td class="task-description">Running</td>' in html
+
+
+def test_daily_defaults_to_today_in_configured_timezone_and_preserves_day(monkeypatch):
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 28, 2, tzinfo=timezone.utc).astimezone(tz)
+
+    monkeypatch.setattr("devlog.server.ReportHandler.datetime", Clock)
+    calls = []
+
+    class DailyApplication(TaskListApplication):
+        def task_list(self, **filters):
+            calls.append(filters)
+            return super().task_list(**filters)
+
+    with display(DailyApplication()) as url:
+        with urlopen(url + "/daily?lang=en") as response:
+            html = response.read().decode()
+        assert '<h1 id="tasks-heading">Daily Tasks - 27 Oct 2026</h1>' in html
+        assert '<title>DevLog · Daily Tasks - 27 Oct 2026</title>' in html
+        assert 'href="/daily?day=2026-10-27&amp;lang=en" aria-current="page">Daily</a>' in html
+        assert 'name="day" value="2026-10-27" required' in html
+        assert '<th scope="col">Task #</th><th scope="col">Project</th><th scope="col">Start Time</th>' in html
+        assert '<td>MyCount</td>' in html
+        assert '/tasks/123?day=2026-10-27&amp;lang=en' in html
+        assert '<span>Total time</span><strong>2 hours 32 minutes</strong>' in html
+        with urlopen(Request(url + "/daily?day=2026-10-26&lang=en", method="HEAD")) as response:
+            assert response.status == 200 and response.read() == b""
+    assert calls == [{"day": "2026-10-27"}, {"day": "2026-10-26"}]
+
+
+def test_daily_links_drop_repository_and_range_filters():
+    with display(TaskListApplication()) as url:
+        with urlopen(url + "/tasks?repository=github.com/example/MyCount&start=2026-10-26&end=2026-10-27&day=2026-10-27") as response:
+            html = response.read().decode()
+        assert 'href="/daily?day=2026-10-27&amp;lang=en">Daily</a>' in html
+        with urlopen(url + "/?repository=github.com/example/MyCount&start=2026-10-26&end=2026-10-27") as response:
+            html = response.read().decode()
+        assert 'href="/daily?lang=en">Daily</a>' in html
+        assert 'href="/daily?lang=en&amp;day=2026-10-24">2026-10-24</a>' in html
+        for query in ("repository=github.com/example/MyCount", "start=2026-10-26", "day=a&day=b"):
+            with pytest.raises(HTTPError) as error:
+                urlopen(url + "/daily?" + query)
+            assert error.value.code == 400
+
+
+@pytest.mark.database
+def test_daily_lists_all_projects_with_hours_clipped_to_local_day(service, tasks):
+    for repository, start, end, message in (
+        ("previous", datetime(2026, 10, 25, 2), datetime(2026, 10, 25, 3), "Outside before day"),
+        ("overnight", datetime(2026, 10, 25, 3), datetime(2026, 10, 25, 5), "Overnight work"),
+        ('<img onerror="unsafe">', datetime(2026, 10, 25, 6), datetime(2026, 10, 25, 8), "Second project"),
+        ("next", datetime(2026, 10, 26, 4), datetime(2026, 10, 26, 5), "Outside after day"),
+    ):
+        repository = "github.com/example/" + repository
+        task_id = tasks.start(repository, now=start)["task_id"]
+        tasks.complete(repository, task_id, "a" * 40, message, now=end)
+    with urlopen(service["url"] + "/daily?day=2026-10-25&lang=en") as response:
+        html = response.read().decode()
+    assert '<h1 id="tasks-heading">Daily Tasks - 25 Oct 2026</h1>' in html
+    assert '<span>Total time</span><strong>3 hours</strong>' in html
+    assert '<td>overnight</td>' in html and '<td>&lt;img onerror=&#34;unsafe&#34;&gt;</td>' in html
+    assert '<td>01:00</td>' in html and '<td>02:00</td>' in html
+    assert '<td>previous</td>' not in html and '<td>next</td>' not in html
+    assert '<img onerror="unsafe">' not in html
+    for day in ("2026-10-27", "2026-10-24"):
+        with urlopen(service["url"] + "/daily?day=" + day) as response:
+            html = response.read().decode()
+        if day == "2026-10-27":
+            assert 'class="empty"' in html and '<strong>0 seconds</strong>' in html
+        else:
+            assert '<span>Total time</span><strong>2 hours</strong>' in html
+            assert '<td>overnight</td>' in html and '<td>previous</td>' in html
+    with pytest.raises(HTTPError) as error:
+        urlopen(service["url"] + "/daily?day=2026-02-30")
+    assert error.value.code == 400
 
 
 def test_report_html_json_head_and_asset_boundaries():

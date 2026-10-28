@@ -94,6 +94,9 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         assert page.locator("#daily-chart .shapelayer path").evaluate(
             "node => getComputedStyle(node).strokeWidth") == "2px"
         assert page.locator("#daily-chart .legendtext").all_text_contents() == ["alpha", "beta"]
+        page.mouse.move(bar["x"] + bar["width"] / 2, bar["y"] + bar["height"] / 2)
+        page.wait_for_selector("#daily-chart .hovertext")
+        assert page.locator("#daily-chart .hovertext").all_text_contents() == ["alpha: 2.00 Hours"]
 
         # Hiding a lower project must move the separator with the remaining bar.
         page.locator("#daily-chart .legendtoggle").nth(0).click()
@@ -163,6 +166,59 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         page.mouse.click(line["x"] + line["width"] / 2, line["y"])
         page.wait_for_url("**/tasks?**")
         assert parse_qs(urlsplit(page.url).query)["repository"] == ["github.com/nadimghaznavi/beta"]
+        assert errors == []
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
+    playwright = pytest.importorskip("playwright.sync_api")
+    for repository, start, end in (("alpha", 10, 12), ("beta", 13, 14)):
+        repository = "github.com/example/" + repository
+        task_id = tasks.start(repository, now=datetime(2026, 10, 24, start))["task_id"]
+        tasks.complete(repository, task_id, "a" * 40, "Work on " + repository.rsplit("/", 1)[-1],
+                       now=datetime(2026, 10, 24, end))
+    errors = []
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page(viewport={"width": 1200, "height": 900}, ignore_https_errors=True)
+        use_cached_plotly(page)
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.goto(service["url"] + "/?repository=github.com/example/alpha&start=2026-10-24&end=2026-10-24")
+        page.get_by_role("link", name="2026-10-24", exact=True).click()
+        page.wait_for_url("**/daily?**")
+        assert parse_qs(urlsplit(page.url).query) == {"day": ["2026-10-24"], "lang": ["en"]}
+        assert page.get_by_role("link", name="Daily", exact=True).get_attribute("aria-current") == "page"
+        assert page.locator("#tasks-heading").inner_text() == "Daily Tasks - 24 Oct 2026"
+        assert page.locator(".task-total strong").inner_text() == "3 hours"
+        assert page.locator(".tasks-table th").all_text_contents() == [
+            "Task #", "Project", "Start Time", "Description", "Duration"]
+        assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["beta", "alpha"]
+        assert page.locator(".tasks-table tbody tr td:last-child").all_text_contents() == ["01:00", "02:00"]
+        screenshot = os.environ.get("DEVLOG_SCREENSHOT_DIR")
+        if screenshot:
+            Path(screenshot).mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(Path(screenshot) / "daily-desktop.png"), full_page=True)
+        page.set_viewport_size({"width": 390, "height": 844})
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        table_wrap = page.locator(".table-wrap")
+        assert table_wrap.evaluate("element => element.scrollWidth > element.clientWidth")
+        table_wrap.focus()
+        table_wrap.press("ArrowRight")
+        page.wait_for_function("document.querySelector('.table-wrap').scrollLeft > 0")
+        if screenshot:
+            page.screenshot(path=str(Path(screenshot) / "daily-mobile.png"), full_page=True)
+        page.locator(".task-link").first.click()
+        assert page.locator(".total strong").inner_text() == "1.00"
+        page.get_by_role("link", name="Daily", exact=True).click()
+        assert page.get_by_label("Date", exact=True).input_value() == "2026-10-24"
+        page.get_by_label("Date", exact=True).fill("2026-10-25")
+        page.get_by_role("button", name="Show report", exact=True).click()
+        assert parse_qs(urlsplit(page.url).query) == {"day": ["2026-10-25"], "lang": ["en"]}
+        assert page.locator(".tasks-table tbody tr").count() == 0
+        assert page.locator(".empty").is_visible()
+        assert page.locator(".task-total strong").inner_text() == "0 seconds"
         assert errors == []
         browser.close()
 
@@ -359,7 +415,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         back_to_report = page.get_by_role("link", name="Back to report").get_attribute("href")
         assert parse_qs(urlsplit(back_to_report).query) == {
             "start": ["2026-10-24"], "end": ["2026-10-25"], "lang": ["en"]}
-        assert page.get_by_role("heading", level=1).inner_text() == "Repository (overnight) Tasks - 25 Oct 2026"
+        assert page.get_by_role("heading", level=1).inner_text() == "Repository Tasks - 25 Oct 2026"
         assert page.locator(".task-total span").inner_text() == "Total time"
         assert page.locator(".task-total strong").inner_text() == "9 hours"
         assert page.locator(".tasks-table th").all_text_contents() == ["Task #", "Start Time", "Description", "Duration"]
