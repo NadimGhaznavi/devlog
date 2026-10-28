@@ -69,8 +69,9 @@ a:hover { color: var(--accent-hover); }
 .task-metadata dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .commit-message { white-space: pre-wrap; margin-bottom: 0; }
 .timeline { list-style: none; padding: 0; }
-.task-link { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; font-weight: 600; }
+.task-link { display: inline-flex; align-items: center; min-width: 44px; min-height: 24px; font-weight: 600; }
 .tasks-table { min-width: 34rem; }
+.tasks-table th, .tasks-table td { padding-block: .2rem; }
 .tasks-heading { align-items: end; }
 .tasks-heading > div:first-child { flex: 1 1 20rem; }
 .task-total { margin-left: auto; max-width: 100%; white-space: normal; }
