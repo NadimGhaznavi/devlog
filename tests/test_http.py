@@ -431,6 +431,8 @@ def test_history_drilldown_and_pause_form_recalculate_report(service, tasks):
         assert 'vis-timeline@8.5.6/standalone/umd/vis-timeline-graph2d.min.js' in html
         assert 'vis-timeline@8.5.6/styles/vis-timeline-graph2d.min.css' in html
         assert 'type="datetime-local"' in html and 'Work start (UTC)' in html
+        for control in ("timing-zoom-in", "timing-zoom-out", "timing-focus", "timing-show-all"):
+            assert f'id="{control}"' not in html
     data = urlencode(dict(interval_id=interval, pause_start="2026-10-24 22:00",
                           pause_end="2026-10-25 08:00")).encode()
     request = Request(service["url"] + f"/tasks/{task_id}/pause" + query, data=data,

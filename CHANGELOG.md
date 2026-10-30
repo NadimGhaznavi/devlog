@@ -6,6 +6,21 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Francium (Fr)**. Francium is extremely 
+rare and radioactive, with its longest-lived isotope having a half-life of only 
+about 22 minutes.
+
+
+### Summary
+
+Simplify timing corrections with a timeline that automatically fits the single task.
+
+### Changed
+
+- Remove Zoom in, Zoom out, Focus task and Show all controls and disable timeline
+  pan/zoom gestures. Fit the task and completion marker on load and after saved
+  corrections, while preserving drag/resize and precise UTC editing.
+
 ## [0.10.6] - 2026-10-30 @ 03:30
 
 This release is named for the element **Radon (Rn)**. Radon is a radioactive noble 

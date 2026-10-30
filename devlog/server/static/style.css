@@ -91,7 +91,7 @@ summary { cursor: pointer; color: var(--accent); padding: 8px 0; }
 .pause-form .field { min-width: 0; }
 .pause-form input { width: 100%; min-width: 0; }
 .pause-form button { justify-self: start; }
-.timing-toolbar, .timing-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin: 1rem 0; }
+.timing-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin: 1rem 0; }
 .secondary { background: var(--surface); color: var(--text); border-color: var(--muted); }
 .secondary:hover { background: var(--background); border-color: var(--accent); }
 button:disabled { opacity: .5; cursor: default; }
