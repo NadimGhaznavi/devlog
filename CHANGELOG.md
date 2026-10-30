@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.10.9] - 2026-10-30 @ 18:53
+
 This release is named for the element **Neptunium (Np)**. Neptunium, the first 
 transuranium element discovered, was named after Neptune, the planet beyond Uranus.
 
