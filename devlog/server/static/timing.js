@@ -199,7 +199,7 @@
     metadataTimes[1].textContent = localField(task.completed_at);
     document.querySelector(".last-updated").textContent = text("lastUpdated", {timestamp: localField(task.loaded_at)});
     const total = task.intervals.reduce((sum, row) => sum + Date.parse(row.ended_at) - Date.parse(row.started_at), 0);
-    document.querySelector(".report-heading .total strong").textContent = (total / 3600000).toFixed(2);
+    document.querySelector(".report-heading .total strong").textContent = duration(total).split(":").slice(0, 2).join(":");
     return true;
   }
 

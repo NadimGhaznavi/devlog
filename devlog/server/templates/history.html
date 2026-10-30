@@ -12,20 +12,7 @@
 {% endif %}
 {% macro total_duration(hours) -%}
   {%- set seconds = hours | elapsed_seconds -%}
-  {%- if daily -%}
-    {{- '%02d:%02d' | format(seconds // 3600, seconds // 60 % 60) -}}
-  {%- else -%}
-  {%- if seconds < task_seconds_limit -%}
-    {%- set parts = [(seconds // 60, text.DURATION_MINUTE, text.DURATION_MINUTES), (seconds % 60, text.DURATION_SECOND, text.DURATION_SECONDS)] -%}
-  {%- else -%}
-    {%- set parts = [(seconds // 3600, text.DURATION_HOUR, text.DURATION_HOURS), (seconds // 60 % 60, text.DURATION_MINUTE, text.DURATION_MINUTES)] -%}
-  {%- endif -%}
-  {%- for count, singular, plural in parts if count -%}
-    {{- ' ' if not loop.first else '' -}}{{- t(singular if count == 1 else plural, count=count) -}}
-  {%- else -%}
-    {{- t(text.DURATION_SECONDS, count=0) -}}
-  {%- endfor -%}
-  {%- endif -%}
+  {{- '%02d:%02d' | format(seconds // 3600, seconds // 60 % 60) -}}
 {%- endmacro %}
 {% block page_title %}{{ history_title if report else t(text.TASKS) }}{% endblock %}
 {% block head %}
@@ -39,7 +26,7 @@
     {% if form_error is defined %}<p class="notice" role="alert">{{ t(form_error) }}</p>{% endif %}
     <section class="report panel">
     {% if task %}
-      <div class="report-heading"><div><h1>{{ t(text.TASK, task_id=task.task_id) }}</h1><p>{{ task.repository }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(task.total_hours) }}</strong></div></div>
+      <div class="report-heading"><div><h1>{{ t(text.TASK, task_id=task.task_id) }}</h1><p>{{ task.repository }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ total_duration(task.total_hours) }}</strong></div></div>
       <dl class="task-metadata">
         <dt>{{ t(text.STATUS) }}</dt><dd>{{ t(text['STATUS_' ~ task.status.upper()]) }}</dd>
         <dt>{{ t(text.ORIGINAL_STARTED_AT if task.status == 'completed' else text.STARTED_AT) }}</dt><dd><time>{{ task.started_at }}</time></dd>

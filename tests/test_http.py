@@ -75,19 +75,19 @@ class TaskListApplication(ReportApplication):
 
 
 @pytest.mark.parametrize("seconds, total, duration", [
-    (0, "0 seconds", "00:00"),
-    (1, "1 second", "00:00"),
-    (59.999999, "59 seconds", "00:00"),
-    (60, "1 minute", "00:01"),
-    (152, "2 minutes 32 seconds", "00:02"),
-    (299.999999, "4 minutes 59 seconds", "00:04"),
-    (300, "5 minutes", "00:05"),
-    (301, "5 minutes", "00:05"),
-    (3599, "59 minutes", "00:59"),
-    (3600, "1 hour", "01:00"),
-    (7260, "2 hours 1 minute", "02:01"),
-    (9120, "2 hours 32 minutes", "02:32"),
-    (129600, "36 hours", "36:00"),
+    (0, "00:00", "00:00"),
+    (1, "00:00", "00:00"),
+    (59.999999, "00:00", "00:00"),
+    (60, "00:01", "00:01"),
+    (152, "00:02", "00:02"),
+    (299.999999, "00:04", "00:04"),
+    (300, "00:05", "00:05"),
+    (301, "00:05", "00:05"),
+    (3599, "00:59", "00:59"),
+    (3600, "01:00", "01:00"),
+    (7260, "02:01", "02:01"),
+    (9120, "02:32", "02:32"),
+    (129600, "36:00", "36:00"),
 ])
 def test_tasks_table_title_total_and_time_formats(seconds, total, duration):
     app = TaskListApplication()
@@ -169,17 +169,26 @@ def test_daily_defaults_to_today_in_configured_timezone_and_preserves_day(monkey
 
 @pytest.mark.parametrize("seconds, total", [
     (0, "00:00"), (59.999999, "00:00"), (60, "00:01"),
-    (3599, "00:59"), (3600, "01:00"), (12960, "03:36"), (129600, "36:00"),
+    (576, "00:09"), (3599, "00:59"), (3600, "01:00"), (12960, "03:36"), (129600, "36:00"),
 ])
-def test_daily_total_uses_zero_padded_hours_and_completed_minutes(seconds, total):
+@pytest.mark.parametrize("path", ["/daily", "/tasks", "/tasks/123"])
+def test_task_pages_use_zero_padded_hours_and_completed_minutes(seconds, total, path):
     app = TaskListApplication()
     app.total_seconds = seconds
+    app.task_detail = lambda task_id: dict(
+        task_id=task_id, repository="github.com/example/MyCount", status="completed",
+        started_at="2026-10-27 09:15:42", completed_at="2026-10-27 12:51:42",
+        commit_sha=None, commit_message=None, timeline=[], editor=None,
+        total_hours=seconds / 3600, timezone="America/Toronto")
     with display(app) as url:
-        with urlopen(url + "/daily?day=2026-10-27") as response:
+        with urlopen(url + path + "?day=2026-10-27") as response:
             html = response.read().decode()
-    assert f'<span>Total time</span><strong>{total}</strong>' in html
-    assert ('<td><span class="project-swatch" style="--project-color: #E63946" '
-            'aria-hidden="true"></span>MyCount</td>') in html
+    assert f'<strong>{total}</strong>' in html
+    if path == "/daily":
+        assert ('<td><span class="project-swatch" style="--project-color: #E63946" '
+                'aria-hidden="true"></span>MyCount</td>') in html
+    else:
+        assert 'class="project-swatch"' not in html
 
 
 def test_daily_links_drop_repository_and_range_filters():
@@ -433,14 +442,14 @@ def test_history_drilldown_and_pause_form_recalculate_report(service, tasks):
         html = response.read().decode()
         assert f"/tasks/{task_id}?" in html
         assert "&lt;script&gt;" in html
-        assert "<span>Total time</span><strong>9 hours</strong>" in html
+        assert "<span>Total time</span><strong>09:00</strong>" in html
         assert "<td>09:00</td>" in html
         assert "<time>21:00</time>" in html
     with urlopen(service["url"] + f"/tasks/{task_id}" + query) as response:
         html = response.read().decode()
         assert 'id="timing-editor"' in html and '/static/timing.js' in html
         assert 'name="pause_start"' not in html and 'name="pause_end"' not in html
-        assert "America/Toronto" in html and "12.00" in html
+        assert "America/Toronto" in html and "<strong>12:00</strong>" in html
         assert "<time>2026-10-24 21:00:00</time>" in html
         assert "<time>2026-10-25 09:00:00</time>" in html
         assert "Elapsed time: 12:00:00" in html
