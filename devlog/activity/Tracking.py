@@ -1,8 +1,10 @@
 """Validate command payloads and invoke domain database operations."""
 
+from datetime import datetime, timezone
 import re
 
 from devlog.constants.DText import DText
+from devlog.constants.DRelease import DRelease
 from devlog.constants.DTracking import DTracking, Method
 from devlog.entity.TrackingError import TrackingError
 
@@ -26,6 +28,8 @@ class Tracking:
             raise TrackingError("invalid_request", DText.INVALID_REQUEST)
         if any(ord(c) < 32 for c in repository):
             raise TrackingError("invalid_request", DText.INVALID_REQUEST)
+        if method == Method.RELEASE:
+            return self._record_release(repository, payload)
         if method == Method.START and set(payload) == {DTracking.REPOSITORY}:
             return self.tasks.start(repository)
         if method == Method.PAUSE and set(payload) == {DTracking.REPOSITORY}:
@@ -46,3 +50,28 @@ class Tracking:
                 raise TrackingError("invalid_request", DText.INVALID_REQUEST)
             return self.tasks.complete(repository, task_id, sha, message)
         raise TrackingError("invalid_request", DText.INVALID_REQUEST)
+
+    def _record_release(self, repository, payload):
+        if set(payload) != {DTracking.REPOSITORY, DRelease.TAG_NAME, DRelease.CODENAME,
+                            DTracking.COMMIT_SHA, DRelease.RELEASED_AT}:
+            raise TrackingError("invalid_request", DText.INVALID_REQUEST)
+        tag, codename, sha, timestamp = (payload[key] for key in (
+            DRelease.TAG_NAME, DRelease.CODENAME, DTracking.COMMIT_SHA, DRelease.RELEASED_AT))
+        if (not isinstance(tag, str) or len(tag.encode("utf-8")) > DRelease.MAX_TAG_BYTES
+                or re.fullmatch(DRelease.TAG_PATTERN, tag) is None
+                or (codename is not None and (not isinstance(codename, str) or not codename.strip()
+                    or len(codename.encode("utf-8")) > DRelease.MAX_CODENAME_BYTES
+                    or any(ord(c) < 32 or ord(c) == 127 for c in codename)))
+                or not isinstance(sha, str) or re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha) is None
+                or not isinstance(timestamp, str) or len(timestamp) > 40):
+            raise TrackingError("invalid_request", DText.INVALID_REQUEST)
+        try:
+            released_at = datetime.fromisoformat(timestamp)
+            if released_at.tzinfo is None:
+                raise ValueError("Release time requires an explicit UTC offset")
+            released_at = released_at.astimezone(timezone.utc).replace(tzinfo=None)
+            if released_at.year < DTracking.MIN_TIMING_YEAR:
+                raise ValueError("Release time is outside the database range")
+        except (ValueError, OverflowError) as error:
+            raise TrackingError("invalid_request", DText.INVALID_REQUEST) from error
+        return self.tasks.record_release(repository, tag, codename, sha, released_at)

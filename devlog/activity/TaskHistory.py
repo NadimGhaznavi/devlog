@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 from devlog.activity.Report import Report
 from devlog.constants.DText import DText
-from devlog.constants.DTracking import DTracking, TaskStatus
+from devlog.constants.DRelease import DRelease
+from devlog.constants.DTracking import DTracking, HistoryKind, TaskStatus
 from devlog.entity.TrackingError import TrackingError
 
 
@@ -23,7 +24,18 @@ class TaskHistory:
         if day:
             filters.update(start=day, end=day)
         report = Report(self.tasks, self.zone).read(include_tasks=True, **filters)
+        entries = [dict(task, entry_type=HistoryKind.TASK) for task in report["tasks"]]
+        entries.extend(dict(release, entry_type=HistoryKind.RELEASE) for release in report[DRelease.RELEASES])
+        # Sort UTC datetimes before formatting; local clock times repeat at DST fall-back.
+        def order(entry):
+            if entry[DTracking.ENTRY_TYPE] == HistoryKind.RELEASE:
+                return entry[DRelease.RELEASED_AT], True, entry[DRelease.RELEASE_ID]
+            return entry[DTracking.STARTED_AT], False, entry[DTracking.TASK_ID]
+
+        entries.sort(key=order, reverse=True)
+        report[DTracking.ENTRIES] = [self._present(entry) for entry in entries]
         report["tasks"] = [self._present(task) for task in report["tasks"]]
+        report[DRelease.RELEASES] = [self._present(release) for release in report[DRelease.RELEASES]]
         return report
 
     def daily(self, *, day, repository=""):
@@ -31,12 +43,17 @@ class TaskHistory:
         if repository and repository not in report["repositories"]:
             raise ValueError("Unknown repository")
         projects = report["days"][0]["projects"]
-        report["repositories"] = sorted(project for project, hours in projects.items() if hours > 0)
+        report["repositories"] = sorted({project for project, hours in projects.items() if hours > 0}
+                                        | {release[DTracking.REPOSITORY] for release in report[DRelease.RELEASES]})
         # Changing the date can leave a previously selected project without work.
         report["repository"] = repository if repository in report["repositories"] else ""
         if report["repository"]:
             report["tasks"] = [task for task in report["tasks"] if task["repository"] == repository]
-            report["total_hours"] = projects[repository]
+            report[DRelease.RELEASES] = [release for release in report[DRelease.RELEASES]
+                                        if release[DTracking.REPOSITORY] == repository]
+            report[DTracking.ENTRIES] = [entry for entry in report[DTracking.ENTRIES]
+                                        if entry[DTracking.REPOSITORY] == repository]
+            report["total_hours"] = projects.get(repository, 0)
         return report
 
     def read(self, task_id, *, now=None, include_editor=False):

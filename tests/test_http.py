@@ -68,7 +68,7 @@ class TaskListApplication(ReportApplication):
                     start=day or filters.get("start", "2026-10-27"),
                     end=day or filters.get("end", "2026-10-27"),
                     timezone="America/Toronto", total_hours=self.total_seconds / 3600,
-                    tasks=[dict(task_id=123, started_at="2026-10-27 09:15:42",
+                    entries=[dict(task_id=123, started_at="2026-10-27 09:15:42", entry_type="task",
                                 repository="github.com/example/MyCount",
                                 commit_message=self.commit_message, status="running",
                                 hours=self.total_seconds / 3600)])
