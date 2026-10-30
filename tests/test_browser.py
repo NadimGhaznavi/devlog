@@ -294,6 +294,83 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
 
 @pytest.mark.database
 @pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+@pytest.mark.parametrize("seconds", [5, 59])
+@pytest.mark.parametrize("mobile", [False, True])
+def test_short_task_start_handle_can_be_dragged_and_saved(service, tasks, seconds, mobile):
+    playwright = pytest.importorskip("playwright.sync_api")
+    repository = "github.com/example/forgotten-start"
+    started = datetime(2026, 10, 24, 12, 0, 17, 123456)
+    task_id = tasks.start(repository, now=started)["task_id"]
+    tasks.complete(repository, task_id, "a" * 40, "Forgot to start the timer",
+                   now=started + timedelta(seconds=seconds))
+    before = tasks.task_detail(task_id)
+    errors = []
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        context = browser.new_context(viewport={"width": 390 if mobile else 1200, "height": 1000},
+                                      is_mobile=mobile, has_touch=mobile)
+        page = context.new_page()
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        url = service["url"] + f"/tasks/{task_id}?lang=en"
+        page.goto(url)
+        start, end = page.locator(".timing-handle").first, page.locator(".timing-handle").last
+        initial_start = int(start.get_attribute("aria-valuenow"))
+        initial_end = int(end.get_attribute("aria-valuenow"))
+        # On the full timeline, both boundaries occupy the same horizontal pixels.
+        # Selecting the end must still leave the start's upper grip reachable.
+        end.focus()
+        page.locator("#timing-track").scroll_into_view_if_needed()
+        box = start.bounding_box()
+        x, y = box["x"] + box["width"] / 2, box["y"] + 10
+        assert page.evaluate("""({x, y}) => document.elementFromPoint(x, y)?.dataset.edge""",
+                             dict(x=x, y=y)) == "start"
+        start.focus()
+        end_box = end.bounding_box()
+        assert page.evaluate("""({x, y}) => document.elementFromPoint(x, y)?.dataset.edge""",
+                             dict(x=end_box["x"] + end_box["width"] / 2,
+                                  y=end_box["y"] + end_box["height"] - 10)) == "end"
+        if mobile:
+            session = context.new_cdp_session(page)
+            session.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]})
+            session.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [{"x": x - 30, "y": y}]})
+            session.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        else:
+            page.mouse.move(x, y)
+            page.mouse.down()
+            page.mouse.move(x - 30, y, steps=10)
+            page.mouse.up()
+        assert int(start.get_attribute("aria-valuenow")) < initial_start
+        assert int(end.get_attribute("aria-valuenow")) == initial_end
+        assert tasks.task_detail(task_id) == before
+        page.get_by_role("button", name="Cancel", exact=True).click()
+        assert int(start.get_attribute("aria-valuenow")) == initial_start
+        # Zooming into a short task must also allow a precise earlier start.
+        drag_timing_boundary(page, 0, "start", datetime(2026, 10, 24, 12))
+        corrected = datetime(2026, 10, 24, 12)
+        assert int(start.get_attribute("aria-valuenow")) == corrected.replace(tzinfo=timezone.utc).timestamp() * 1000
+        assert int(end.get_attribute("aria-valuenow")) == initial_end
+        page.get_by_role("button", name="Save timing", exact=True).click()
+        page.wait_for_url("**saved=timing")
+        after = tasks.task_detail(task_id)
+        assert after["intervals"][0]["started_at"] == corrected
+        assert after["intervals"][0]["ended_at"] == before["intervals"][0]["ended_at"]
+        assert {k: v for k, v in after.items() if k != "intervals"} == {
+            k: v for k, v in before.items() if k != "intervals"}
+        page.reload()
+        assert int(page.locator(".timing-handle").first.get_attribute("aria-valuenow")) == corrected.replace(tzinfo=timezone.utc).timestamp() * 1000
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        screenshots = os.environ.get("DEVLOG_SCREENSHOT_DIR")
+        if screenshots:
+            page.get_by_role("button", name="Focus task", exact=True).click()
+            Path(screenshots).mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(Path(screenshots) / f"short-task-{seconds}-{'mobile' if mobile else 'desktop'}.png"),
+                            full_page=True)
+        assert errors == []
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
 def test_completed_editor_four_handles_cancel_conflict_touch_and_readonly_fallback(service, tasks):
     playwright = pytest.importorskip("playwright.sync_api")
     previous_repo, repository = "github.com/example/previous", "github.com/example/edited"
@@ -376,7 +453,7 @@ def test_completed_editor_four_handles_cancel_conflict_touch_and_readonly_fallba
         scale = (right_box["x"] - left_box["x"]) / (float(right.get_attribute("aria-valuenow")) - float(left.get_attribute("aria-valuenow")))
         mobile_page.locator("#timing-track").scroll_into_view_if_needed()
         right_box = right.bounding_box()
-        x, y = right_box["x"] + 14, right_box["y"] + 60
+        x, y = right_box["x"] + right_box["width"] / 2, right_box["y"] + right_box["height"] / 2
         session = mobile.new_cdp_session(mobile_page)
         session.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]})
         for step in range(1, 11):
