@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.10.6] - 2026-10-30 @ 03:30
+
 This release is named for the element **Radon (Rn)**. Radon is a radioactive noble 
 gas that can accumulate indoors when it seeps from the ground.
 
