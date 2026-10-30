@@ -6,6 +6,16 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+### Summary
+
+Allow start-time corrections for short completed tasks in the web timeline.
+
+### Fixed
+
+- Keep the start and end drag handles independently reachable when a short task's
+  boundaries overlap on screen. Verify mouse and touch corrections, cancellation,
+  and saving without changing the recorded commit time.
+
 ## [0.10.1] - 2026-10-28 @ 17:05
 
 This release is named for the element **Hafnium (Hf)**. Hafnium is excellent at 

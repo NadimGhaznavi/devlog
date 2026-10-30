@@ -106,8 +106,11 @@ button:disabled { opacity: .5; cursor: default; }
 .timing-span.fixed { background: var(--surface); border-inline: 2px solid var(--muted); color: var(--muted); }
 .timing-span.idle, .timing-span.pause { color: var(--muted); }
 .timing-span.pause { background: repeating-linear-gradient(135deg, transparent 0 10px, var(--surface) 10px 12px); }
-.timing-handle { position: absolute; top: -7px; width: 28px; height: 120px; min-height: 0; margin-left: -14px; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: ew-resize; touch-action: none; z-index: 2; }
-.timing-handle::before { content: ""; position: absolute; inset-block: 5px; left: 12px; width: 4px; background: var(--accent); border-radius: 2px; }
+.timing-handle { position: absolute; top: -7px; width: 28px; height: 60px; min-height: 0; margin-left: -14px; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: ew-resize; touch-action: none; z-index: 2; }
+/* Separate upper start and lower end hit areas, even when timestamps coincide on screen. */
+.timing-handle[data-edge="end"] { top: 53px; }
+.timing-handle::before { content: ""; position: absolute; top: 5px; height: 110px; left: 12px; width: 4px; background: var(--accent); border-radius: 2px; pointer-events: none; }
+.timing-handle[data-edge="end"]::before { top: -55px; }
 .timing-handle::after { content: ""; position: absolute; left: 8px; width: 12px; height: 12px; background: var(--accent); border: 2px solid var(--background); border-radius: 2px; }
 .timing-handle[data-edge="start"]::after { top: 0; }
 .timing-handle[data-edge="end"]::after { bottom: 0; }
