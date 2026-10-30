@@ -33,9 +33,15 @@ class DTracking:
     TIMEZONE: Final[str] = "America/Toronto"
     HISTORY_TIME_FORMAT: Final[str] = "%Y-%m-%d %H:%M:%S"
     TASK_DATE_FORMAT: Final[str] = "%d %b %Y"
-    TASK_TOTAL_SECONDS_LIMIT: Final[int] = 5 * 60
     REPORT_DAYS: Final[int] = 7
     MAX_REPORT_DAYS: Final[int] = 366
+    PROJECT_COLORS: Final[tuple[str, ...]] = (
+        "#E63946", "#00BCD4", "#FFD60A", "#7C3AED",
+        "#22C55E", "#F77F00", "#2563EB", "#EC4899",
+        "#7AC800", "#009DFF", "#BE185D", "#FFA600",
+        "#00A896", "#A855F7", "#F35425", "#4F46E5",
+        "#BAD80A", "#F43F5E", "#00B894", "#D946EF",
+    )
     TASK_HOURS: Final[str] = "task_hours"
     MAX_REPOSITORY: Final[int] = 512
     MAX_COMMIT_MESSAGE: Final[int] = 16384
