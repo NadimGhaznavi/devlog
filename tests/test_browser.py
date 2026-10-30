@@ -59,16 +59,20 @@ def observe_timeline_hooks(page):
 
 def save_precise_timing(page, *, start=None, end=None):
     if start is not None:
-        page.get_by_label("Work start (UTC)", exact=True).fill(start)
+        page.get_by_label("Start", exact=True).fill(start.replace("T", " ") + (":00" if len(start) == 16 else ""))
     if end is not None:
-        page.get_by_label("Work end (UTC)", exact=True).fill(end)
+        page.get_by_label("End", exact=True).fill(end.replace("T", " ") + (":00" if len(end) == 16 else ""))
     page.get_by_role("button", name="Save timing", exact=True).click()
-    page.wait_for_function("document.getElementById('timing-status').textContent.startsWith('Timing saved.')")
+    page.wait_for_function("""document.getElementById('timing-status').textContent.startsWith('Timing saved.')
+        || !document.getElementById('timing-error').hidden""")
+    assert page.locator("#timing-status").inner_text().startswith("Timing saved."), page.locator("#timing-error").inner_text()
 
 
 def drag_work_range(page, index, delta_seconds, edge=None, touch=False, wait=True):
     work = page.locator(".vis-item.vis-range.timing-work").nth(index)
     work.click()
+    # Keep the selection click outside the library's double-click gesture window.
+    page.wait_for_timeout(400)
     start = datetime.fromisoformat(page.locator("#timing-start").input_value())
     end = datetime.fromisoformat(page.locator("#timing-end").input_value())
     work_box = work.bounding_box()
@@ -422,7 +426,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
     errors = []
     with playwright.sync_playwright() as runtime:
         browser = runtime.chromium.launch()
-        page = browser.new_page(viewport={"width": 1200, "height": 900}, ignore_https_errors=True)
+        page = browser.new_page(viewport={"width": 1200, "height": 900}, ignore_https_errors=True, timezone_id="America/Toronto")
         use_cached_plotly(page)
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(service["url"] + "/?start=2026-10-24&end=2026-10-25")
@@ -465,14 +469,13 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         assert page.locator(".interval time").all_text_contents() == [
             "2026-10-24 21:00:00", "2026-10-25 09:00:00"]
         assert page.locator(".elapsed").all_text_contents() == ["Elapsed time: 12:00:00"]
-        save_precise_timing(page, end="2026-10-25T02:00")
-        assert page.locator("#timing-total").inner_text() == "Elapsed time: 01:00:00"
+        save_precise_timing(page, end="2026-10-24T22:00")
+        assert page.locator("#timing-total").inner_text() == "01:00:00"
         assert page.get_by_text("Timing saved.", exact=False).is_visible()
         assert page.locator(".total strong").inner_text() == "1.00"
-        assert page.locator(".interval").count() == 2
-        assert page.locator(".interval.pause").count() == 1
-        assert page.locator(".elapsed").all_text_contents() == [
-            "Elapsed time: 01:00:00", "Elapsed time: 11:00:00"]
+        assert page.locator(".interval").count() == 1
+        assert page.locator(".interval.pause").count() == 0
+        assert page.locator(".elapsed").all_text_contents() == ["Elapsed time: 01:00:00"]
         assert page.locator(".task-metadata").inner_text().count("e" * 40) == 1
         page.set_viewport_size({"width": 390, "height": 844})
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
@@ -522,18 +525,26 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
         page.on("request", lambda request: writes.append(request) if request.method == "POST" else None)
         page.goto(url)
         playwright.expect(page.locator("#timing-editor")).to_be_visible()
-        assert page.locator("#timing-start").input_value() == "2026-10-24T12:00"
+        assert page.locator("#timing-start").input_value() == "2026-10-25 01:00:00"
+        assert page.locator(".task-metadata time").all_text_contents() == [
+            "2026-10-25 01:00:00", "2026-10-25 06:00:00"]
         assert page.locator("#timing-save").is_disabled()
-        assert page.locator(".vis-item.vis-range.timing-work").count() == 2
-        assert page.evaluate("""() => timelineItems.get().some(item =>
-            item.className === 'timing-context' && item.editable === false)""")
-        playwright.expect(page.locator(".vis-item.vis-point.timing-commit")).to_have_text("Commit recorded")
+        assert page.locator("#timing-total").inner_text() == "02:00:00"
+        assert page.locator("#timing-fields").bounding_box()["y"] < page.locator("#timing-track").bounding_box()["y"]
+        assert page.locator(".timing-form-fields tr").count() == 4
+        assert page.locator(".timing-form-fields tr").first.locator("td").first.locator("select").count() == 1
+        assert page.locator("label[for='timing-part']").count() == 0
+        assert page.get_by_text("Snapshot at", exact=False).count() == 0
+        assert page.get_by_text("Select a work range", exact=False).count() == 0
+        assert page.evaluate("testTimeline.options.moment(new Date('2026-10-24T12:00:00Z')).format('YYYY-MM-DD HH:mm:ss')") == "2026-10-25 01:00:00"
+        assert page.locator(".vis-item.vis-range.timing-work").count() == 1
+        assert page.evaluate("timelineItems.get().filter(item => item.type === 'range').length") == 1
         for control in ("Zoom in", "Zoom out", "Focus task", "Show all"):
             assert page.get_by_role("button", name=control, exact=True).count() == 0
         # The task is fitted on load; wheel and background drags cannot change the view.
         window = page.evaluate("() => { const w = testTimeline.getWindow(); return [+w.start, +w.end]; }")
         assert window[0] <= datetime(2026, 10, 24, 12, tzinfo=timezone.utc).timestamp() * 1000
-        assert window[1] >= datetime(2026, 10, 24, 17, tzinfo=timezone.utc).timestamp() * 1000
+        assert window[1] >= datetime(2026, 10, 24, 14, tzinfo=timezone.utc).timestamp() * 1000
         assert window[1] - window[0] <= 7 * 3600 * 1000
         track = page.locator("#timing-track")
         track.scroll_into_view_if_needed()
@@ -547,9 +558,9 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
         assert page.evaluate("() => { const w = testTimeline.getWindow(); return [+w.start, +w.end]; }") == window
         assert page.locator(".commit-message img").count() == 0
         assert page.get_by_text("Insert a pause", exact=True).count() == 0
-        page.locator("#timing-start").fill("2026-10-24T12:30")
+        page.locator("#timing-start").fill("2026-10-25 01:30:00")
         page.get_by_role("button", name="Cancel", exact=True).click()
-        assert page.locator("#timing-start").input_value() == "2026-10-24T12:00"
+        assert page.locator("#timing-start").input_value() == "2026-10-25 01:00:00"
         assert writes == [] and tasks.task_detail(task_id) == before
         # Double-click uses onUpdate; cancelling leaves the range and storage intact.
         page.locator(".vis-item.vis-range.timing-work").first.dblclick()
@@ -568,9 +579,14 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
         row = tasks.task_detail(task_id)["intervals"][0]
         assert datetime(2026, 10, 24, 14) < row["ended_at"] < datetime(2026, 10, 24, 15)
         assert row["ended_at"] - row["started_at"] == resized_duration
-        save_precise_timing(page, start="2026-10-24T12:30", end="2026-10-24T13:30")
+        save_precise_timing(page, start="2026-10-25T01:30", end="2026-10-25T02:30")
+        first_id = page.evaluate("timelineItems.get().find(item => item.type === 'range').id")
         page.get_by_label("Active time", exact=True).select_option(index=1)
-        save_precise_timing(page, start="2026-10-24T15:30", end="2026-10-24T16:30")
+        assert page.evaluate("timelineItems.get().find(item => item.type === 'range').id") != first_id
+        assert page.locator(".vis-item.vis-range.timing-work").count() == 1
+        assert page.locator("ol.timeline .interval").count() == 1
+        assert page.locator("ol.timeline time").first.text_content() == "2026-10-25 04:00:00"
+        save_precise_timing(page, start="2026-10-25T04:30", end="2026-10-25T05:30")
         assert len(writes) == 4
         assert page.evaluate("timelineHooks") == [
             {"name": "onUpdate", "calls": 1, "accepted": False},
@@ -578,7 +594,7 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
             {"name": "onMove", "calls": 1, "accepted": True},
         ]
         assert page.locator(".total strong").inner_text() == "2.00"
-        assert page.locator("#timing-total").inner_text() == "Elapsed time: 02:00:00"
+        assert page.locator("#timing-total").inner_text() == "01:00:00"
         assert tasks.task_detail(previous) == previous_before
         after = tasks.task_detail(task_id)
         assert {k: v for k, v in after.items() if k != "intervals"} == {
@@ -586,7 +602,7 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
         assert "start=2026-10-24" in page.url and "lang=en" in page.url
         page.reload()
         assert page.locator(".total strong").inner_text() == "2.00"
-        assert page.locator("#timing-start").input_value() == "2026-10-24T12:30"
+        assert page.locator("#timing-start").input_value() == "2026-10-25 01:30:00"
         playwright.expect(page.locator("#timing-track .vis-timeline")).to_be_visible()
         for width in (1200, 390):
             page.set_viewport_size({"width": width, "height": 1100})
@@ -610,7 +626,7 @@ def test_vis_short_task_mobile_touch_and_precise_edit(service, tasks, seconds):
     tasks.complete(repository, task_id, "a" * 40, "Short", now=start + timedelta(seconds=seconds))
     with playwright.sync_playwright() as runtime:
         browser = runtime.chromium.launch()
-        context = browser.new_context(viewport={"width": 390, "height": 1000}, is_mobile=True, has_touch=True)
+        context = browser.new_context(timezone_id="UTC", viewport={"width": 390, "height": 1000}, is_mobile=True, has_touch=True)
         page = context.new_page()
         use_cached_timeline(page)
         page.goto(service["url"] + f"/tasks/{task_id}")
@@ -622,7 +638,7 @@ def test_vis_short_task_mobile_touch_and_precise_edit(service, tasks, seconds):
         save_precise_timing(page, start="2026-10-24T11:30")
         assert tasks.task_detail(task_id)["intervals"][0]["started_at"] == datetime(2026, 10, 24, 11, 30)
         page.reload()
-        assert page.locator("#timing-start").input_value() == "2026-10-24T11:30"
+        assert page.locator("#timing-start").input_value() == "2026-10-24 11:30:00"
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         browser.close()
 
@@ -637,23 +653,23 @@ def test_vis_rejection_stale_edit_and_lost_acknowledgement(service, tasks):
     url = service["url"] + f"/tasks/{task_id}"
     with playwright.sync_playwright() as runtime:
         browser = runtime.chromium.launch()
-        page = browser.new_page()
-        stale = browser.new_page()
+        page = browser.new_page(timezone_id="UTC")
+        stale = browser.new_page(timezone_id="UTC")
         for view in (page, stale):
             use_cached_timeline(view)
             view.goto(url)
         # Server rejection preserves the last accepted range and leaves form values unsaved.
-        page.locator("#timing-end").fill("2026-10-24T18:00")
+        page.locator("#timing-end").fill("2026-10-24 18:00:00")
         page.get_by_role("button", name="Save timing", exact=True).click()
         page.locator("#timing-error").wait_for(state="visible")
         assert "completion" in page.locator("#timing-error").inner_text()
         assert tasks.task_detail(task_id)["intervals"][0]["ended_at"] == datetime(2026, 10, 24, 17)
         save_precise_timing(page, end="2026-10-24T16:00")
-        stale.locator("#timing-start").fill("2026-10-24T13:00")
+        stale.locator("#timing-start").fill("2026-10-24 13:00:00")
         stale.get_by_role("button", name="Save timing", exact=True).click()
         stale.wait_for_function("document.getElementById('timing-status').textContent.startsWith('Recorded timing refreshed.')")
         assert stale.locator("#timing-error").is_visible()
-        assert stale.locator("#timing-end").input_value() == "2026-10-24T16:00"
+        assert stale.locator("#timing-end").input_value() == "2026-10-24 16:00:00"
         # Drop a successful POST response: recovery reads storage and does not repeat the write.
         writes = []
         def lose_ack(route):
@@ -665,18 +681,18 @@ def test_vis_rejection_stale_edit_and_lost_acknowledgement(service, tasks):
             else:
                 route.continue_()
         page.route("**/tasks/*/timing*", lose_ack)
-        page.locator("#timing-end").fill("2026-10-24T15:00")
+        page.locator("#timing-end").fill("2026-10-24 15:00:00")
         page.get_by_role("button", name="Save timing", exact=True).click()
         page.wait_for_function("document.getElementById('timing-status').textContent.startsWith('Recorded timing refreshed.')")
         assert len(writes) == 1
         assert page.locator("#timing-error").is_visible()
-        assert page.locator("#timing-end").input_value() == "2026-10-24T15:00"
+        assert page.locator("#timing-end").input_value() == "2026-10-24 15:00:00"
         assert page.locator(".total strong").inner_text() == "3.00"
         page.unroute("**/tasks/*/timing*", lose_ack)
         save_precise_timing(page, end="2026-10-24T14:00")
         # An unreadable recovery snapshot blocks editing and offers an explicit reload.
         page.route("**/tasks/*/timing*", lambda route: route.abort("failed"))
-        page.locator("#timing-start").fill("2026-10-24T12:30")
+        page.locator("#timing-start").fill("2026-10-24 12:30:00")
         page.get_by_role("button", name="Save timing", exact=True).click()
         page.locator("#timing-reload").wait_for(state="visible")
         assert page.locator("#timing-start").is_disabled()
@@ -719,7 +735,7 @@ def test_vis_failed_drag_settles_once_and_refetches_before_editing(service, task
     writes = []
     with playwright.sync_playwright() as runtime:
         browser = runtime.chromium.launch()
-        page = browser.new_page()
+        page = browser.new_page(timezone_id="UTC")
         use_cached_timeline(page)
         observe_timeline_hooks(page)
         page.goto(service["url"] + f"/tasks/{task_id}")
@@ -743,7 +759,69 @@ def test_vis_failed_drag_settles_once_and_refetches_before_editing(service, task
         assert len(writes) == 1
         assert page.evaluate("timelineHooks") == [{"name": "onMove", "calls": 1, "accepted": False}]
         assert page.locator("#timing-error").is_visible()
-        assert page.locator("#timing-end").input_value() == "2026-10-24T14:00"
+        assert page.locator("#timing-end").input_value() == "2026-10-24 14:00:00"
         assert not page.locator("#timing-start").is_disabled()
         assert tasks.task_detail(task_id) == before
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+@pytest.mark.parametrize("start,end,invalid,valid,expected", [
+    (datetime(2025, 3, 9, 5, 30), datetime(2025, 3, 9, 8),
+     "2025-03-09 02:30:00", "2025-03-09 03:30:00", datetime(2025, 3, 9, 7, 30)),
+    (datetime(2025, 11, 2, 4, 30), datetime(2025, 11, 2, 8),
+     "2025-11-02 01:15:00", "2025-11-02 01:15:00-05:00", datetime(2025, 11, 2, 6, 15)),
+])
+def test_vis_local_time_dst_validation(service, tasks, start, end, invalid, valid, expected):
+    playwright = pytest.importorskip("playwright.sync_api")
+    repository = "github.com/example/local-dst"
+    task_id = tasks.start(repository, now=start)["task_id"]
+    tasks.complete(repository, task_id, "a" * 40, "Local DST", now=end)
+    writes = []
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page(timezone_id="America/Toronto")
+        use_cached_timeline(page)
+        page.on("request", lambda request: writes.append(request) if request.method == "POST" else None)
+        page.goto(service["url"] + f"/tasks/{task_id}")
+        page.get_by_label("Start", exact=True).fill(invalid)
+        assert page.locator("#timing-total").inner_text() == "—"
+        page.get_by_role("button", name="Save timing", exact=True).click()
+        assert "Enter a valid local time" in page.locator("#timing-error").inner_text()
+        assert writes == []
+        save_precise_timing(page, start=valid)
+        assert len(writes) == 1
+        assert tasks.task_detail(task_id)["intervals"][0]["started_at"] == expected
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+def test_vis_local_calendar_and_unchanged_timestamp_precision(service, tasks):
+    playwright = pytest.importorskip("playwright.sync_api")
+    repository = "github.com/example/local-calendar"
+    # The second occurrence of 01:15 must retain its original offset and precision.
+    start = datetime(2025, 11, 2, 6, 15, 0, 123456)
+    task_id = tasks.start(repository, now=start)["task_id"]
+    tasks.complete(repository, task_id, "a" * 40, "Local precision", now=datetime(2025, 11, 2, 8))
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page(timezone_id="America/Toronto")
+        use_cached_timeline(page)
+        page.goto(service["url"] + f"/tasks/{task_id}")
+        assert page.get_by_label("Start", exact=True).input_value() == "2025-11-02 01:15:00"
+        assert page.locator("#timing-save").is_disabled()
+        picker = page.get_by_label("Choose end date and time", exact=True)
+        picker.fill("2025-11-02T02:30")
+        assert page.get_by_label("End", exact=True).input_value() == "2025-11-02 02:30:00"
+        assert page.locator("#timing-total").inner_text() == "01:14:59"
+        page.get_by_role("button", name="Save timing", exact=True).click()
+        page.wait_for_function("document.getElementById('timing-status').textContent.startsWith('Timing saved.')")
+        row = tasks.task_detail(task_id)["intervals"][0]
+        assert row["started_at"] == start
+        assert row["ended_at"] == datetime(2025, 11, 2, 7, 30)
+        page.reload()
+        assert page.locator("#timing-save").is_disabled()
+        assert page.get_by_label("End", exact=True).input_value() == "2025-11-02 02:30:00"
         browser.close()

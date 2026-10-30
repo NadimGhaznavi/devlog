@@ -430,7 +430,10 @@ def test_history_drilldown_and_pause_form_recalculate_report(service, tasks):
         assert 'id="timing-data"' in html
         assert 'vis-timeline@8.5.6/standalone/umd/vis-timeline-graph2d.min.js' in html
         assert 'vis-timeline@8.5.6/styles/vis-timeline-graph2d.min.css' in html
-        assert 'type="datetime-local"' in html and 'Work start (UTC)' in html
+        assert 'id="timing-help"' not in html and 'id="timing-loaded"' not in html
+        assert "Timeline and precise fields use UTC" not in html
+        assert html.index('id="timing-form"') < html.index('id="timing-track"')
+        assert 'type="datetime-local"' in html and '<label for="timing-start">Start</label>' in html
         for control in ("timing-zoom-in", "timing-zoom-out", "timing-focus", "timing-show-all"):
             assert f'id="{control}"' not in html
     data = urlencode(dict(interval_id=interval, pause_start="2026-10-24 22:00",

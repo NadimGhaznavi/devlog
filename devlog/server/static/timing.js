@@ -7,7 +7,7 @@
   if (!source) return;
   const data = JSON.parse(source.textContent);
   const {labels, locale} = data;
-  const SECOND = 1000, REQUEST_TIMEOUT = 15000;
+  const SECOND = 1000, MINUTE = 60 * SECOND, DAY = 24 * 60 * MINUTE, REQUEST_TIMEOUT = 15000;
   const VIS_LOCALES = {en: "en"};
   const $ = id => document.getElementById("timing-" + id);
   const text = (key, fields = {}) => Object.entries(fields).reduce(
@@ -22,7 +22,28 @@
     return [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
       .map(value => String(value).padStart(2, "0")).join(":");
   };
-  const utcField = value => new Date(value).toISOString().slice(0, -1);
+  const pad = value => String(value).padStart(2, "0");
+  const localField = value => {
+    const date = new Date(value);
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `
+      + `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  };
+  function localInstant(value, original) {
+    // Keep the original instant (including fractional seconds and DST fold) if untouched.
+    if (value === localField(original)) return new Date(original);
+    const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})([+-]\d{2}:\d{2})?$/.exec(value);
+    if (!match) return new Date(NaN);
+    const wall = Date.parse(value.slice(0, 19).replace(" ", "T") + "Z");
+    if (!Number.isFinite(wall)) return new Date(NaN);
+    const offsets = new Set([-DAY, 0, DAY].map(delta => new Date(wall + delta).getTimezoneOffset()));
+    const candidates = [...offsets].map(offset => new Date(wall + offset * MINUTE))
+      .filter(date => localField(date) === value.slice(0, 19).replace("T", " "));
+    if (match[7]) {
+      const explicit = new Date(value.replace(" ", "T"));
+      return candidates.find(date => +date === +explicit) || new Date(NaN);
+    }
+    return candidates.length === 1 ? candidates[0] : new Date(NaN);
+  }
   const endpoint = new URL(location.href);
   endpoint.pathname += "/timing";
   endpoint.searchParams.delete("saved");
@@ -37,10 +58,14 @@
   let busy = false, blocked = false, pendingUpdate = null;
   const items = new vis.DataSet();
   const rowFor = id => task.intervals.find(row => row.interval_id === id);
+  const formTimes = () => {
+    const row = rowFor(selected);
+    return {start: localInstant($("start").value, row.started_at), end: localInstant($("end").value, row.ended_at)};
+  };
   const dirty = () => {
     const row = rowFor(selected);
-    return Date.parse($("start").value + "Z") !== Date.parse(row.started_at)
-      || Date.parse($("end").value + "Z") !== Date.parse(row.ended_at);
+    const {start, end} = formTimes();
+    return +start !== Date.parse(row.started_at) || +end !== Date.parse(row.ended_at);
   };
   const editable = enabled => ({updateTime: enabled, updateGroup: false, remove: false});
   function partName(index) {
@@ -65,15 +90,23 @@
     $("cancel").disabled = busy || (!dirty() && !pendingUpdate);
     $("track").setAttribute("aria-busy", String(busy));
     $("status").textContent = status || text(busy ? "saving" : blocked ? "reloadRequired" : dirty() ? "dirty" : "clean");
-    items.update(task.intervals.map(row => ({id: row.interval_id,
-      editable: editable(!busy && !blocked && !dirty())})));
+    const {start, end} = formTimes();
+    $("total").textContent = Number.isFinite(+start) && Number.isFinite(+end) && end > start
+      ? duration(end - start) : "—";
+    items.update({id: selected, editable: editable(!busy && !blocked && !dirty())});
   }
   function fillForm(id) {
     selected = id;
     const row = rowFor(id);
     $("part").value = id;
-    $("start").value = utcField(row.started_at);
-    $("end").value = utcField(row.ended_at);
+    $("start").value = localField(row.started_at);
+    $("end").value = localField(row.ended_at);
+    syncPickers();
+  }
+  function syncPickers() {
+    for (const field of ["start", "end"]) {
+      $(field + "-picker").value = $(field).value.slice(0, 19).replace(" ", "T");
+    }
   }
   function cancelUpdate() {
     if (pendingUpdate) {
@@ -84,15 +117,18 @@
   }
   function select(id) {
     cancelUpdate();
+    const changed = selected !== id;
     fillForm(id);
-    timeline.setSelection(id);
+    if (changed) renderStep();
+    else timeline.setSelection(id);
     controls();
   }
   function bounds() {
     return {min: new Date(task.range_start), max: new Date(task.loaded_at)};
   }
   function taskWindow() {
-    const start = Date.parse(task.intervals[0].started_at), end = Date.parse(task.completed_at);
+    const row = rowFor(selected);
+    const start = Date.parse(row.started_at), end = Date.parse(row.ended_at);
     const padding = Math.max(SECOND, (end - start) / 5);
     return {start: new Date(start - padding), end: new Date(end + padding)};
   }
@@ -101,7 +137,7 @@
     ...bounds(), ...taskWindow(), moveable: false, zoomable: false,
     showCurrentTime: false, selectable: true, multiselect: false,
     editable: {add: false, updateTime: true, updateGroup: false, remove: false, overrideItems: false},
-    moment: value => vis.moment(value).locale(VIS_LOCALES[locale]).utc(), locale: VIS_LOCALES[locale],
+    moment: value => vis.moment(value).locale(VIS_LOCALES[locale]), locale: VIS_LOCALES[locale],
     snap: null,
     onMove: (item, callback) => {
       if (busy || blocked || dirty() || !rowFor(item.id)) return callback(null);
@@ -117,6 +153,28 @@
     }
   });
 
+  function renderStep() {
+    const row = rowFor(selected);
+    items.clear();
+    items.add([
+      workItem(row, task.intervals.indexOf(row)),
+      {id: "commit", type: "point", start: new Date(task.completed_at), editable: false,
+        className: "timing-commit", content: node("span", text("commitRecorded"))}
+    ]);
+    timeline.setOptions(bounds());
+    const {start, end} = taskWindow();
+    timeline.setWindow(start, end, {animation: false});
+    timeline.setSelection(selected);
+    const entry = node("li", "");
+    entry.className = "interval";
+    const times = node("p", "");
+    times.append(node("time", localField(row.started_at)), " → ", node("time", localField(row.ended_at)));
+    const elapsed = node("p", text("elapsed", {elapsed: duration(Date.parse(row.ended_at) - Date.parse(row.started_at))}));
+    elapsed.className = "elapsed";
+    entry.append(node("strong", partName(task.intervals.indexOf(row))), times, elapsed);
+    document.querySelector("ol.timeline").replaceChildren(entry);
+  }
+
   function renderSnapshot(detail) {
     if (!detail.editor) {
       // An authoritative snapshot can revoke completed-task editing.
@@ -129,56 +187,19 @@
     }
     task = detail.editor;
     if (!rowFor(selected)) selected = task.intervals[0].interval_id;
-    const rows = task.intervals.map((row, index) => workItem(row, index));
-    const spans = [...task.intervals.map(row => ({start: Date.parse(row.started_at), end: Date.parse(row.ended_at)})),
-      ...task.context.map(row => ({start: Date.parse(row.started_at),
-        end: Date.parse(row.ended_at || task.loaded_at)}))].sort((a, b) => a.start - b.start);
-    task.context.forEach(row => rows.push({id: "context-" + row.interval_id, type: "range",
-      start: new Date(row.started_at), end: new Date(row.ended_at || task.loaded_at), editable: false,
-      className: "timing-context", content: node("span", text("task", {task_id: row.task_id}) + " · " + row.repository)}));
-    let cursor = Date.parse(task.range_start);
-    for (const [index, span] of spans.entries()) {
-      if (span.start > cursor) {
-        const pause = cursor >= Date.parse(task.intervals[0].started_at)
-          && span.start <= Date.parse(task.intervals.at(-1).ended_at);
-        rows.push({id: "gap-" + index, type: "background", start: new Date(cursor), end: new Date(span.start),
-          editable: false, className: "timing-gap", content: node("span", text(pause ? "pause" : "idle"))});
-      }
-      cursor = Math.max(cursor, span.end);
-    }
-    if (cursor < Date.parse(task.loaded_at)) rows.push({id: "gap-end", type: "background",
-      start: new Date(cursor), end: new Date(task.loaded_at), editable: false,
-      className: "timing-gap", content: node("span", text("idle"))});
-    rows.push({id: "commit", type: "point", start: new Date(task.completed_at), editable: false,
-      className: "timing-commit", content: node("span", text("commitRecorded"))});
-    items.clear();
-    items.add(rows);
-    timeline.setOptions(bounds());
-    const {start, end} = taskWindow();
-    timeline.setWindow(start, end, {animation: false});
-    timeline.setSelection(selected);
     $("part").replaceChildren(...task.intervals.map((row, index) => {
       const option = node("option", partName(index));
       option.value = row.interval_id;
       return option;
     }));
     fillForm(selected);
+    renderStep();
+    const metadataTimes = document.querySelectorAll(".task-metadata time");
+    metadataTimes[0].textContent = localField(task.started_at);
+    metadataTimes[1].textContent = localField(task.completed_at);
+    document.querySelector(".last-updated").textContent = text("lastUpdated", {timestamp: localField(task.loaded_at)});
     const total = task.intervals.reduce((sum, row) => sum + Date.parse(row.ended_at) - Date.parse(row.started_at), 0);
-    $("total").textContent = text("elapsed", {elapsed: duration(total)});
     document.querySelector(".report-heading .total strong").textContent = (total / 3600000).toFixed(2);
-    $("loaded").textContent = text("loaded", {timestamp: new Date(task.loaded_at).toISOString()});
-    if (detail.timeline) {
-      document.querySelector("ol.timeline").replaceChildren(...detail.timeline.map(row => {
-        const entry = node("li", "");
-        entry.className = "interval" + (row.interval_id ? "" : " pause");
-        const times = node("p", "");
-        times.append(node("time", row.started_at), " → ", node("time", row.ended_at));
-        const elapsed = node("p", text("elapsed", {elapsed: row.elapsed_time}));
-        elapsed.className = "elapsed";
-        entry.append(node("strong", text(row.interval_id ? "active" : "pause")), times, elapsed);
-        return entry;
-      }));
-    }
     return true;
   }
 
@@ -245,12 +266,22 @@
     if (id) select(id);
   });
   $("part").addEventListener("change", () => select($("part").value));
-  $("form").addEventListener("input", () => controls());
+  for (const field of ["start", "end"]) {
+    $(field + "-picker").addEventListener("input", () => {
+      const value = $(field + "-picker").value.replace("T", " ");
+      $(field).value = value.length === 16 ? value + ":00" : value;
+    });
+  }
+  $("form").addEventListener("input", () => { syncPickers(); controls(); });
   $("form").addEventListener("submit", event => {
     event.preventDefault();
     if (busy || blocked || !dirty()) return;
-    const start = new Date($("start").value + "Z"), end = new Date($("end").value + "Z");
-    if (!Number.isFinite(+start) || !Number.isFinite(+end) || end <= start) {
+    const {start, end} = formTimes();
+    if (!Number.isFinite(+start) || !Number.isFinite(+end)) {
+      showError(text("invalidLocalTime"));
+      return;
+    }
+    if (end <= start) {
       showError(text("badTiming"));
       return;
     }

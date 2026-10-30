@@ -60,6 +60,7 @@ class TaskHistory:
                     lower = min(lower, anchor - timedelta(seconds=DTracking.TIMING_CONTEXT_SECONDS))
                 editor = dict(task_id=str(task_id), revision=revision, loaded_at=wire({"time": now})["time"],
                               range_start=wire({"time": lower})["time"],
+                              started_at=wire({"time": task["started_at"]})["time"],
                               completed_at=wire({"time": task["completed_at"]})["time"],
                               timezone=str(self.zone), intervals=[wire(i) for i in task["intervals"]],
                               context=[wire(i) for i in context])
