@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.10.7] - 2026-10-30 @ 03:38
+
 This release is named for the element **Francium (Fr)**. Francium is extremely 
 rare and radioactive, with its longest-lived isotope having a half-life of only 
 about 22 minutes.
