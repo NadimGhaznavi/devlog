@@ -24,6 +24,11 @@
   {%- endfor -%}
 {%- endmacro %}
 {% block page_title %}{{ history_title if report else t(text.TASKS) }}{% endblock %}
+{% block head %}
+{% if task and task.editor %}
+<link id="timing-styles" rel="stylesheet" href="https://unpkg.com/vis-timeline@8.5.6/styles/vis-timeline-graph2d.min.css" onerror="this.dataset.failed = 'true'">
+{% endif %}
+{% endblock %}
 {% block content %}
     <nav class="history-nav"><a href="{{ link('/') }}">← {{ t(text.BACK_REPORT) }}</a>{% if task %}<a href="{{ link('/tasks') }}">← {{ t(text.BACK_TASKS) }}</a>{% endif %}</nav>
     {% if saved %}<p class="notice" role="status">{{ t(text.TIMING_SAVED if saved == 'timing' else text.PAUSE_SAVED) }}</p>{% endif %}
@@ -41,31 +46,34 @@
       {% if task.editor is defined and task.editor %}
       <section id="timing-editor" hidden aria-label="{{ t(text.TIMELINE) }}">
         <p id="timing-help" class="note">{{ t(text.TIMING_HELP) }}</p>
-        <p class="note">{{ t(text.TIMEZONE, timezone=task.timezone) }} <span id="timing-loaded"></span></p>
+        <p class="note">{{ t(text.TIMING_TIMEZONE, timezone=task.timezone) }} <span id="timing-loaded"></span></p>
         <div class="timing-toolbar">
           <button type="button" id="timing-focus" class="secondary">{{ t(text.TIMING_FOCUS) }}</button>
           <button type="button" id="timing-zoom-in" class="secondary">{{ t(text.TIMING_ZOOM_IN) }}</button>
           <button type="button" id="timing-zoom-out" class="secondary">{{ t(text.TIMING_ZOOM_OUT) }}</button>
           <button type="button" id="timing-show-all" class="secondary">{{ t(text.TIMING_SHOW_ALL) }}</button>
         </div>
-        <div id="timing-axis" class="timing-axis" aria-hidden="true"></div>
-        <div id="timing-track" class="timing-track" aria-describedby="timing-help">
-          <div id="timing-spans"></div>
-          <div id="timing-handles"></div>
-          <div id="timing-completed" class="timing-completed"><span>{{ t(text.COMMIT) }}</span></div>
-          <div id="timing-now" class="timing-now"><span>{{ t(text.NOW) }}</span></div>
-        </div>
-        <output id="timing-selection" class="timing-selection" aria-live="polite"></output>
+        <div id="timing-track" tabindex="0" aria-label="{{ t(text.TIMELINE) }}" aria-describedby="timing-help"></div>
+        <form id="timing-form">
+          <fieldset id="timing-fields">
+            <legend>{{ t(text.TIMING_PRECISE) }}</legend>
+            <div class="timing-form-fields">
+              <div class="field"><label for="timing-part">{{ t(text.ACTIVE_TIME) }}</label><select id="timing-part"></select></div>
+              <div class="field"><label for="timing-start">{{ t(text.TIMING_START_UTC) }}</label><input id="timing-start" type="datetime-local" step="0.001" required></div>
+              <div class="field"><label for="timing-end">{{ t(text.TIMING_END_UTC) }}</label><input id="timing-end" type="datetime-local" step="0.001" required></div>
+            </div>
+            <div class="timing-actions">
+              <button type="submit" id="timing-save" disabled>{{ t(text.TIMING_SAVE) }}</button>
+              <button type="button" id="timing-cancel" class="secondary" disabled>{{ t(text.TIMING_CANCEL) }}</button>
+            </div>
+          </fieldset>
+        </form>
         <p id="timing-total" class="timing-total"></p>
-        <div class="timing-actions">
-          <button type="button" id="timing-save" disabled>{{ t(text.TIMING_SAVE) }}</button>
-          <button type="button" id="timing-cancel" class="secondary" disabled>{{ t(text.TIMING_CANCEL) }}</button>
-          <span id="timing-status" role="status" aria-live="polite">{{ t(text.TIMING_CLEAN) }}</span>
-        </div>
+        <p id="timing-status" role="status" aria-live="polite">{{ t(text.TIMING_CLEAN) }}</p>
         <p id="timing-error" class="notice" role="alert" hidden></p>
         <a id="timing-reload" href="{{ link('/tasks/' ~ task.task_id) }}" hidden>{{ t(text.TIMING_RELOAD) }}</a>
       </section>
-      <p id="timing-no-script" class="note">{{ t(text.TIMING_NO_SCRIPT) }}</p>
+      <p id="timing-no-script" class="notice" role="status">{{ t(text.TIMING_NO_SCRIPT) }}</p>
       <details id="timing-records" open><summary>{{ t(text.TIMING_RECORDS) }}</summary>
       {% else %}
       <p class="muted">{{ t(text.TIME_FORMAT, timezone=task.timezone) }}</p>
@@ -130,15 +138,17 @@
 {% if task and task.editor is defined and task.editor %}
 {% set labels = {
   'idle': t(text.TIMING_IDLE), 'pause': t(text.PAUSE_TIME), 'task': t(text.TASK, task_id='{task_id}'),
-  'part': t(text.TIMING_PART, part='{part}'), 'start': t(text.STARTED_AT),
-  'paused': t(text.PAUSE_START), 'resumed': t(text.TIMING_RESUMED), 'end': t(text.TIMING_WORK_END),
-  'boundary': t(text.TIMING_BOUNDARY, part='{part}', boundary='{boundary}'),
+  'part': t(text.TIMING_PART, part='{part}'), 'active': t(text.ACTIVE_TIME),
   'elapsed': t(text.ELAPSED_TIME, elapsed='{elapsed}'),
   'loaded': t(text.TIMING_LOADED, timestamp='{timestamp}'), 'clean': t(text.TIMING_CLEAN),
   'commitRecorded': t(text.COMMIT_RECORDED_AT),
-  'dirty': t(text.TIMING_DIRTY), 'saving': t(text.TIMING_SAVING), 'unconfirmed': t(text.TIMING_UNCONFIRMED)
+  'saved': t(text.TIMING_SAVED), 'dirty': t(text.TIMING_DIRTY), 'saving': t(text.TIMING_SAVING),
+  'unconfirmed': t(text.TIMING_UNCONFIRMED), 'loadError': t(text.TIMING_LOAD_ERROR),
+  'badTiming': t(text.BAD_TIMING), 'refreshed': t(text.TIMING_REFRESHED),
+  'reloadRequired': t(text.TIMING_RELOAD_REQUIRED)
 } %}
 <script id="timing-data" type="application/json">{{ {'task': task.editor, 'labels': labels, 'locale': locale}|tojson }}</script>
+<script src="https://unpkg.com/vis-timeline@8.5.6/standalone/umd/vis-timeline-graph2d.min.js" defer></script>
 <script src="/static/timing.js" defer></script>
 {% endif %}
 {% endblock %}
