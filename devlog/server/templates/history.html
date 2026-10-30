@@ -45,27 +45,33 @@
       <h3>{{ t(text.TIMELINE) }}</h3>
       {% if task.editor is defined and task.editor %}
       <section id="timing-editor" hidden aria-label="{{ t(text.TIMELINE) }}">
-        <p id="timing-help" class="note">{{ t(text.TIMING_HELP) }}</p>
-        <p class="note">{{ t(text.TIMING_TIMEZONE, timezone=task.timezone) }} <span id="timing-loaded"></span></p>
-        <div id="timing-track" tabindex="0" aria-label="{{ t(text.TIMELINE) }}" aria-describedby="timing-help"></div>
         <form id="timing-form">
           <fieldset id="timing-fields">
             <legend>{{ t(text.TIMING_PRECISE) }}</legend>
-            <div class="timing-form-fields">
-              <div class="field"><label for="timing-part">{{ t(text.ACTIVE_TIME) }}</label><select id="timing-part"></select></div>
-              <div class="field"><label for="timing-start">{{ t(text.TIMING_START_UTC) }}</label><input id="timing-start" type="datetime-local" step="0.001" required></div>
-              <div class="field"><label for="timing-end">{{ t(text.TIMING_END_UTC) }}</label><input id="timing-end" type="datetime-local" step="0.001" required></div>
-            </div>
+            <table class="timing-form-fields">
+              <tbody>
+                <tr><td><select id="timing-part" aria-label="{{ t(text.ACTIVE_TIME) }}"></select></td><td></td></tr>
+                <tr><th scope="row"><label for="timing-start">{{ t(text.TIMING_START) }}</label></th><td><div class="timing-date-field">
+                  <input id="timing-start" type="text" required autocomplete="off" placeholder="YYYY-MM-DD HH:MM:SS" spellcheck="false">
+                  <input id="timing-start-picker" class="timing-picker" type="datetime-local" step="1" aria-label="{{ t(text.TIMING_START_PICKER) }}">
+                </div></td></tr>
+                <tr><th scope="row"><label for="timing-end">{{ t(text.TIMING_END) }}</label></th><td><div class="timing-date-field">
+                  <input id="timing-end" type="text" required autocomplete="off" placeholder="YYYY-MM-DD HH:MM:SS" spellcheck="false">
+                  <input id="timing-end-picker" class="timing-picker" type="datetime-local" step="1" aria-label="{{ t(text.TIMING_END_PICKER) }}">
+                </div></td></tr>
+                <tr><th scope="row">{{ t(text.TIMING_ELAPSED) }}</th><td><output id="timing-total" class="timing-total" for="timing-start timing-end"></output></td></tr>
+              </tbody>
+            </table>
             <div class="timing-actions">
               <button type="submit" id="timing-save" disabled>{{ t(text.TIMING_SAVE) }}</button>
               <button type="button" id="timing-cancel" class="secondary" disabled>{{ t(text.TIMING_CANCEL) }}</button>
             </div>
           </fieldset>
         </form>
-        <p id="timing-total" class="timing-total"></p>
         <p id="timing-status" role="status" aria-live="polite">{{ t(text.TIMING_CLEAN) }}</p>
         <p id="timing-error" class="notice" role="alert" hidden></p>
         <a id="timing-reload" href="{{ link('/tasks/' ~ task.task_id) }}" hidden>{{ t(text.TIMING_RELOAD) }}</a>
+        <div id="timing-track" tabindex="0" aria-label="{{ t(text.TIMELINE) }}"></div>
       </section>
       <p id="timing-no-script" class="notice" role="status">{{ t(text.TIMING_NO_SCRIPT) }}</p>
       <details id="timing-records" open><summary>{{ t(text.TIMING_RECORDS) }}</summary>
@@ -134,7 +140,8 @@
   'idle': t(text.TIMING_IDLE), 'pause': t(text.PAUSE_TIME), 'task': t(text.TASK, task_id='{task_id}'),
   'part': t(text.TIMING_PART, part='{part}'), 'active': t(text.ACTIVE_TIME),
   'elapsed': t(text.ELAPSED_TIME, elapsed='{elapsed}'),
-  'loaded': t(text.TIMING_LOADED, timestamp='{timestamp}'), 'clean': t(text.TIMING_CLEAN),
+  'clean': t(text.TIMING_CLEAN), 'invalidLocalTime': t(text.TIMING_LOCAL_INVALID),
+  'lastUpdated': t(text.LAST_UPDATED, timestamp='{timestamp}'),
   'commitRecorded': t(text.COMMIT_RECORDED_AT),
   'saved': t(text.TIMING_SAVED), 'dirty': t(text.TIMING_DIRTY), 'saving': t(text.TIMING_SAVING),
   'unconfirmed': t(text.TIMING_UNCONFIRMED), 'loadError': t(text.TIMING_LOAD_ERROR),

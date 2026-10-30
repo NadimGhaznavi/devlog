@@ -6,12 +6,33 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Radium (Ra)**. Radium was once used in 
+luminous watch dials before its serious radiation hazards became widely understood.
+
+### Summary
+
+Simplify task-step timing corrections with a local-time editor above a timeline
+that shows only the selected step.
+
+### Changed
+
+- Arrange timing controls in a two-column table with the unlabeled dropdown in
+  the first cell, Start and End calendar controls, and live step elapsed time.
+  Place the editor above the rendered timeline and remove its instruction and
+  timezone/snapshot text.
+- Display and edit timeline times in browser-local time as `YYYY-MM-DD HH:MM:SS`,
+  matching the interactive task metadata, recorded interval and last-updated time.
+  Preserve unchanged timestamp precision, reject nonexistent local times, and
+  require an explicit offset for edited times repeated at daylight-saving changes.
+- Show only the dropdown's selected task-step in the interactive timeline and
+  recorded-interval view, fitting that step on selection and after saving while
+  retaining server validation against all recorded work.
+
 ## [0.10.7] - 2026-10-30 @ 03:38
 
 This release is named for the element **Francium (Fr)**. Francium is extremely 
 rare and radioactive, with its longest-lived isotope having a half-life of only 
 about 22 minutes.
-
 
 ### Summary
 
