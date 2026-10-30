@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-30 @ 19:44
+
 ### Summary
 
 Show stored Git releases alongside tasks, with distinct purple rows and no Git
