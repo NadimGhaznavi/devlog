@@ -86,7 +86,8 @@ Completed task pages use the pinned `bmforge.timeline` specification 0.1.0:
 vis-timeline 8.5.6 standalone UMD JavaScript and matching CSS, loaded from their
 versioned unpkg.com URLs. The app-owned adapter maps stable string interval IDs
 to editable ranges and neighboring work/completion events to locked items.
-vis-timeline owns selection, the axis, pan/zoom, dragging and resizing. Its XSS
+vis-timeline owns selection, the axis, dragging and resizing. The adapter fits
+the task and completion marker on load and snapshot refresh; pan/zoom is disabled. Its XSS
 protection remains enabled, and application labels use DOM `textContent`.
 `TaskHistory.read(include_editor=True)` supplies explicit-offset timestamps with
 persisted precision, a revision digest, context and a server snapshot time.

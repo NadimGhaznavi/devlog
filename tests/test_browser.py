@@ -49,7 +49,9 @@ def observe_timeline_hooks(page):
                         });
                     };
                 }
-                return new NativeTimeline(container, items, options);
+                window.timelineItems = items;
+                window.testTimeline = new NativeTimeline(container, items, options);
+                return window.testTimeline;
             };
         """ + response.text())
     page.route("**/static/timing.js", instrument)
@@ -65,8 +67,6 @@ def save_precise_timing(page, *, start=None, end=None):
 
 
 def drag_work_range(page, index, delta_seconds, edge=None, touch=False, wait=True):
-    page.get_by_role("button", name="Focus task", exact=True).click()
-    page.wait_for_timeout(600)  # Wait for vis-timeline's viewport animation.
     work = page.locator(".vis-item.vis-range.timing-work").nth(index)
     work.click()
     start = datetime.fromisoformat(page.locator("#timing-start").input_value())
@@ -525,8 +525,26 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
         assert page.locator("#timing-start").input_value() == "2026-10-24T12:00"
         assert page.locator("#timing-save").is_disabled()
         assert page.locator(".vis-item.vis-range.timing-work").count() == 2
-        playwright.expect(page.locator(".vis-item.timing-context")).to_contain_text(f"Task #{previous}")
+        assert page.evaluate("""() => timelineItems.get().some(item =>
+            item.className === 'timing-context' && item.editable === false)""")
         playwright.expect(page.locator(".vis-item.vis-point.timing-commit")).to_have_text("Commit recorded")
+        for control in ("Zoom in", "Zoom out", "Focus task", "Show all"):
+            assert page.get_by_role("button", name=control, exact=True).count() == 0
+        # The task is fitted on load; wheel and background drags cannot change the view.
+        window = page.evaluate("() => { const w = testTimeline.getWindow(); return [+w.start, +w.end]; }")
+        assert window[0] <= datetime(2026, 10, 24, 12, tzinfo=timezone.utc).timestamp() * 1000
+        assert window[1] >= datetime(2026, 10, 24, 17, tzinfo=timezone.utc).timestamp() * 1000
+        assert window[1] - window[0] <= 7 * 3600 * 1000
+        track = page.locator("#timing-track")
+        track.scroll_into_view_if_needed()
+        box = track.bounding_box()
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + 5)
+        page.mouse.wheel(0, -500)
+        page.mouse.down()
+        page.mouse.move(box["x"] + box["width"] / 3, box["y"] + 5, steps=10)
+        page.mouse.up()
+        page.wait_for_timeout(300)
+        assert page.evaluate("() => { const w = testTimeline.getWindow(); return [+w.start, +w.end]; }") == window
         assert page.locator(".commit-message img").count() == 0
         assert page.get_by_text("Insert a pause", exact=True).count() == 0
         page.locator("#timing-start").fill("2026-10-24T12:30")
@@ -534,8 +552,6 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
         assert page.locator("#timing-start").input_value() == "2026-10-24T12:00"
         assert writes == [] and tasks.task_detail(task_id) == before
         # Double-click uses onUpdate; cancelling leaves the range and storage intact.
-        page.get_by_role("button", name="Focus task", exact=True).click()
-        page.wait_for_timeout(600)
         page.locator(".vis-item.vis-range.timing-work").first.dblclick()
         assert page.locator("#timing-start").evaluate("node => node === document.activeElement")
         page.get_by_role("button", name="Cancel", exact=True).click()
@@ -572,8 +588,6 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
         assert page.locator(".total strong").inner_text() == "2.00"
         assert page.locator("#timing-start").input_value() == "2026-10-24T12:30"
         playwright.expect(page.locator("#timing-track .vis-timeline")).to_be_visible()
-        page.get_by_role("button", name="Focus task", exact=True).click()
-        page.wait_for_timeout(600)
         for width in (1200, 390):
             page.set_viewport_size({"width": width, "height": 1100})
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")

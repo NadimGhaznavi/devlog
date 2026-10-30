@@ -207,9 +207,9 @@ server confirms it. Other recorded tasks and the completion marker are locked.
 Work cannot extend beyond completion or overlap another task. Gaps distinguish
 pauses and time when `dl` was not running. Commit and lifecycle timestamps stay intact.
 
-Use **Focus task**, **Zoom in**, **Zoom out**, **Show all**, or the timeline's
-pan/zoom gestures to inspect long or short tasks. The axis and precise editing
-fields use **UTC**, independent of the browser and report timezones. To edit
+The timeline automatically fits the task and its completion marker, including
+after saved corrections. Panning and zooming are disabled. The axis and precise
+editing fields use **UTC**, independent of the browser and report timezones. To edit
 with a keyboard, choose a work part, enter its start and end, then **Save timing**.
 **Cancel** discards the unsaved form values. Double-clicking a work range opens
 that same form. Hours and elapsed work update from the accepted server snapshot.
