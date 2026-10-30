@@ -13,9 +13,9 @@
   --on-accent: var(--background);
   --notice: var(--surface);
   --timing-work: #07576b;
-  --release-surface: #291740;
-  --release-text: #e1bdff;
-  --release-border: #b85cff;
+  --release-surface: #352315;
+  --release-text: #FFC58A;
+  --release-border: #925422;
   font-family: system-ui, sans-serif;
   color: var(--text);
   background: var(--background);

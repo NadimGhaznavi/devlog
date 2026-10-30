@@ -285,11 +285,11 @@ def test_release_row_desktop_and_mobile(service, tasks):
             assert row.locator("strong").inner_text() == "Release v0.15.4 (neptune)"
             assert row.locator("td").first.inner_text() == ""
             assert row.locator("td").last.inner_text() == ""
-            assert row.evaluate("node => getComputedStyle(node).backgroundColor") == "rgb(41, 23, 64)"
+            assert row.evaluate("node => getComputedStyle(node).backgroundColor") == "rgb(53, 35, 21)"
             assert page.locator(".task-total strong").inner_text() == "00:12"
             assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
             # Keep the release styling when a striped row is hovered.
             row.hover()
-            assert row.evaluate("node => getComputedStyle(node).backgroundColor") == "rgb(41, 23, 64)"
+            assert row.evaluate("node => getComputedStyle(node).backgroundColor") == "rgb(53, 35, 21)"
             page.screenshot(path=f"/tmp/devlog-release-{width}.png", full_page=True)
         browser.close()

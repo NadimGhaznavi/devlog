@@ -36,7 +36,7 @@ Pass script arguments after `--`, for example `dl publish -- --help`. The timer
 is unchanged. The release script remains responsible for its release workflow.
 After a successful script, DevLog records version tags that appeared during the
 call. Release rows appear alongside tasks in project and daily reports, with a
-purple background and labels such as `Release v0.15.4 (neptune)`. They never add
+dark amber background and labels such as `Release v0.15.4 (neptune)`. They never add
 tracked time. Reports read release data from MariaDB; the server never runs Git.
 
 For the one-time catch-up, run these commands in each project's checkout after
