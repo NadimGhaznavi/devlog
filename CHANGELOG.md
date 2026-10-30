@@ -6,6 +6,18 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-30 @ 19:54
+
+### Summary
+
+Give release rows the approved dark amber style for a softer appearance.
+
+### Changed
+
+- Replace purple release rows with a dark amber background (`#352315`), warm
+  orange text (`#FFC58A`) and muted orange borders (`#925422`), matching option A
+  from the color mockup. Keep the same styling when hovering over release rows.
+
 ## [0.11.0] - 2026-10-30 @ 19:44
 
 ### Summary

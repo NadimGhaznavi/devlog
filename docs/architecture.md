@@ -94,7 +94,7 @@ complete task timeline through `activity/TaskHistory`.
 `TaskHistory.list` reads task and release summaries in one database snapshot,
 merges them in descending UTC timestamp order, then formats local times. This
 preserves ordering during repeated daylight-saving hours. Release rows use a
-distinct purple style, no task link and no duration. Release-only projects remain
+distinct dark amber style, no task link and no duration. Release-only projects remain
 selectable on Daily pages. Releases contribute nothing to hours or chart bars.
 
 The application-owned form endpoint `POST /tasks/<id>/pause` validates a bounded
