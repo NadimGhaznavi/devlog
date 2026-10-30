@@ -13,6 +13,9 @@
   --on-accent: var(--background);
   --notice: var(--surface);
   --timing-work: #07576b;
+  --release-surface: #291740;
+  --release-text: #e1bdff;
+  --release-border: #b85cff;
   font-family: system-ui, sans-serif;
   color: var(--text);
   background: var(--background);
@@ -85,6 +88,9 @@ a:hover { color: var(--accent-hover); }
 .tasks-table tbody tr:hover, .tasks-table tbody tr:focus-within { background: var(--surface); }
 .tasks-table td:not(.task-description) { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tasks-table .task-description { width: 100%; min-width: 16rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tasks-table tbody tr.release-row { background: var(--release-surface); color: var(--release-text); }
+.tasks-table .release-row td { border-bottom-color: var(--release-border); }
+.tasks-table .release-row td:first-child { border-left: 3px solid var(--release-border); }
 .interval { border-left: 3px solid var(--accent); padding: 16px; margin: 16px 0; background: var(--surface); overflow-wrap: anywhere; }
 .interval.pause { border-color: var(--muted); color: var(--muted); }
 summary { cursor: pointer; color: var(--accent); padding: 8px 0; }

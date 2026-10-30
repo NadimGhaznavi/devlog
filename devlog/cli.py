@@ -2,13 +2,16 @@
 
 import argparse
 from datetime import datetime
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 
 from devlog.activity.CommitTask import CommitRecordingError, CommitTask
+from devlog.activity.ReleaseSync import ReleaseSync
 from devlog.constants.DDevLog import DDevLog
+from devlog.constants.DRelease import DRelease
 from devlog.constants.DText import DText
 from devlog.constants.DTracking import DTracking, Method
 from devlog.entity.TrackingError import TrackingError
@@ -40,6 +43,10 @@ def main(argv=None):
     commit.add_argument("--record", metavar="SHA", help=t(DText.RECORD_HELP))
     publish = commands.add_parser("publish", help=t(DText.PUBLISH_HELP))
     publish.add_argument("arguments", nargs=argparse.REMAINDER)
+    releases = commands.add_parser(DRelease.RELEASES, help=t(DText.RELEASES_HELP))
+    release_commands = releases.add_subparsers(dest="release_command", required=True)
+    sync = release_commands.add_parser("sync", help=t(DText.RELEASE_SYNC_HELP))
+    sync.add_argument("--dry-run", action="store_true", help=t(DText.RELEASE_DRY_RUN_HELP))
     args = parser.parse_args(argv)
     if args.command == "commit" and bool(args.message) == bool(args.record):
         parser.error(t(DText.COMMIT_ARGUMENTS))
@@ -51,9 +58,33 @@ def main(argv=None):
                 print(t(DText.PUBLISH_MISSING), file=sys.stderr)
                 return 1
             arguments = args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
-            return subprocess.run(["bash", str(script), *arguments], cwd=local.root).returncode
+            before = {release[DRelease.TAG_NAME] for release in local.release_tags()}
+            status = subprocess.run(["bash", str(script), *arguments], cwd=local.root).returncode
+            if status:
+                return status
+            try:
+                releases = local.release_tags(exclude=before)
+                if not releases:
+                    return 0
+                config = Configuration(args.config)
+                client = ZMQClient(args.server or config.endpoint, timeout_ms=config.timeout_ms)
+                inserted = ReleaseSync(local, client).run(releases)
+                print(t(DText.RELEASE_SYNCED, inserted=inserted, checked=len(releases)))
+                return 0
+            except (TrackingError, OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+                print(t(DText.RELEASE_RECOVERY), file=sys.stderr)
+                raise
+        if args.command == DRelease.RELEASES:
+            releases = local.release_tags()
+            if args.dry_run:
+                print(json.dumps(releases, ensure_ascii=False, indent=2))
+                return 0
         config = Configuration(args.config)
         client = ZMQClient(args.server or config.endpoint, timeout_ms=config.timeout_ms)
+        if args.command == DRelease.RELEASES:
+            inserted = ReleaseSync(local, client).run(releases)
+            print(t(DText.RELEASE_SYNCED, inserted=inserted, checked=len(releases)))
+            return 0
         if args.command == Method.STATUS:
             result = client.call(Method.STATUS, {})
             if result[DTracking.TASK_ID] is None:

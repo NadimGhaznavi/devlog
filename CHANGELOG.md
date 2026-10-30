@@ -6,6 +6,30 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-30 @ 19:44
+
+### Summary
+
+Show stored Git releases alongside tasks, with distinct purple rows and no Git
+access during page rendering. Catch up existing tags once, then record releases
+automatically after successful `dl publish` calls.
+
+### Added
+
+- Store repository release tags, optional codenames, commit SHAs, UTC release
+  times and recording times in MariaDB. Repeated recordings are idempotent;
+  conflicting metadata for an existing tag is rejected. Create the additive
+  table through the existing schema initialization/server upgrade path.
+- Add `dl releases sync` for catch-up and recovery, with `--dry-run` to inspect
+  local version-tag metadata without contacting the service. Annotated tags use
+  tagger timestamps; lightweight tags use commit timestamps.
+- After a successful `dl publish` script, record newly discovered version tags
+  without changing task timers. Report recording failures with a recovery command
+  so the release does not need to be published again.
+- Interleave release rows with tasks by timestamp in project and daily reports,
+  displaying `Release v0.15.4 (neptune)` when a codename is available. Include
+  release-only projects in daily filters and keep tracked-time totals unchanged.
+
 ## [0.10.10] - 2026-10-30 @ 19:06
 
 ### Summary
