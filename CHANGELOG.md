@@ -6,6 +6,24 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+### Summary
+
+Refresh the pinned BMForge engineering guidance and skill manager to upstream
+0.16.0 and add the timeline editing skill for future vis-timeline work.
+
+### Added
+
+- Pin `bmforge-timeline` specification `0.1.0` from revision `7b35a708db2b`,
+  providing vis-timeline `8.5.6` editing guidance alongside the existing HTTP
+  skill. This installs the skill and its references only.
+
+### Changed
+
+- Update all ten pinned BMForge skills, the project-local manager and lock hashes
+  from revision `87ba468ffb83` to `7b35a708db2b`. Include shared guidance for a
+  simple multi-service start/stop script and manager support for explicitly
+  selected timeline skills with their HTTP prerequisite.
+
 ## [0.10.3] - 2026-10-30 @ 02:30
 
 ### Summary
