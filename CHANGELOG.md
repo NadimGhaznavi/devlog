@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-10-30 @ 02:30
+
 ### Summary
 
 Allow start-time corrections for short completed tasks in the web timeline.
