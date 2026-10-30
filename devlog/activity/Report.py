@@ -1,6 +1,7 @@
 from datetime import date, datetime, time, timedelta, timezone
 
 from devlog.constants.DTracking import DTracking
+from devlog.constants.DRelease import DRelease
 
 
 class Report:
@@ -28,6 +29,7 @@ class Report:
             totals = self.tasks.daily_totals(days, repository, now.astimezone(timezone.utc).replace(tzinfo=None))
             history = self.tasks.task_summaries(days[0][1], days[-1][2], repository,
                                                now.astimezone(timezone.utc).replace(tzinfo=None)) if include_tasks else None
+            releases = self.tasks.release_summaries(days[0][1], days[-1][2], repository) if include_tasks else None
         result = dict(repositories=repositories, repository=repository, start=first.isoformat(), end=last.isoformat(),
                       days=totals, total_hours=sum(day["hours"] for day in totals), timezone=str(self.zone))
         result["project_colors"] = {
@@ -36,4 +38,5 @@ class Report:
         }
         if include_tasks:
             result["tasks"] = history
+            result[DRelease.RELEASES] = releases
         return result

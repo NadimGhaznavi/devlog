@@ -13,10 +13,18 @@ class Method(StrEnum):
     START = "start"
     PAUSE = "pause"
     COMMIT = "commit"
+    RELEASE = "release"
     HEALTH = "health"
 
 
+class HistoryKind(StrEnum):
+    TASK = "task"
+    RELEASE = "release"
+
+
 class DTracking:
+    ENTRIES: Final[str] = "entries"
+    ENTRY_TYPE: Final[str] = "entry_type"
     PROTOCOL_VERSION: Final[int] = 1
     SERVER: Final[str] = "devlog"
     CLIENT: Final[str] = "dl"

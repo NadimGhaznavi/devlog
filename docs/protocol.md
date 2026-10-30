@@ -24,10 +24,26 @@ so the service exits and systemd can restart it.
 | `pause` | `repository` | `task_id`, `status: paused` |
 | `commit` | `repository`, `phase: prepare`, optional `commit_sha` for recovery | Unfinished task's `task_id` and `status`, or the task already linked to the supplied SHA |
 | `commit` | `repository`, `phase: complete`, `task_id`, `commit_sha`, `message` | `task_id`, `status: completed`, `commit_sha` |
+| `release` | `repository`, `tag_name`, `codename` (string or null), `commit_sha`, `released_at` (ISO timestamp with UTC offset) | `release_id`, `inserted` (boolean; false for an exact retry) |
 | `health` | Empty object | Empty result, after checking the worker's application DAL |
 
 `status` reads the global tracker state without modifying tasks or intervals.
 It requires no local Git checkout and rejects nonempty payloads.
+
+`release` records one version tag without changing any task or interval. All
+five fields are required, and additional fields are rejected. Tag names match
+`vX.Y.Z` or `X.Y.Z`, with optional prerelease/build suffixes (at most 255 UTF-8
+bytes). A non-null codename must be nonblank, contain no control characters,
+and fit within 1024 UTF-8 bytes. Commit SHAs are lowercase 40- or 64-digit hex.
+Release times require an explicit offset and are normalized to UTC for MariaDB.
+The server assigns `recorded_at` independently of the historical release time.
+
+The repository/tag pair is unique. Exact retries return the existing ID without
+altering the original recording time. Different codename, SHA or release time
+returns `release_conflict`. Sync sends one request per tag and stops on the
+first failure; previous successful recordings remain stored, and repeating sync
+is safe. No automatic retry occurs. This additive method retains protocol
+version 1 and requires an upgraded server before a new client records releases.
 
 The CLI normalizes the GitHub `origin` remote into `github.com/owner/repository`
 (case insensitive, no `.git`). The server treats that identifier as data. It has

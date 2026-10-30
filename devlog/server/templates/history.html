@@ -104,12 +104,21 @@
         <button type="submit">{{ t(text.APPLY) }}</button>
       </form>
       {% endif %}
-      {% if not report.tasks %}<p class="empty">{{ t(text.NO_TASKS) }}</p>{% endif %}
+      {% if not report.entries %}<p class="empty">{{ t(text.NO_TASKS) }}</p>{% endif %}
       <div class="table-wrap" tabindex="0" role="region" aria-labelledby="tasks-heading">
       <table class="tasks-table">
         <thead><tr><th scope="col">{{ t(text.TASK_NUMBER) }}</th>{% if daily %}<th scope="col">{{ t(text.TASK_PROJECT) }}</th>{% endif %}<th scope="col">{{ t(text.TASK_START_TIME) }}</th><th scope="col">{{ t(text.TASK_DESCRIPTION) }}</th><th scope="col">{{ t(text.TASK_DURATION) }}</th></tr></thead>
         <tbody>
-      {% for item in report.tasks %}
+      {% for item in report.entries %}
+        {% if item.entry_type == 'release' %}
+        <tr class="release-row">
+          <td></td>
+          {% if daily %}<td><span class="project-swatch" style="--project-color: {{ report.project_colors[item.repository] }}" aria-hidden="true"></span>{{ item.repository.rsplit('/', 1)[-1] }}</td>{% endif %}
+          <td><time>{{ item.released_at[11:16] }}</time></td>
+          <td class="task-description"><strong>{{ t(text.RELEASE_NAMED, tag=item.tag_name, codename=item.codename) if item.codename else t(text.RELEASE, tag=item.tag_name) }}</strong></td>
+          <td></td>
+        </tr>
+        {% else %}
         {% set minutes = (item.hours | elapsed_seconds) // 60 %}
         <tr>
           <td><a class="task-link" href="{{ link('/tasks/' ~ item.task_id) }}" aria-label="{{ t(text.TASK, task_id=item.task_id) }}">{{ item.task_id }}</a></td>
@@ -118,6 +127,7 @@
           <td class="task-description">{{ item.commit_message or t(text['STATUS_' ~ item.status.upper()]) }}</td>
           <td>{{ '%02d:%02d' | format(minutes // 60, minutes % 60) }}</td>
         </tr>
+        {% endif %}
       {% endfor %}
         </tbody>
       </table>

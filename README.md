@@ -11,6 +11,7 @@ dl pause                       # pause it
 dl start                       # resume it
 dl commit "Implement lookup"   # git add . -v; commit; record task/SHA; push
 dl publish                     # invoke the repository's existing release script
+dl releases sync               # catch up existing release tags, or recover recording
 ```
 
 `dl status` queries the server without changing the timer. It prints
@@ -33,6 +34,34 @@ the next task after a commit. Both active and paused tasks can be committed.
 `scripts/new_release.sh`, and `scripts/new-release.sh`, from the repository root.
 Pass script arguments after `--`, for example `dl publish -- --help`. The timer
 is unchanged. The release script remains responsible for its release workflow.
+After a successful script, DevLog records version tags that appeared during the
+call. Release rows appear alongside tasks in project and daily reports, with a
+purple background and labels such as `Release v0.15.4 (neptune)`. They never add
+tracked time. Reports read release data from MariaDB; the server never runs Git.
+
+For the one-time catch-up, run these commands in each project's checkout after
+upgrading the DevLog server and client:
+
+```bash
+dl releases sync --dry-run      # inspect JSON metadata; no service call or writes
+dl releases sync               # record all local version tags
+```
+
+Sync reads local `vX.Y.Z` or `X.Y.Z` tags, including prerelease/build suffixes,
+that resolve to commits. It never fetches; obtain any missing tags separately
+before syncing. Annotated tags use their tagger timestamp. Their standard
+`Release X.Y.Z: codename` annotation supplies the optional codename. Lightweight
+tags use the commit's committer timestamp because Git does not retain their
+creation time; unrecognized annotations and lightweight tags omit the codename.
+Release timestamps are stored in UTC and displayed in the report timezone.
+
+Repeating sync is safe, including after a partial catch-up or uncertain reply.
+An existing repository/tag with different metadata is rejected for inspection.
+If publishing succeeds but recording fails, DevLog reports failure and prints
+`dl releases sync` as the recovery command. Run sync rather than publishing the
+same release again. Sync does not require a running task or change its timer.
+Schema initialization creates the additive releases table; the existing server
+upgrade process runs this initialization before activating the new version.
 
 ## Publishing a release
 

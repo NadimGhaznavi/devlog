@@ -23,11 +23,30 @@ before pushing. `dl publish` invokes the repository's existing release script;
 it is unrelated to the Git component's managed-file publication operation.
 No release automation is invented or run by installation.
 
+`LocalRepository.release_tags` reads local version tags and resolves their
+commits. Annotated tags supply the tagger timestamp and, for the standard
+`Release X.Y.Z: codename` annotation, the codename. Lightweight tags use the
+commit's committer timestamp and have no codename. There is no automatic fetch.
+`dl releases sync` passes each release through `activity/ReleaseSync` to the
+existing ZMQ worker; `--dry-run` prints JSON without contacting the service.
+`dl publish` snapshots existing tags and sends newly available version tags only
+after its script returns success. Recording failure preserves the published
+release and identifies sync as the recovery operation. Neither operation
+changes task tracking state.
+
 Domain SQL and atomic transitions belong to `interface/TaskDb.py`. A singleton
 database row serializes mutations. Unique generated columns enforce one open
 interval globally and one unfinished task per repository. Database transactions
 roll back all changes if switching repositories fails. Every worker owns its
 database connection; there is no shared connection or ORM.
+
+The additive `releases` table references `repositories` and stores the exact
+tag name, optional codename, commit SHA, UTC release timestamp and server
+recording timestamp. Its unique repository/tag key makes exact retries harmless;
+changed metadata is a conflict. A repository-row lock serializes concurrent
+recordings. Release writes use their own transaction and never lock or mutate
+the tracker singleton. Explicit `dl-db-init`, already called by server upgrades,
+creates the table idempotently; request handling never changes the schema.
 
 `DbMgr.py` and `Localizer.py` are unchanged copies of their pinned canonical
 templates. DevLog adapts the Git template with an `on_committed` callback between
@@ -66,13 +85,21 @@ Daily total links open `/daily`, which lists one local day's tasks across all
 repositories and defaults to today in the configured timezone. It reuses the
 Tasks template, adds a Project column and offers date and project filters.
 `TaskHistory.daily` derives the project choices from the unfiltered local day's
-recorded hours, then filters tasks and total time by the selection. The default
-`*` includes all projects; changing to a date without work for the selected
-project resets the selection to all projects. Chart segments
-link to `/tasks`, filtered by day and repository. `/tasks/<id>` presents the
-complete task timeline through `activity/TaskHistory`. The application-owned form endpoint
-`POST /tasks/<id>/pause` validates a bounded same-origin form and passes its
-timestamps through the configured report timezone. Ambiguous local DST times
+recorded hours and stored releases, then filters rows and total time by the
+selection. The default `*` includes all projects; changing to a date without
+work or releases for the selected project resets the selection to all projects.
+Chart segments link to `/tasks`, filtered by day and repository. `/tasks/<id>` presents the
+complete task timeline through `activity/TaskHistory`.
+
+`TaskHistory.list` reads task and release summaries in one database snapshot,
+merges them in descending UTC timestamp order, then formats local times. This
+preserves ordering during repeated daylight-saving hours. Release rows use a
+distinct purple style, no task link and no duration. Release-only projects remain
+selectable on Daily pages. Releases contribute nothing to hours or chart bars.
+
+The application-owned form endpoint `POST /tasks/<id>/pause` validates a bounded
+same-origin form and passes its timestamps through the configured report timezone.
+Ambiguous local DST times
 require an explicit offset. These routes retain report filters and locale.
 
 `TaskDb.insert_pause` holds the same singleton lock used by CLI transitions. It

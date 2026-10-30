@@ -5,6 +5,7 @@ from hashlib import sha256
 import json
 
 from devlog.constants.DText import DText
+from devlog.constants.DRelease import DRelease
 from devlog.constants.DTracking import DTracking, TaskStatus
 from devlog.entity.TrackingError import TrackingError
 
@@ -13,6 +14,18 @@ SCHEMA = (
     """CREATE TABLE IF NOT EXISTS repositories (
         repository_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         identity VARCHAR(512) COLLATE utf8mb4_bin NOT NULL UNIQUE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS releases (
+        release_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        repository_id BIGINT UNSIGNED NOT NULL,
+        tag_name VARCHAR(255) COLLATE utf8mb4_bin NOT NULL,
+        codename TEXT NULL,
+        commit_sha VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+        released_at DATETIME(6) NOT NULL,
+        recorded_at DATETIME(6) NOT NULL,
+        UNIQUE KEY repository_tag (repository_id, tag_name),
+        KEY release_dates (released_at, repository_id),
+        FOREIGN KEY (repository_id) REFERENCES repositories(repository_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
     """CREATE TABLE IF NOT EXISTS tasks (
         task_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -63,6 +76,7 @@ class TaskDb:
         rows = self.db.query("SELECT active_task_id FROM tracker_state WHERE singleton_id = 1")
         if len(rows) != 1:
             raise RuntimeError("DevLog schema is not initialized; run dl-db-init")
+        self.db.query("SELECT release_id FROM releases LIMIT 0")
         return True
 
     def _lock(self):
@@ -172,6 +186,38 @@ class TaskDb:
 
     def repositories(self):
         return [row["identity"] for row in self.db.query("SELECT identity FROM repositories ORDER BY identity")]
+
+    def record_release(self, repository, tag_name, codename, commit_sha, released_at, *, now=None):
+        """An exact retry is harmless; changed metadata for a tag is a conflict."""
+        with self.db.transaction():
+            repository_id = self.db.insert("""
+                INSERT INTO repositories (identity) VALUES (%s)
+                ON DUPLICATE KEY UPDATE repository_id = LAST_INSERT_ID(repository_id)
+            """, (repository,))
+            rows = self.db.query("""
+                SELECT release_id, codename, commit_sha, released_at FROM releases
+                WHERE repository_id = %s AND tag_name = %s FOR UPDATE
+            """, (repository_id, tag_name))
+            if rows:
+                row = rows[0]
+                if (row["codename"], row["commit_sha"], row["released_at"]) != (codename, commit_sha, released_at):
+                    raise TrackingError("release_conflict", DText.RELEASE_CONFLICT)
+                return {DRelease.RELEASE_ID: row["release_id"], DRelease.INSERTED: False}
+            release_id = self.db.insert("""
+                INSERT INTO releases (repository_id, tag_name, codename, commit_sha, released_at, recorded_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (repository_id, tag_name, codename, commit_sha, released_at, self._now(now)))
+            return {DRelease.RELEASE_ID: release_id, DRelease.INSERTED: True}
+
+    def release_summaries(self, lower, upper, repository):
+        condition = " AND r.identity = %s" if repository else ""
+        return self.db.query(f"""
+            SELECT l.release_id, r.identity AS repository, l.tag_name, l.codename,
+                l.commit_sha, l.released_at
+            FROM releases l JOIN repositories r ON r.repository_id = l.repository_id
+            WHERE l.released_at >= %s AND l.released_at < %s {condition}
+            ORDER BY l.released_at DESC, l.release_id DESC
+        """, (lower, upper, *((repository,) if repository else ())))
 
     def task_summaries(self, lower, upper, repository, now):
         """Tasks spanning the selected range, with hours clipped to that range."""
