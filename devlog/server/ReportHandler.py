@@ -128,7 +128,8 @@ class ReportHandler(BaseHTTPRequestHandler):
 
                 payload = json.loads(body.decode("utf-8"), object_pairs_hook=unique_object)
                 app.save_timing(task_id, payload)
-                self.respond(200, json.dumps({"saved": True}).encode("utf-8"), "application/json; charset=utf-8")
+                self.respond(200, json.dumps({"saved": True, "task": app.task_detail(task_id)}).encode("utf-8"),
+                             "application/json; charset=utf-8")
                 return
             payload = self.query(body.decode("utf-8"))
             try:
@@ -191,6 +192,11 @@ class ReportHandler(BaseHTTPRequestHandler):
                 else:
                     report = app.task_list(**filters)
                 self.render("history.html", locale, report=report, task=None, link=link, saved=False, daily=daily)
+            elif (task_id := self.task_route(parsed.path, timing=True)) is not None:
+                if set(query) - {"repository", "start", "end", "day", "lang"}:
+                    raise ValueError("Unknown task field")
+                self.respond(200, json.dumps({"task": app.task_detail(task_id)}).encode("utf-8"),
+                             "application/json; charset=utf-8")
             elif (task_id := self.task_route(parsed.path)) is not None:
                 if set(query) - {"repository", "start", "end", "day", "lang", "saved"}:
                     raise ValueError("Unknown task field")

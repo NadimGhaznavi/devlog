@@ -10,28 +10,87 @@ import pytest
 
 
 def use_cached_plotly(page):
+    use_cached_timeline(page)
     asset = os.environ.get("DEVLOG_TEST_PLOTLY_ASSET")
     if asset:
         page.route("https://cdn.plot.ly/plotly-4.1.1.min.js",
                    lambda route: route.fulfill(path=asset, content_type="text/javascript"))
 
 
-def drag_timing_boundary(page, index, edge, target):
+def use_cached_timeline(page):
+    for extension, path, content_type in (
+        ("js", "standalone/umd/vis-timeline-graph2d.min.js", "text/javascript"),
+        ("css", "styles/vis-timeline-graph2d.min.css", "text/css"),
+    ):
+        asset = os.environ.get("DEVLOG_TEST_TIMELINE_" + extension.upper())
+        if asset:
+            page.route("https://unpkg.com/vis-timeline@8.5.6/" + path,
+                       lambda route, request, asset=asset, content_type=content_type:
+                       route.fulfill(path=asset, content_type=content_type))
+
+
+def observe_timeline_hooks(page):
+    """Observe the app's vis callbacks without changing the library or app source."""
+    def instrument(route):
+        response = route.fetch()
+        route.fulfill(response=response, body="""
+            const NativeTimeline = vis.Timeline;
+            window.timelineHooks = [];
+            vis.Timeline = function(container, items, options) {
+                for (const name of ['onMove', 'onUpdate']) {
+                    const handler = options[name];
+                    options[name] = (item, callback) => {
+                        const event = {name, calls: 0, accepted: null};
+                        window.timelineHooks.push(event);
+                        handler(item, result => {
+                            event.calls++;
+                            event.accepted = result !== null;
+                            callback(result);
+                        });
+                    };
+                }
+                return new NativeTimeline(container, items, options);
+            };
+        """ + response.text())
+    page.route("**/static/timing.js", instrument)
+
+
+def save_precise_timing(page, *, start=None, end=None):
+    if start is not None:
+        page.get_by_label("Work start (UTC)", exact=True).fill(start)
+    if end is not None:
+        page.get_by_label("Work end (UTC)", exact=True).fill(end)
+    page.get_by_role("button", name="Save timing", exact=True).click()
+    page.wait_for_function("document.getElementById('timing-status').textContent.startsWith('Timing saved.')")
+
+
+def drag_work_range(page, index, delta_seconds, edge=None, touch=False, wait=True):
     page.get_by_role("button", name="Focus task", exact=True).click()
-    handles = page.locator(".timing-handle")
-    left, right = handles.first, handles.last
-    left_box, right_box = left.bounding_box(), right.bounding_box()
-    left_value, right_value = float(left.get_attribute("aria-valuenow")), float(right.get_attribute("aria-valuenow"))
-    scale = (right_box["x"] - left_box["x"]) / (right_value - left_value)
-    handle = page.locator(f'.timing-handle[data-index="{index}"][data-edge="{edge}"]')
-    box = handle.bounding_box()
-    current = float(handle.get_attribute("aria-valuenow"))
-    destination = target.replace(tzinfo=timezone.utc).timestamp() * 1000
+    page.wait_for_timeout(600)  # Wait for vis-timeline's viewport animation.
+    work = page.locator(".vis-item.vis-range.timing-work").nth(index)
+    work.click()
+    start = datetime.fromisoformat(page.locator("#timing-start").input_value())
+    end = datetime.fromisoformat(page.locator("#timing-end").input_value())
+    work_box = work.bounding_box()
+    scale = work_box["width"] / (end - start).total_seconds()
+    target = work.locator(".vis-drag-" + edge) if edge else work
+    target.scroll_into_view_if_needed()
+    box = target.bounding_box()
     x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
-    page.mouse.move(x, y)
-    page.mouse.down()
-    page.mouse.move(x + (destination - current) * scale, y, steps=10)
-    page.mouse.up()
+    if touch:
+        session = page.context.new_cdp_session(page)
+        session.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]})
+        for step in range(1, 11):
+            session.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [
+                {"x": x + delta_seconds * scale * step / 10, "y": y}]})
+        session.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+    else:
+        page.mouse.move(x, y)
+        page.mouse.down()
+        page.mouse.move(x + delta_seconds * scale, y, steps=10)
+        page.mouse.up()
+    if wait:
+        page.wait_for_function("document.getElementById('timing-track').getAttribute('aria-busy') === 'false'")
 
 
 @pytest.mark.database
@@ -294,190 +353,6 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
 
 @pytest.mark.database
 @pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
-@pytest.mark.parametrize("seconds", [5, 59])
-@pytest.mark.parametrize("mobile", [False, True])
-def test_short_task_start_handle_can_be_dragged_and_saved(service, tasks, seconds, mobile):
-    playwright = pytest.importorskip("playwright.sync_api")
-    repository = "github.com/example/forgotten-start"
-    started = datetime(2026, 10, 24, 12, 0, 17, 123456)
-    task_id = tasks.start(repository, now=started)["task_id"]
-    tasks.complete(repository, task_id, "a" * 40, "Forgot to start the timer",
-                   now=started + timedelta(seconds=seconds))
-    before = tasks.task_detail(task_id)
-    errors = []
-    with playwright.sync_playwright() as runtime:
-        browser = runtime.chromium.launch()
-        context = browser.new_context(viewport={"width": 390 if mobile else 1200, "height": 1000},
-                                      is_mobile=mobile, has_touch=mobile)
-        page = context.new_page()
-        page.on("pageerror", lambda error: errors.append(str(error)))
-        url = service["url"] + f"/tasks/{task_id}?lang=en"
-        page.goto(url)
-        start, end = page.locator(".timing-handle").first, page.locator(".timing-handle").last
-        initial_start = int(start.get_attribute("aria-valuenow"))
-        initial_end = int(end.get_attribute("aria-valuenow"))
-        # On the full timeline, both boundaries occupy the same horizontal pixels.
-        # Selecting the end must still leave the start's upper grip reachable.
-        end.focus()
-        page.locator("#timing-track").scroll_into_view_if_needed()
-        box = start.bounding_box()
-        x, y = box["x"] + box["width"] / 2, box["y"] + 10
-        assert page.evaluate("""({x, y}) => document.elementFromPoint(x, y)?.dataset.edge""",
-                             dict(x=x, y=y)) == "start"
-        start.focus()
-        end_box = end.bounding_box()
-        assert page.evaluate("""({x, y}) => document.elementFromPoint(x, y)?.dataset.edge""",
-                             dict(x=end_box["x"] + end_box["width"] / 2,
-                                  y=end_box["y"] + end_box["height"] - 10)) == "end"
-        if mobile:
-            session = context.new_cdp_session(page)
-            session.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]})
-            session.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [{"x": x - 30, "y": y}]})
-            session.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
-        else:
-            page.mouse.move(x, y)
-            page.mouse.down()
-            page.mouse.move(x - 30, y, steps=10)
-            page.mouse.up()
-        assert int(start.get_attribute("aria-valuenow")) < initial_start
-        assert int(end.get_attribute("aria-valuenow")) == initial_end
-        assert tasks.task_detail(task_id) == before
-        page.get_by_role("button", name="Cancel", exact=True).click()
-        assert int(start.get_attribute("aria-valuenow")) == initial_start
-        # Zooming into a short task must also allow a precise earlier start.
-        drag_timing_boundary(page, 0, "start", datetime(2026, 10, 24, 12))
-        corrected = datetime(2026, 10, 24, 12)
-        assert int(start.get_attribute("aria-valuenow")) == corrected.replace(tzinfo=timezone.utc).timestamp() * 1000
-        assert int(end.get_attribute("aria-valuenow")) == initial_end
-        page.get_by_role("button", name="Save timing", exact=True).click()
-        page.wait_for_url("**saved=timing")
-        after = tasks.task_detail(task_id)
-        assert after["intervals"][0]["started_at"] == corrected
-        assert after["intervals"][0]["ended_at"] == before["intervals"][0]["ended_at"]
-        assert {k: v for k, v in after.items() if k != "intervals"} == {
-            k: v for k, v in before.items() if k != "intervals"}
-        page.reload()
-        assert int(page.locator(".timing-handle").first.get_attribute("aria-valuenow")) == corrected.replace(tzinfo=timezone.utc).timestamp() * 1000
-        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-        screenshots = os.environ.get("DEVLOG_SCREENSHOT_DIR")
-        if screenshots:
-            page.get_by_role("button", name="Focus task", exact=True).click()
-            Path(screenshots).mkdir(parents=True, exist_ok=True)
-            page.screenshot(path=str(Path(screenshots) / f"short-task-{seconds}-{'mobile' if mobile else 'desktop'}.png"),
-                            full_page=True)
-        assert errors == []
-        browser.close()
-
-
-@pytest.mark.database
-@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
-def test_completed_editor_four_handles_cancel_conflict_touch_and_readonly_fallback(service, tasks):
-    playwright = pytest.importorskip("playwright.sync_api")
-    previous_repo, repository = "github.com/example/previous", "github.com/example/edited"
-    previous = tasks.start(previous_repo, now=datetime(2026, 10, 24, 10))["task_id"]
-    tasks.complete(previous_repo, previous, "b" * 40, "Previous work", now=datetime(2026, 10, 24, 11))
-    task_id = tasks.start(repository, now=datetime(2026, 10, 24, 12))["task_id"]
-    tasks.pause(repository, now=datetime(2026, 10, 24, 14))
-    tasks.start(repository, now=datetime(2026, 10, 24, 15))
-    tasks.complete(repository, task_id, "a" * 40, "Historical work", now=datetime(2026, 10, 24, 17))
-    before = tasks.task_detail(task_id)
-    previous_before = tasks.task_detail(previous)
-    errors = []
-    with playwright.sync_playwright() as runtime:
-        browser = runtime.chromium.launch()
-        page = browser.new_page(viewport={"width": 1200, "height": 1000})
-        page.on("pageerror", lambda error: errors.append(str(error)))
-        url = service["url"] + f"/tasks/{task_id}?start=2026-10-24&end=2026-10-25&lang=en"
-        page.goto(url)
-        assert page.locator("#timing-editor").is_visible()
-        assert page.locator(".timing-handle").count() == 4
-        assert float(page.locator(".timing-handle").last.get_attribute("aria-valuemax")) == datetime(
-            2026, 10, 24, 17, tzinfo=timezone.utc).timestamp() * 1000
-        assert page.locator(".timing-span.fixed strong").inner_text() == f"Task #{previous}"
-        assert page.get_by_text("Insert a pause", exact=True).count() == 0
-        loaded = page.locator("#timing-loaded").inner_text()
-        handle = page.locator('.timing-handle[data-index="0"][data-edge="start"]')
-        initial = int(handle.get_attribute("aria-valuenow"))
-        handle.press("Shift+ArrowRight")
-        assert int(handle.get_attribute("aria-valuenow")) == initial + 1000
-        handle.press("ArrowRight")
-        assert int(handle.get_attribute("aria-valuenow")) == initial + 61000
-        page.get_by_role("button", name="Cancel", exact=True).click()
-        assert page.locator("#timing-loaded").inner_text() == loaded
-        assert page.locator("#timing-total").inner_text() == "Elapsed time: 04:00:00"
-        drag_timing_boundary(page, 1, "end", datetime(2026, 10, 24, 18))
-        assert page.locator("#timing-save").is_disabled()
-        assert page.locator("#timing-completed").is_visible()
-        drag_timing_boundary(page, 0, "start", datetime(2026, 10, 24, 10))
-        assert float(handle.get_attribute("aria-valuenow")) == datetime(2026, 10, 24, 11, tzinfo=timezone.utc).timestamp() * 1000
-        page.get_by_role("button", name="Cancel", exact=True).click()
-        stale = browser.new_page(viewport={"width": 1200, "height": 1000})
-        stale.goto(url)
-        for index, edge, hour, minute in [(0, "start", 12, 30), (0, "end", 13, 30),
-                                          (1, "start", 15, 30), (1, "end", 16, 30)]:
-            drag_timing_boundary(page, index, edge, datetime(2026, 10, 24, hour, minute))
-        assert page.locator("#timing-total").inner_text() == "Elapsed time: 02:00:00"
-        assert tasks.task_detail(task_id) == before  # Dragging has made no writes.
-        blocks = page.locator(".timing-span.active")
-        assert abs(blocks.nth(0).bounding_box()["width"] - blocks.nth(1).bounding_box()["width"]) < 1
-        assert page.locator("#timing-loaded").inner_text() == loaded
-        page.get_by_role("button", name="Save timing", exact=True).click()
-        page.wait_for_url("**saved=timing")
-        assert "start=2026-10-24" in page.url and "lang=en" in page.url
-        assert page.locator(".total strong").inner_text() == "2.00"
-        assert page.get_by_text("Timing saved.", exact=False).is_visible()
-        after = tasks.task_detail(task_id)
-        assert {k: v for k, v in after.items() if k != "intervals"} == {
-            k: v for k, v in before.items() if k != "intervals"}
-        assert tasks.task_detail(previous) == previous_before
-        stale.locator(".timing-handle").first.press("ArrowRight")
-        stale.get_by_role("button", name="Save timing", exact=True).click()
-        stale.locator("#timing-error").wait_for(state="visible")
-        assert "Reload" in stale.locator("#timing-error").inner_text()
-        assert stale.locator("#timing-save").is_disabled()
-        assert tasks.task_detail(task_id) == after
-        page.get_by_role("button", name="Focus task", exact=True).click()
-        screenshots = os.environ.get("DEVLOG_SCREENSHOT_DIR")
-        if screenshots:
-            Path(screenshots).mkdir(parents=True, exist_ok=True)
-            page.screenshot(path=str(Path(screenshots) / "timing-desktop.png"), full_page=True)
-        mobile = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
-        mobile_page = mobile.new_page()
-        mobile_page.on("pageerror", lambda error: errors.append(str(error)))
-        mobile_page.goto(url)
-        mobile_page.get_by_role("button", name="Focus task", exact=True).click()
-        assert mobile_page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-        left, right = mobile_page.locator(".timing-handle").first, mobile_page.locator(".timing-handle").last
-        left_box, right_box = left.bounding_box(), right.bounding_box()
-        # Touch-drag the final work boundary back by half an hour.
-        scale = (right_box["x"] - left_box["x"]) / (float(right.get_attribute("aria-valuenow")) - float(left.get_attribute("aria-valuenow")))
-        mobile_page.locator("#timing-track").scroll_into_view_if_needed()
-        right_box = right.bounding_box()
-        x, y = right_box["x"] + right_box["width"] / 2, right_box["y"] + right_box["height"] / 2
-        session = mobile.new_cdp_session(mobile_page)
-        session.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]})
-        for step in range(1, 11):
-            session.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [
-                {"x": x - 1800000 * scale * step / 10, "y": y}]})
-        session.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
-        assert mobile_page.locator("#timing-total").inner_text() == "Elapsed time: 01:30:00"
-        mobile_page.get_by_role("button", name="Cancel", exact=True).click()
-        mobile_page.get_by_role("button", name="Focus task", exact=True).click()
-        if screenshots:
-            mobile_page.screenshot(path=str(Path(screenshots) / "timing-mobile.png"), full_page=True)
-        readonly = browser.new_context(java_script_enabled=False)
-        readonly_page = readonly.new_page()
-        readonly_page.goto(url)
-        assert readonly_page.locator("#timing-editor").is_hidden()
-        assert readonly_page.locator(".interval").first.is_visible()
-        assert readonly_page.get_by_text("Enable JavaScript", exact=False).is_visible()
-        assert readonly_page.locator("form.pause-form").count() == 0
-        assert errors == []
-        browser.close()
-
-
-@pytest.mark.database
-@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
 def test_completed_task_dividers_have_visible_pixels(service, tasks):
     playwright = pytest.importorskip("playwright.sync_api")
     lower, blue = "github.com/example/alpha", "github.com/example/beta"
@@ -590,10 +465,8 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         assert page.locator(".interval time").all_text_contents() == [
             "2026-10-24 21:00:00", "2026-10-25 09:00:00"]
         assert page.locator(".elapsed").all_text_contents() == ["Elapsed time: 12:00:00"]
-        drag_timing_boundary(page, 0, "end", datetime(2026, 10, 25, 2))
+        save_precise_timing(page, end="2026-10-25T02:00")
         assert page.locator("#timing-total").inner_text() == "Elapsed time: 01:00:00"
-        page.get_by_role("button", name="Save timing").click()
-        page.wait_for_url("**saved=timing")
         assert page.get_by_text("Timing saved.", exact=False).is_visible()
         assert page.locator(".total strong").inner_text() == "1.00"
         assert page.locator(".interval").count() == 2
@@ -621,6 +494,242 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         page.locator("#chart-error a").click()
         page.locator(".task-link").click()
         assert page.locator(".total strong").inner_text() == "1.00"
-        assert page.locator("#timing-editor").is_visible()
+        playwright.expect(page.locator("#timing-editor")).to_be_visible()
         assert errors == []
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
+    playwright = pytest.importorskip("playwright.sync_api")
+    previous_repo, repository = "github.com/example/previous", "github.com/example/edited"
+    previous = tasks.start(previous_repo, now=datetime(2026, 10, 24, 10))["task_id"]
+    tasks.complete(previous_repo, previous, "b" * 40, "Previous", now=datetime(2026, 10, 24, 11))
+    task_id = tasks.start(repository, now=datetime(2026, 10, 24, 12))["task_id"]
+    tasks.pause(repository, now=datetime(2026, 10, 24, 14))
+    tasks.start(repository, now=datetime(2026, 10, 24, 15))
+    tasks.complete(repository, task_id, "a" * 40, '<img src=x onerror="alert(1)">', now=datetime(2026, 10, 24, 17))
+    before, previous_before = tasks.task_detail(task_id), tasks.task_detail(previous)
+    url = service["url"] + f"/tasks/{task_id}?start=2026-10-24&end=2026-10-25&lang=en"
+    errors, writes = [], []
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page(viewport={"width": 1200, "height": 1100}, timezone_id="Pacific/Auckland")
+        use_cached_timeline(page)
+        observe_timeline_hooks(page)
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.on("request", lambda request: writes.append(request) if request.method == "POST" else None)
+        page.goto(url)
+        playwright.expect(page.locator("#timing-editor")).to_be_visible()
+        assert page.locator("#timing-start").input_value() == "2026-10-24T12:00"
+        assert page.locator("#timing-save").is_disabled()
+        assert page.locator(".vis-item.vis-range.timing-work").count() == 2
+        playwright.expect(page.locator(".vis-item.timing-context")).to_contain_text(f"Task #{previous}")
+        playwright.expect(page.locator(".vis-item.vis-point.timing-commit")).to_have_text("Commit recorded")
+        assert page.locator(".commit-message img").count() == 0
+        assert page.get_by_text("Insert a pause", exact=True).count() == 0
+        page.locator("#timing-start").fill("2026-10-24T12:30")
+        page.get_by_role("button", name="Cancel", exact=True).click()
+        assert page.locator("#timing-start").input_value() == "2026-10-24T12:00"
+        assert writes == [] and tasks.task_detail(task_id) == before
+        # Double-click uses onUpdate; cancelling leaves the range and storage intact.
+        page.get_by_role("button", name="Focus task", exact=True).click()
+        page.wait_for_timeout(600)
+        page.locator(".vis-item.vis-range.timing-work").first.dblclick()
+        assert page.locator("#timing-start").evaluate("node => node === document.activeElement")
+        page.get_by_role("button", name="Cancel", exact=True).click()
+        assert writes == []
+        # The actual vis resize and move handlers persist exactly once per gesture.
+        drag_work_range(page, 0, 1800, edge="left")
+        assert len(writes) == 1
+        row = tasks.task_detail(task_id)["intervals"][0]
+        assert datetime(2026, 10, 24, 12) < row["started_at"] < datetime(2026, 10, 24, 13)
+        assert row["ended_at"] == datetime(2026, 10, 24, 14)
+        resized_duration = row["ended_at"] - row["started_at"]
+        drag_work_range(page, 0, 900)
+        assert len(writes) == 2
+        row = tasks.task_detail(task_id)["intervals"][0]
+        assert datetime(2026, 10, 24, 14) < row["ended_at"] < datetime(2026, 10, 24, 15)
+        assert row["ended_at"] - row["started_at"] == resized_duration
+        save_precise_timing(page, start="2026-10-24T12:30", end="2026-10-24T13:30")
+        page.get_by_label("Active time", exact=True).select_option(index=1)
+        save_precise_timing(page, start="2026-10-24T15:30", end="2026-10-24T16:30")
+        assert len(writes) == 4
+        assert page.evaluate("timelineHooks") == [
+            {"name": "onUpdate", "calls": 1, "accepted": False},
+            {"name": "onMove", "calls": 1, "accepted": True},
+            {"name": "onMove", "calls": 1, "accepted": True},
+        ]
+        assert page.locator(".total strong").inner_text() == "2.00"
+        assert page.locator("#timing-total").inner_text() == "Elapsed time: 02:00:00"
+        assert tasks.task_detail(previous) == previous_before
+        after = tasks.task_detail(task_id)
+        assert {k: v for k, v in after.items() if k != "intervals"} == {
+            k: v for k, v in before.items() if k != "intervals"}
+        assert "start=2026-10-24" in page.url and "lang=en" in page.url
+        page.reload()
+        assert page.locator(".total strong").inner_text() == "2.00"
+        assert page.locator("#timing-start").input_value() == "2026-10-24T12:30"
+        playwright.expect(page.locator("#timing-track .vis-timeline")).to_be_visible()
+        page.get_by_role("button", name="Focus task", exact=True).click()
+        page.wait_for_timeout(600)
+        for width in (1200, 390):
+            page.set_viewport_size({"width": width, "height": 1100})
+            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+            screenshots = os.environ.get("DEVLOG_SCREENSHOT_DIR")
+            if screenshots:
+                Path(screenshots).mkdir(parents=True, exist_ok=True)
+                page.screenshot(path=str(Path(screenshots) / f"vis-timeline-{width}.png"), full_page=True)
+        assert errors == []
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+@pytest.mark.parametrize("seconds", [5, 59])
+def test_vis_short_task_mobile_touch_and_precise_edit(service, tasks, seconds):
+    playwright = pytest.importorskip("playwright.sync_api")
+    repository = "github.com/example/short"
+    start = datetime(2026, 10, 24, 12)
+    task_id = tasks.start(repository, now=start)["task_id"]
+    tasks.complete(repository, task_id, "a" * 40, "Short", now=start + timedelta(seconds=seconds))
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        context = browser.new_context(viewport={"width": 390, "height": 1000}, is_mobile=True, has_touch=True)
+        page = context.new_page()
+        use_cached_timeline(page)
+        page.goto(service["url"] + f"/tasks/{task_id}")
+        drag_work_range(page, 0, -seconds / 5, edge="left", touch=True)
+        after_touch = tasks.task_detail(task_id)["intervals"][0]
+        assert after_touch["started_at"] < start
+        assert after_touch["ended_at"] == start + timedelta(seconds=seconds)
+        # Both boundaries remain precisely reachable for sub-minute tasks at any scale.
+        save_precise_timing(page, start="2026-10-24T11:30")
+        assert tasks.task_detail(task_id)["intervals"][0]["started_at"] == datetime(2026, 10, 24, 11, 30)
+        page.reload()
+        assert page.locator("#timing-start").input_value() == "2026-10-24T11:30"
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+def test_vis_rejection_stale_edit_and_lost_acknowledgement(service, tasks):
+    playwright = pytest.importorskip("playwright.sync_api")
+    repository = "github.com/example/recovery"
+    task_id = tasks.start(repository, now=datetime(2026, 10, 24, 12))["task_id"]
+    tasks.complete(repository, task_id, "a" * 40, "Recovery", now=datetime(2026, 10, 24, 17))
+    url = service["url"] + f"/tasks/{task_id}"
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page()
+        stale = browser.new_page()
+        for view in (page, stale):
+            use_cached_timeline(view)
+            view.goto(url)
+        # Server rejection preserves the last accepted range and leaves form values unsaved.
+        page.locator("#timing-end").fill("2026-10-24T18:00")
+        page.get_by_role("button", name="Save timing", exact=True).click()
+        page.locator("#timing-error").wait_for(state="visible")
+        assert "completion" in page.locator("#timing-error").inner_text()
+        assert tasks.task_detail(task_id)["intervals"][0]["ended_at"] == datetime(2026, 10, 24, 17)
+        save_precise_timing(page, end="2026-10-24T16:00")
+        stale.locator("#timing-start").fill("2026-10-24T13:00")
+        stale.get_by_role("button", name="Save timing", exact=True).click()
+        stale.wait_for_function("document.getElementById('timing-status').textContent.startsWith('Recorded timing refreshed.')")
+        assert stale.locator("#timing-error").is_visible()
+        assert stale.locator("#timing-end").input_value() == "2026-10-24T16:00"
+        # Drop a successful POST response: recovery reads storage and does not repeat the write.
+        writes = []
+        def lose_ack(route):
+            if route.request.method == "POST":
+                writes.append(route.request)
+                response = route.fetch()
+                assert response.status == 200
+                route.abort("failed")
+            else:
+                route.continue_()
+        page.route("**/tasks/*/timing*", lose_ack)
+        page.locator("#timing-end").fill("2026-10-24T15:00")
+        page.get_by_role("button", name="Save timing", exact=True).click()
+        page.wait_for_function("document.getElementById('timing-status').textContent.startsWith('Recorded timing refreshed.')")
+        assert len(writes) == 1
+        assert page.locator("#timing-error").is_visible()
+        assert page.locator("#timing-end").input_value() == "2026-10-24T15:00"
+        assert page.locator(".total strong").inner_text() == "3.00"
+        page.unroute("**/tasks/*/timing*", lose_ack)
+        save_precise_timing(page, end="2026-10-24T14:00")
+        # An unreadable recovery snapshot blocks editing and offers an explicit reload.
+        page.route("**/tasks/*/timing*", lambda route: route.abort("failed"))
+        page.locator("#timing-start").fill("2026-10-24T12:30")
+        page.get_by_role("button", name="Save timing", exact=True).click()
+        page.locator("#timing-reload").wait_for(state="visible")
+        assert page.locator("#timing-start").is_disabled()
+        assert tasks.task_detail(task_id)["intervals"][0]["started_at"] == datetime(2026, 10, 24, 12)
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+@pytest.mark.parametrize("unavailable", ["js", "css", "no-script"])
+def test_vis_asset_failure_and_readonly_intervals(service, tasks, unavailable):
+    playwright = pytest.importorskip("playwright.sync_api")
+    repository = "github.com/example/fallback"
+    task_id = tasks.start(repository, now=datetime(2026, 10, 24, 12))["task_id"]
+    tasks.complete(repository, task_id, "a" * 40, "Read-only", now=datetime(2026, 10, 24, 17))
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page(java_script_enabled=unavailable != "no-script")
+        use_cached_timeline(page)
+        page.route("https://unpkg.com/**/*." + unavailable, lambda route: route.abort())
+        page.goto(service["url"] + f"/tasks/{task_id}")
+        assert page.locator("#timing-editor").is_hidden()
+        assert page.locator(".interval").first.is_visible()
+        assert page.locator("#timing-no-script").is_visible()
+        if unavailable != "no-script":
+            assert "unpkg.com" in page.locator("#timing-no-script").inner_text()
+        assert page.locator("form.pause-form").count() == 0
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+@pytest.mark.parametrize("failure", ["server", "timeout"])
+def test_vis_failed_drag_settles_once_and_refetches_before_editing(service, tasks, failure):
+    playwright = pytest.importorskip("playwright.sync_api")
+    repository = "github.com/example/failed-drag"
+    task_id = tasks.start(repository, now=datetime(2026, 10, 24, 12))["task_id"]
+    tasks.complete(repository, task_id, "a" * 40, "Failed drag", now=datetime(2026, 10, 24, 14))
+    before = tasks.task_detail(task_id)
+    writes = []
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page()
+        use_cached_timeline(page)
+        observe_timeline_hooks(page)
+        page.goto(service["url"] + f"/tasks/{task_id}")
+        def fail_write(route):
+            if route.request.method == "POST":
+                writes.append(route.request)
+                if failure == "server":
+                    route.fulfill(status=503, json={"error": "Unavailable"})
+                # Otherwise leave the request pending until AbortSignal.timeout fires.
+            else:
+                route.continue_()
+        page.route("**/tasks/*/timing*", fail_write)
+        drag_work_range(page, 0, -1800, edge="right", wait=False)
+        if failure == "timeout":
+            page.wait_for_function("timelineHooks.length === 1")
+            assert page.evaluate("timelineHooks[0].calls") == 0
+            assert page.locator("#timing-start").is_disabled()
+            assert page.locator(".total strong").inner_text() == "2.00"
+        page.wait_for_function("document.getElementById('timing-status').textContent.startsWith('Recorded timing refreshed.')",
+                               timeout=20000)
+        assert len(writes) == 1
+        assert page.evaluate("timelineHooks") == [{"name": "onMove", "calls": 1, "accepted": False}]
+        assert page.locator("#timing-error").is_visible()
+        assert page.locator("#timing-end").input_value() == "2026-10-24T14:00"
+        assert not page.locator("#timing-start").is_disabled()
+        assert tasks.task_detail(task_id) == before
         browser.close()

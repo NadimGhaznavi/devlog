@@ -6,10 +6,13 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Radon (Rn)**. Radon is a radioactive noble 
+gas that can accumulate indoors when it seeps from the ground.
+
 ### Summary
 
 Refresh the pinned BMForge engineering guidance and skill manager to upstream
-0.16.0 and add the timeline editing skill for future vis-timeline work.
+0.16.0 and replace the completed-task editor with the pinned vis-timeline solution.
 
 ### Added
 
@@ -19,6 +22,13 @@ Refresh the pinned BMForge engineering guidance and skill manager to upstream
 
 ### Changed
 
+- Replace the custom task axis and pointer handles with vis-timeline 8.5.6.
+  Preserve completed work ranges, locked neighboring work and completion events,
+  overlap/boundary validation and stale-edit protection. Drag/resize saves after
+  server acknowledgement; precise UTC fields provide keyboard Save/Cancel.
+- Return canonical task snapshots after timing saves and expose a read endpoint
+  for uncertain-write recovery. Refresh accepted totals and recorded intervals,
+  show asset-load failures, and retain the read-only view without JavaScript.
 - Update all ten pinned BMForge skills, the project-local manager and lock hashes
   from revision `87ba468ffb83` to `7b35a708db2b`. Include shared guidance for a
   simple multi-service start/stop script and manager support for explicitly
