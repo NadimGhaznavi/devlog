@@ -32,7 +32,7 @@
   "cli.description": "Track time spent working in Git repositories.",
   "cli.start_help": "Start or resume this repository's task.",
   "cli.status_help": "Show the globally running task.",
-  "timer.task_running": "Repository ({repository}): Task #{task_id} running for {duration} hours",
+  "timer.task_running": "Repository ({repository}): Task #{task_id} running for {duration} (HH:MM)",
   "timer.no_running_task": "No task currently running",
   "cli.pause_help": "Pause this repository's task.",
   "cli.commit_help": "Stage all changes, commit, finish the task, and push.",

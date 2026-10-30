@@ -6,6 +6,15 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+### Summary
+
+Clarify the hours-and-minutes format in command-line task status.
+
+### Changed
+
+- Replace `hours` after the `dl status` running duration with `(HH:MM)`, for
+  example `Repository (devlog): Task #96 running for 00:00 (HH:MM)`.
+
 ## [0.10.9] - 2026-10-30 @ 18:53
 
 This release is named for the element **Neptunium (Np)**. Neptunium, the first 
