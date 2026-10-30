@@ -12,16 +12,7 @@
 {% endif %}
 {% macro total_duration(hours) -%}
   {%- set seconds = hours | elapsed_seconds -%}
-  {%- if seconds < task_seconds_limit -%}
-    {%- set parts = [(seconds // 60, text.DURATION_MINUTE, text.DURATION_MINUTES), (seconds % 60, text.DURATION_SECOND, text.DURATION_SECONDS)] -%}
-  {%- else -%}
-    {%- set parts = [(seconds // 3600, text.DURATION_HOUR, text.DURATION_HOURS), (seconds // 60 % 60, text.DURATION_MINUTE, text.DURATION_MINUTES)] -%}
-  {%- endif -%}
-  {%- for count, singular, plural in parts if count -%}
-    {{- ' ' if not loop.first else '' -}}{{- t(singular if count == 1 else plural, count=count) -}}
-  {%- else -%}
-    {{- t(text.DURATION_SECONDS, count=0) -}}
-  {%- endfor -%}
+  {{- '%02d:%02d' | format(seconds // 3600, seconds // 60 % 60) -}}
 {%- endmacro %}
 {% block page_title %}{{ history_title if report else t(text.TASKS) }}{% endblock %}
 {% block head %}
@@ -35,7 +26,7 @@
     {% if form_error is defined %}<p class="notice" role="alert">{{ t(form_error) }}</p>{% endif %}
     <section class="report panel">
     {% if task %}
-      <div class="report-heading"><div><h1>{{ t(text.TASK, task_id=task.task_id) }}</h1><p>{{ task.repository }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ '%.2f' | format(task.total_hours) }}</strong></div></div>
+      <div class="report-heading"><div><h1>{{ t(text.TASK, task_id=task.task_id) }}</h1><p>{{ task.repository }}</p></div><div class="total"><span>{{ t(text.TOTAL) }}</span><strong>{{ total_duration(task.total_hours) }}</strong></div></div>
       <dl class="task-metadata">
         <dt>{{ t(text.STATUS) }}</dt><dd>{{ t(text['STATUS_' ~ task.status.upper()]) }}</dd>
         <dt>{{ t(text.ORIGINAL_STARTED_AT if task.status == 'completed' else text.STARTED_AT) }}</dt><dd><time>{{ task.started_at }}</time></dd>
@@ -122,7 +113,7 @@
         {% set minutes = (item.hours | elapsed_seconds) // 60 %}
         <tr>
           <td><a class="task-link" href="{{ link('/tasks/' ~ item.task_id) }}" aria-label="{{ t(text.TASK, task_id=item.task_id) }}">{{ item.task_id }}</a></td>
-          {% if daily %}<td>{{ item.repository.rsplit('/', 1)[-1] }}</td>{% endif %}
+          {% if daily %}<td><span class="project-swatch" style="--project-color: {{ report.project_colors[item.repository] }}" aria-hidden="true"></span>{{ item.repository.rsplit('/', 1)[-1] }}</td>{% endif %}
           <td><time>{{ item.started_at[11:16] }}</time></td>
           <td class="task-description">{{ item.commit_message or t(text['STATUS_' ~ item.status.upper()]) }}</td>
           <td>{{ '%02d:%02d' | format(minutes // 60, minutes % 60) }}</td>

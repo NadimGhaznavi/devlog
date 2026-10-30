@@ -294,16 +294,23 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         use_cached_plotly(page)
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(service["url"] + "/?repository=github.com/example/alpha&start=2026-10-24&end=2026-10-24")
+        page.wait_for_selector("#daily-chart .plot-container")
+        chart_colors = page.evaluate("JSON.parse(document.getElementById('chart-data').textContent).projectColors")
         page.get_by_role("link", name="Daily Task Report - 2026-10-24", exact=True).click()
         page.wait_for_url("**/daily?**")
         assert parse_qs(urlsplit(page.url).query) == {"day": ["2026-10-24"], "lang": ["en"]}
         assert page.get_by_role("link", name="Daily", exact=True).get_attribute("aria-current") == "page"
         assert page.locator("#tasks-heading").inner_text() == "Daily Task Report - 24 Oct 2026"
-        assert page.locator(".task-total strong").inner_text() == "3 hours"
+        assert page.locator(".task-total strong").inner_text() == "03:00"
         assert page.locator(".tasks-table th").all_text_contents() == [
             "Task #", "Project", "Start Time", "Description", "Duration"]
         assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["tiny", "beta", "alpha"]
         assert page.locator(".tasks-table tbody tr td:last-child").all_text_contents() == ["00:00", "01:00", "02:00"]
+        swatches = page.locator(".project-swatch")
+        assert swatches.count() == 3
+        assert swatches.evaluate_all("nodes => nodes.map(node => node.style.getPropertyValue('--project-color'))") == [
+            chart_colors["github.com/example/" + name] for name in ("tiny", "beta", "alpha")]
+        assert all(node.get_attribute("aria-hidden") == "true" for node in swatches.all())
         project = page.get_by_role("combobox", name="Project", exact=True)
         assert project.locator("option").all_text_contents() == ["*", "alpha", "beta", "tiny"]
         assert project.input_value() == ""
@@ -314,7 +321,8 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         project.select_option("github.com/example/tiny")
         page.get_by_role("button", name="Show Report", exact=True).click()
         assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["tiny"]
-        assert page.locator(".task-total strong").inner_text() == "10 seconds"
+        assert page.locator(".task-total strong").inner_text() == "00:00"
+        assert swatches.first.evaluate("node => node.style.getPropertyValue('--project-color')") == chart_colors["github.com/example/tiny"]
         assert project.input_value() == "github.com/example/tiny"
         assert project.locator("option").all_text_contents() == ["*", "alpha", "beta", "tiny"]
         screenshot = os.environ.get("DEVLOG_SCREENSHOT_DIR")
@@ -323,7 +331,8 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
             page.screenshot(path=str(Path(screenshot) / "daily-desktop.png"), full_page=True)
         project.select_option("github.com/example/beta")
         page.get_by_role("button", name="Show Report", exact=True).click()
-        assert page.locator(".task-total strong").inner_text() == "1 hour"
+        assert page.locator(".task-total strong").inner_text() == "01:00"
+        assert swatches.first.evaluate("node => node.style.getPropertyValue('--project-color')") == chart_colors["github.com/example/beta"]
         page.set_viewport_size({"width": 390, "height": 844})
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         table_wrap = page.locator(".table-wrap")
@@ -334,7 +343,7 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         if screenshot:
             page.screenshot(path=str(Path(screenshot) / "daily-mobile.png"), full_page=True)
         page.locator(".task-link").first.click()
-        assert page.locator(".total strong").inner_text() == "1.00"
+        assert page.locator(".total strong").inner_text() == "01:00"
         page.get_by_role("link", name="Daily", exact=True).click()
         assert page.get_by_label("Date", exact=True).input_value() == "2026-10-24"
         project.select_option("github.com/example/tiny")
@@ -342,7 +351,7 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         page.get_by_role("button", name="Show Report", exact=True).click()
         assert project.input_value() == ""
         assert project.locator("option").all_text_contents() == ["*", "otherday"]
-        assert page.locator(".task-total strong").inner_text() == "1 hour"
+        assert page.locator(".task-total strong").inner_text() == "01:00"
         assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["otherday"]
         page.get_by_label("Date", exact=True).fill("2026-10-26")
         page.get_by_role("button", name="Show Report", exact=True).click()
@@ -350,7 +359,7 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         assert project.locator("option").all_text_contents() == ["*"]
         assert page.locator(".tasks-table tbody tr").count() == 0
         assert page.locator(".empty").is_visible()
-        assert page.locator(".task-total strong").inner_text() == "0 seconds"
+        assert page.locator(".task-total strong").inner_text() == "00:00"
         assert errors == []
         browser.close()
 
@@ -442,7 +451,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
             "start": ["2026-10-24"], "end": ["2026-10-25"], "lang": ["en"]}
         assert page.get_by_role("heading", level=1).inner_text() == "Repository (overnight) Tasks - 25 Oct 2026"
         assert page.locator(".task-total span").inner_text() == "Total time"
-        assert page.locator(".task-total strong").inner_text() == "9 hours"
+        assert page.locator(".task-total strong").inner_text() == "09:00"
         assert page.locator(".tasks-table th").all_text_contents() == ["Task #", "Start Time", "Description", "Duration"]
         assert page.locator(".tasks-table tbody tr").first.locator("td").all_text_contents() == [
             str(task_id), "21:00", "Overnight correction", "09:00"]
@@ -463,7 +472,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         page.set_viewport_size({"width": 1200, "height": 900})
         page.locator(".task-link").click()
         page.wait_for_url(f"**/tasks/{task_id}?**")
-        assert page.locator(".total strong").inner_text() == "12.00"
+        assert page.locator(".total strong").inner_text() == "12:00"
         assert page.locator(".task-metadata time").all_text_contents() == [
             "2026-10-24 21:00:00", "2026-10-25 09:00:00"]
         assert page.locator(".interval time").all_text_contents() == [
@@ -472,7 +481,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         save_precise_timing(page, end="2026-10-24T22:00")
         assert page.locator("#timing-total").inner_text() == "01:00:00"
         assert page.get_by_text("Timing saved.", exact=False).is_visible()
-        assert page.locator(".total strong").inner_text() == "1.00"
+        assert page.locator(".total strong").inner_text() == "01:00"
         assert page.locator(".interval").count() == 1
         assert page.locator(".interval.pause").count() == 0
         assert page.locator(".elapsed").all_text_contents() == ["Elapsed time: 01:00:00"]
@@ -496,7 +505,7 @@ def test_drilldown_trim_forgotten_running_time_and_chart_fallback(service, tasks
         assert page.locator("#chart-error").is_visible()
         page.locator("#chart-error a").click()
         page.locator(".task-link").click()
-        assert page.locator(".total strong").inner_text() == "1.00"
+        assert page.locator(".total strong").inner_text() == "01:00"
         playwright.expect(page.locator("#timing-editor")).to_be_visible()
         assert errors == []
         browser.close()
@@ -593,7 +602,7 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
             {"name": "onMove", "calls": 1, "accepted": True},
             {"name": "onMove", "calls": 1, "accepted": True},
         ]
-        assert page.locator(".total strong").inner_text() == "2.00"
+        assert page.locator(".total strong").inner_text() == "02:00"
         assert page.locator("#timing-total").inner_text() == "01:00:00"
         assert tasks.task_detail(previous) == previous_before
         after = tasks.task_detail(task_id)
@@ -601,7 +610,7 @@ def test_vis_timeline_resize_move_precise_cancel_and_reload(service, tasks):
             k: v for k, v in before.items() if k != "intervals"}
         assert "start=2026-10-24" in page.url and "lang=en" in page.url
         page.reload()
-        assert page.locator(".total strong").inner_text() == "2.00"
+        assert page.locator(".total strong").inner_text() == "02:00"
         assert page.locator("#timing-start").input_value() == "2026-10-25 01:30:00"
         playwright.expect(page.locator("#timing-track .vis-timeline")).to_be_visible()
         for width in (1200, 390):
@@ -687,7 +696,7 @@ def test_vis_rejection_stale_edit_and_lost_acknowledgement(service, tasks):
         assert len(writes) == 1
         assert page.locator("#timing-error").is_visible()
         assert page.locator("#timing-end").input_value() == "2026-10-24 15:00:00"
-        assert page.locator(".total strong").inner_text() == "3.00"
+        assert page.locator(".total strong").inner_text() == "03:00"
         page.unroute("**/tasks/*/timing*", lose_ack)
         save_precise_timing(page, end="2026-10-24T14:00")
         # An unreadable recovery snapshot blocks editing and offers an explicit reload.
@@ -753,7 +762,7 @@ def test_vis_failed_drag_settles_once_and_refetches_before_editing(service, task
             page.wait_for_function("timelineHooks.length === 1")
             assert page.evaluate("timelineHooks[0].calls") == 0
             assert page.locator("#timing-start").is_disabled()
-            assert page.locator(".total strong").inner_text() == "2.00"
+            assert page.locator(".total strong").inner_text() == "02:00"
         page.wait_for_function("document.getElementById('timing-status').textContent.startsWith('Recorded timing refreshed.')",
                                timeout=20000)
         assert len(writes) == 1

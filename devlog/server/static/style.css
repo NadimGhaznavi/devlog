@@ -79,6 +79,7 @@ a:hover { color: var(--accent-hover); }
 .daily-filters .field, .daily-filters .field:first-child { flex: 0 1 14rem; }
 .tasks-table th { white-space: nowrap; color: var(--accent); }
 .tasks-table td { vertical-align: middle; }
+.project-swatch { display: inline-block; width: .75rem; height: .75rem; margin-inline-end: .5rem; border-radius: 2px; background: var(--project-color); vertical-align: middle; }
 .tasks-table td:last-child { color: var(--action); font-weight: 600; }
 .tasks-table tbody tr:nth-child(even) { background: var(--surface); }
 .tasks-table tbody tr:hover, .tasks-table tbody tr:focus-within { background: var(--surface); }

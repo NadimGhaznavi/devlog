@@ -44,7 +44,8 @@ class ReportApplication:
     total_hours = 2.5
 
     def report(self, **filters):
-        return dict(repositories=['<script>alert("unsafe")</script>'], repository="", start="2026-10-24",
+        return dict(project_colors={'<script>alert("unsafe")</script>': '#E63946'},
+                    repositories=['<script>alert("unsafe")</script>'], repository="", start="2026-10-24",
                     end="2026-10-24", timezone="America/Toronto", total_hours=self.total_hours, current_task=self.current_task,
                     days=[dict(date="2026-10-24", hours=self.total_hours,
                                projects={'<script>alert("unsafe")</script>': self.total_hours})])
@@ -58,7 +59,8 @@ class TaskListApplication(ReportApplication):
     commit_message = '<script>alert("unsafe")</script>\nKeep the full commit message'
 
     def daily_task_list(self, **filters):
-        return dict(self.task_list(**filters), repositories=["github.com/example/MyCount"])
+        return dict(self.task_list(**filters), repositories=["github.com/example/MyCount"],
+                    project_colors={"github.com/example/MyCount": "#E63946"})
 
     def task_list(self, **filters):
         day = filters.get("day")
@@ -73,19 +75,19 @@ class TaskListApplication(ReportApplication):
 
 
 @pytest.mark.parametrize("seconds, total, duration", [
-    (0, "0 seconds", "00:00"),
-    (1, "1 second", "00:00"),
-    (59.999999, "59 seconds", "00:00"),
-    (60, "1 minute", "00:01"),
-    (152, "2 minutes 32 seconds", "00:02"),
-    (299.999999, "4 minutes 59 seconds", "00:04"),
-    (300, "5 minutes", "00:05"),
-    (301, "5 minutes", "00:05"),
-    (3599, "59 minutes", "00:59"),
-    (3600, "1 hour", "01:00"),
-    (7260, "2 hours 1 minute", "02:01"),
-    (9120, "2 hours 32 minutes", "02:32"),
-    (129600, "36 hours", "36:00"),
+    (0, "00:00", "00:00"),
+    (1, "00:00", "00:00"),
+    (59.999999, "00:00", "00:00"),
+    (60, "00:01", "00:01"),
+    (152, "00:02", "00:02"),
+    (299.999999, "00:04", "00:04"),
+    (300, "00:05", "00:05"),
+    (301, "00:05", "00:05"),
+    (3599, "00:59", "00:59"),
+    (3600, "01:00", "01:00"),
+    (7260, "02:01", "02:01"),
+    (9120, "02:32", "02:32"),
+    (129600, "36:00", "36:00"),
 ])
 def test_tasks_table_title_total_and_time_formats(seconds, total, duration):
     app = TaskListApplication()
@@ -157,12 +159,36 @@ def test_daily_defaults_to_today_in_configured_timezone_and_preserves_day(monkey
         assert '<option value="">*</option>' in html
         assert html.index('id="day"') < html.index('id="project"') < html.index('>Show Report</button>')
         assert '<th scope="col">Task #</th><th scope="col">Project</th><th scope="col">Start Time</th>' in html
-        assert '<td>MyCount</td>' in html
+        assert 'aria-hidden="true"></span>MyCount</td>' in html
         assert '/tasks/123?day=2026-10-27&amp;lang=en' in html
-        assert '<span>Total time</span><strong>2 hours 32 minutes</strong>' in html
+        assert '<span>Total time</span><strong>02:32</strong>' in html
         with urlopen(Request(url + "/daily?day=2026-10-26&lang=en", method="HEAD")) as response:
             assert response.status == 200 and response.read() == b""
     assert calls == [{"day": "2026-10-27"}, {"day": "2026-10-26"}]
+
+
+@pytest.mark.parametrize("seconds, total", [
+    (0, "00:00"), (59.999999, "00:00"), (60, "00:01"),
+    (576, "00:09"), (3599, "00:59"), (3600, "01:00"), (12960, "03:36"), (129600, "36:00"),
+])
+@pytest.mark.parametrize("path", ["/daily", "/tasks", "/tasks/123"])
+def test_task_pages_use_zero_padded_hours_and_completed_minutes(seconds, total, path):
+    app = TaskListApplication()
+    app.total_seconds = seconds
+    app.task_detail = lambda task_id: dict(
+        task_id=task_id, repository="github.com/example/MyCount", status="completed",
+        started_at="2026-10-27 09:15:42", completed_at="2026-10-27 12:51:42",
+        commit_sha=None, commit_message=None, timeline=[], editor=None,
+        total_hours=seconds / 3600, timezone="America/Toronto")
+    with display(app) as url:
+        with urlopen(url + path + "?day=2026-10-27") as response:
+            html = response.read().decode()
+    assert f'<strong>{total}</strong>' in html
+    if path == "/daily":
+        assert ('<td><span class="project-swatch" style="--project-color: #E63946" '
+                'aria-hidden="true"></span>MyCount</td>') in html
+    else:
+        assert 'class="project-swatch"' not in html
 
 
 def test_daily_links_drop_repository_and_range_filters():
@@ -195,10 +221,10 @@ def test_daily_lists_all_projects_with_hours_clipped_to_local_day(service, tasks
     with urlopen(service["url"] + "/daily?day=2026-10-25&lang=en") as response:
         html = response.read().decode()
     assert '<h1 id="tasks-heading">Daily Task Report - 25 Oct 2026</h1>' in html
-    assert '<span>Total time</span><strong>3 hours</strong>' in html
-    assert '<td>overnight</td>' in html and '<td>&lt;img onerror=&#34;unsafe&#34;&gt;</td>' in html
+    assert '<span>Total time</span><strong>03:00</strong>' in html
+    assert '</span>overnight</td>' in html and '</span>&lt;img onerror=&#34;unsafe&#34;&gt;</td>' in html
     assert '<td>01:00</td>' in html and '<td>02:00</td>' in html
-    assert '<td>previous</td>' not in html and '<td>next</td>' not in html
+    assert '</span>previous</td>' not in html and '</span>next</td>' not in html
     assert '<option value="github.com/example/previous"' not in html
     assert '<option value="github.com/example/next"' not in html
     assert '<img onerror="unsafe">' not in html
@@ -207,23 +233,23 @@ def test_daily_lists_all_projects_with_hours_clipped_to_local_day(service, tasks
         html = response.read().decode()
     assert '<option value="github.com/example/overnight" selected>overnight</option>' in html
     assert '<option value="github.com/example/&lt;img onerror=&#34;unsafe&#34;&gt;">' in html
-    assert '<td>overnight</td>' in html and '<td>&lt;img' not in html
-    assert '<span>Total time</span><strong>1 hour</strong>' in html
+    assert '</span>overnight</td>' in html and '</span>&lt;img' not in html
+    assert '<span>Total time</span><strong>01:00</strong>' in html
     assert 'repository=github.com%2Fexample%2Fovernight&amp;lang=en' in html
     with urlopen(service["url"] + "/daily?" + urlencode(dict(
             day="2026-10-25", repository="github.com/example/next"))) as response:
         html = response.read().decode()
-    assert '<span>Total time</span><strong>3 hours</strong>' in html
-    assert '<td>overnight</td>' in html and '<td>&lt;img' in html
+    assert '<span>Total time</span><strong>03:00</strong>' in html
+    assert '</span>overnight</td>' in html and '</span>&lt;img' in html
     assert 'repository=github.com%2Fexample%2Fnext' not in html
     for day in ("2026-10-27", "2026-10-24"):
         with urlopen(service["url"] + "/daily?day=" + day) as response:
             html = response.read().decode()
         if day == "2026-10-27":
-            assert 'class="empty"' in html and '<strong>0 seconds</strong>' in html
+            assert 'class="empty"' in html and '<strong>00:00</strong>' in html
         else:
-            assert '<span>Total time</span><strong>2 hours</strong>' in html
-            assert '<td>overnight</td>' in html and '<td>previous</td>' in html
+            assert '<span>Total time</span><strong>02:00</strong>' in html
+            assert '</span>overnight</td>' in html and '</span>previous</td>' in html
     with pytest.raises(HTTPError) as error:
         urlopen(service["url"] + "/daily?day=2026-02-30")
     assert error.value.code == 400
@@ -416,14 +442,14 @@ def test_history_drilldown_and_pause_form_recalculate_report(service, tasks):
         html = response.read().decode()
         assert f"/tasks/{task_id}?" in html
         assert "&lt;script&gt;" in html
-        assert "<span>Total time</span><strong>9 hours</strong>" in html
+        assert "<span>Total time</span><strong>09:00</strong>" in html
         assert "<td>09:00</td>" in html
         assert "<time>21:00</time>" in html
     with urlopen(service["url"] + f"/tasks/{task_id}" + query) as response:
         html = response.read().decode()
         assert 'id="timing-editor"' in html and '/static/timing.js' in html
         assert 'name="pause_start"' not in html and 'name="pause_end"' not in html
-        assert "America/Toronto" in html and "12.00" in html
+        assert "America/Toronto" in html and "<strong>12:00</strong>" in html
         assert "<time>2026-10-24 21:00:00</time>" in html
         assert "<time>2026-10-25 09:00:00</time>" in html
         assert "Elapsed time: 12:00:00" in html
