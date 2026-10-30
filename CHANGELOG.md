@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-30 @ 19:54
+
 ### Summary
 
 Give release rows the approved dark amber style for a softer appearance.
