@@ -294,16 +294,23 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         use_cached_plotly(page)
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(service["url"] + "/?repository=github.com/example/alpha&start=2026-10-24&end=2026-10-24")
+        page.wait_for_selector("#daily-chart .plot-container")
+        chart_colors = page.evaluate("JSON.parse(document.getElementById('chart-data').textContent).projectColors")
         page.get_by_role("link", name="Daily Task Report - 2026-10-24", exact=True).click()
         page.wait_for_url("**/daily?**")
         assert parse_qs(urlsplit(page.url).query) == {"day": ["2026-10-24"], "lang": ["en"]}
         assert page.get_by_role("link", name="Daily", exact=True).get_attribute("aria-current") == "page"
         assert page.locator("#tasks-heading").inner_text() == "Daily Task Report - 24 Oct 2026"
-        assert page.locator(".task-total strong").inner_text() == "3 hours"
+        assert page.locator(".task-total strong").inner_text() == "03:00"
         assert page.locator(".tasks-table th").all_text_contents() == [
             "Task #", "Project", "Start Time", "Description", "Duration"]
         assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["tiny", "beta", "alpha"]
         assert page.locator(".tasks-table tbody tr td:last-child").all_text_contents() == ["00:00", "01:00", "02:00"]
+        swatches = page.locator(".project-swatch")
+        assert swatches.count() == 3
+        assert swatches.evaluate_all("nodes => nodes.map(node => node.style.getPropertyValue('--project-color'))") == [
+            chart_colors["github.com/example/" + name] for name in ("tiny", "beta", "alpha")]
+        assert all(node.get_attribute("aria-hidden") == "true" for node in swatches.all())
         project = page.get_by_role("combobox", name="Project", exact=True)
         assert project.locator("option").all_text_contents() == ["*", "alpha", "beta", "tiny"]
         assert project.input_value() == ""
@@ -314,7 +321,8 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         project.select_option("github.com/example/tiny")
         page.get_by_role("button", name="Show Report", exact=True).click()
         assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["tiny"]
-        assert page.locator(".task-total strong").inner_text() == "10 seconds"
+        assert page.locator(".task-total strong").inner_text() == "00:00"
+        assert swatches.first.evaluate("node => node.style.getPropertyValue('--project-color')") == chart_colors["github.com/example/tiny"]
         assert project.input_value() == "github.com/example/tiny"
         assert project.locator("option").all_text_contents() == ["*", "alpha", "beta", "tiny"]
         screenshot = os.environ.get("DEVLOG_SCREENSHOT_DIR")
@@ -323,7 +331,8 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
             page.screenshot(path=str(Path(screenshot) / "daily-desktop.png"), full_page=True)
         project.select_option("github.com/example/beta")
         page.get_by_role("button", name="Show Report", exact=True).click()
-        assert page.locator(".task-total strong").inner_text() == "1 hour"
+        assert page.locator(".task-total strong").inner_text() == "01:00"
+        assert swatches.first.evaluate("node => node.style.getPropertyValue('--project-color')") == chart_colors["github.com/example/beta"]
         page.set_viewport_size({"width": 390, "height": 844})
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         table_wrap = page.locator(".table-wrap")
@@ -342,7 +351,7 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         page.get_by_role("button", name="Show Report", exact=True).click()
         assert project.input_value() == ""
         assert project.locator("option").all_text_contents() == ["*", "otherday"]
-        assert page.locator(".task-total strong").inner_text() == "1 hour"
+        assert page.locator(".task-total strong").inner_text() == "01:00"
         assert page.locator(".tasks-table tbody tr td:nth-child(2)").all_text_contents() == ["otherday"]
         page.get_by_label("Date", exact=True).fill("2026-10-26")
         page.get_by_role("button", name="Show Report", exact=True).click()
@@ -350,7 +359,7 @@ def test_daily_date_navigation_all_projects_and_mobile_table(service, tasks):
         assert project.locator("option").all_text_contents() == ["*"]
         assert page.locator(".tasks-table tbody tr").count() == 0
         assert page.locator(".empty").is_visible()
-        assert page.locator(".task-total strong").inner_text() == "0 seconds"
+        assert page.locator(".task-total strong").inner_text() == "00:00"
         assert errors == []
         browser.close()
 

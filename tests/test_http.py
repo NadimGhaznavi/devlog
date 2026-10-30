@@ -44,7 +44,8 @@ class ReportApplication:
     total_hours = 2.5
 
     def report(self, **filters):
-        return dict(repositories=['<script>alert("unsafe")</script>'], repository="", start="2026-10-24",
+        return dict(project_colors={'<script>alert("unsafe")</script>': '#E63946'},
+                    repositories=['<script>alert("unsafe")</script>'], repository="", start="2026-10-24",
                     end="2026-10-24", timezone="America/Toronto", total_hours=self.total_hours, current_task=self.current_task,
                     days=[dict(date="2026-10-24", hours=self.total_hours,
                                projects={'<script>alert("unsafe")</script>': self.total_hours})])
@@ -58,7 +59,8 @@ class TaskListApplication(ReportApplication):
     commit_message = '<script>alert("unsafe")</script>\nKeep the full commit message'
 
     def daily_task_list(self, **filters):
-        return dict(self.task_list(**filters), repositories=["github.com/example/MyCount"])
+        return dict(self.task_list(**filters), repositories=["github.com/example/MyCount"],
+                    project_colors={"github.com/example/MyCount": "#E63946"})
 
     def task_list(self, **filters):
         day = filters.get("day")
@@ -157,12 +159,27 @@ def test_daily_defaults_to_today_in_configured_timezone_and_preserves_day(monkey
         assert '<option value="">*</option>' in html
         assert html.index('id="day"') < html.index('id="project"') < html.index('>Show Report</button>')
         assert '<th scope="col">Task #</th><th scope="col">Project</th><th scope="col">Start Time</th>' in html
-        assert '<td>MyCount</td>' in html
+        assert 'aria-hidden="true"></span>MyCount</td>' in html
         assert '/tasks/123?day=2026-10-27&amp;lang=en' in html
-        assert '<span>Total time</span><strong>2 hours 32 minutes</strong>' in html
+        assert '<span>Total time</span><strong>02:32</strong>' in html
         with urlopen(Request(url + "/daily?day=2026-10-26&lang=en", method="HEAD")) as response:
             assert response.status == 200 and response.read() == b""
     assert calls == [{"day": "2026-10-27"}, {"day": "2026-10-26"}]
+
+
+@pytest.mark.parametrize("seconds, total", [
+    (0, "00:00"), (59.999999, "00:00"), (60, "00:01"),
+    (3599, "00:59"), (3600, "01:00"), (12960, "03:36"), (129600, "36:00"),
+])
+def test_daily_total_uses_zero_padded_hours_and_completed_minutes(seconds, total):
+    app = TaskListApplication()
+    app.total_seconds = seconds
+    with display(app) as url:
+        with urlopen(url + "/daily?day=2026-10-27") as response:
+            html = response.read().decode()
+    assert f'<span>Total time</span><strong>{total}</strong>' in html
+    assert ('<td><span class="project-swatch" style="--project-color: #E63946" '
+            'aria-hidden="true"></span>MyCount</td>') in html
 
 
 def test_daily_links_drop_repository_and_range_filters():
@@ -195,10 +212,10 @@ def test_daily_lists_all_projects_with_hours_clipped_to_local_day(service, tasks
     with urlopen(service["url"] + "/daily?day=2026-10-25&lang=en") as response:
         html = response.read().decode()
     assert '<h1 id="tasks-heading">Daily Task Report - 25 Oct 2026</h1>' in html
-    assert '<span>Total time</span><strong>3 hours</strong>' in html
-    assert '<td>overnight</td>' in html and '<td>&lt;img onerror=&#34;unsafe&#34;&gt;</td>' in html
+    assert '<span>Total time</span><strong>03:00</strong>' in html
+    assert '</span>overnight</td>' in html and '</span>&lt;img onerror=&#34;unsafe&#34;&gt;</td>' in html
     assert '<td>01:00</td>' in html and '<td>02:00</td>' in html
-    assert '<td>previous</td>' not in html and '<td>next</td>' not in html
+    assert '</span>previous</td>' not in html and '</span>next</td>' not in html
     assert '<option value="github.com/example/previous"' not in html
     assert '<option value="github.com/example/next"' not in html
     assert '<img onerror="unsafe">' not in html
@@ -207,23 +224,23 @@ def test_daily_lists_all_projects_with_hours_clipped_to_local_day(service, tasks
         html = response.read().decode()
     assert '<option value="github.com/example/overnight" selected>overnight</option>' in html
     assert '<option value="github.com/example/&lt;img onerror=&#34;unsafe&#34;&gt;">' in html
-    assert '<td>overnight</td>' in html and '<td>&lt;img' not in html
-    assert '<span>Total time</span><strong>1 hour</strong>' in html
+    assert '</span>overnight</td>' in html and '</span>&lt;img' not in html
+    assert '<span>Total time</span><strong>01:00</strong>' in html
     assert 'repository=github.com%2Fexample%2Fovernight&amp;lang=en' in html
     with urlopen(service["url"] + "/daily?" + urlencode(dict(
             day="2026-10-25", repository="github.com/example/next"))) as response:
         html = response.read().decode()
-    assert '<span>Total time</span><strong>3 hours</strong>' in html
-    assert '<td>overnight</td>' in html and '<td>&lt;img' in html
+    assert '<span>Total time</span><strong>03:00</strong>' in html
+    assert '</span>overnight</td>' in html and '</span>&lt;img' in html
     assert 'repository=github.com%2Fexample%2Fnext' not in html
     for day in ("2026-10-27", "2026-10-24"):
         with urlopen(service["url"] + "/daily?day=" + day) as response:
             html = response.read().decode()
         if day == "2026-10-27":
-            assert 'class="empty"' in html and '<strong>0 seconds</strong>' in html
+            assert 'class="empty"' in html and '<strong>00:00</strong>' in html
         else:
-            assert '<span>Total time</span><strong>2 hours</strong>' in html
-            assert '<td>overnight</td>' in html and '<td>previous</td>' in html
+            assert '<span>Total time</span><strong>02:00</strong>' in html
+            assert '</span>overnight</td>' in html and '</span>previous</td>' in html
     with pytest.raises(HTTPError) as error:
         urlopen(service["url"] + "/daily?day=2026-02-30")
     assert error.value.code == 400

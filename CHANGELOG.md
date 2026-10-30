@@ -6,6 +6,21 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+This release is named for the element **Neptunium (Np)**. Neptunium, the first 
+transuranium element discovered, was named after Neptune, the planet beyond Uranus.
+
+### Summary
+
+Make the Daily Task Report easier to scan with a compact total and project colors
+matching the main chart.
+
+### Changed
+
+- Format the daily report's total time as zero-padded `HH:MM` using completed
+  minutes, including `00:00` for empty days and totals under a minute.
+- Show a small color swatch before each repository name in the Project cell,
+  sharing the main chart's palette and repository mapping across dates and filters.
+
 ## [0.10.8] - 2026-10-30 @ 04:15
 
 This release is named for the element **Radium (Ra)**. Radium was once used in 

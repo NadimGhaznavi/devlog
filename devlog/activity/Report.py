@@ -30,6 +30,10 @@ class Report:
                                                now.astimezone(timezone.utc).replace(tzinfo=None)) if include_tasks else None
         result = dict(repositories=repositories, repository=repository, start=first.isoformat(), end=last.isoformat(),
                       days=totals, total_hours=sum(day["hours"] for day in totals), timezone=str(self.zone))
+        result["project_colors"] = {
+            name: DTracking.PROJECT_COLORS[index % len(DTracking.PROJECT_COLORS)]
+            for index, name in enumerate(repositories)
+        }
         if include_tasks:
             result["tasks"] = history
         return result

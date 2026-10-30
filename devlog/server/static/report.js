@@ -25,15 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const value = parseInt(channel, 16);
     return Math.round(value * shadeFactor).toString(16).padStart(2, "0");
   }).join("");
-  const projectColors = [
-    "#E63946", "#00BCD4", "#FFD60A", "#7C3AED",
-    "#22C55E", "#F77F00", "#2563EB", "#EC4899",
-    "#7AC800", "#009DFF", "#BE185D", "#FFA600",
-    "#00A896", "#A855F7", "#F35425", "#4F46E5",
-    "#BAD80A", "#F43F5E", "#00B894", "#D946EF"
-  ];
   const escapeLabel = label => label.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-  const traces = data.repositories.flatMap((repository, index) => {
+  const traces = data.repositories.flatMap(repository => {
     if (!data.days.some(day => (day.projects[repository] || 0) > 0)) return [];
     return [{
       type: "bar", name: escapeLabel(repository.replace(/^github\.com\//, "").replace(/^nadimghaznavi\//, "")),
@@ -41,9 +34,9 @@ document.addEventListener("DOMContentLoaded", () => {
       customdata: data.days.map(() => repository),
       width: barWidth,
       marker: {
-        color: projectColors[index % projectColors.length],
+        color: data.projectColors[repository],
         line: {
-          color: darker(projectColors[index % projectColors.length]),
+          color: darker(data.projectColors[repository]),
           width: data.days.map(day => day.projects[repository] > 0 ? borderWidth : 0)
         }
       },
