@@ -1,263 +1,276 @@
-/* DevLog's completed-task editor. All edits remain a draft until Save. */
+/* BMFORGE_COMPONENT = {"id": "bmforge.timeline", "spec_version": "0.1.0"}
+ * Browser assets: vis-timeline standalone UMD and CSS 8.5.6.
+ */
 (() => {
   "use strict";
   const source = document.getElementById("timing-data");
   if (!source) return;
-  const {task, labels, locale} = JSON.parse(source.textContent);
-  const SECOND = 1000, MINUTE = 60 * SECOND, MIN_WINDOW = MINUTE, MIN_INTERVAL = 1;
-  const $ = id => document.getElementById(`timing-${id}`);
+  const data = JSON.parse(source.textContent);
+  const {labels, locale} = data;
+  const SECOND = 1000, REQUEST_TIMEOUT = 15000;
+  const VIS_LOCALES = {en: "en"};
+  const $ = id => document.getElementById("timing-" + id);
   const text = (key, fields = {}) => Object.entries(fields).reduce(
-    (value, [name, replacement]) => value.replaceAll(`{${name}}`, replacement), labels[key]);
-  const formatter = new Intl.DateTimeFormat(locale, {
-    timeZone: task.timezone, year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23", timeZoneName: "shortOffset"
-  });
-  function timestamp(value) {
-    const p = Object.fromEntries(formatter.formatToParts(value).map(part => [part.type, part.value]));
-    return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second} ${p.timeZoneName}`;
-  }
-  function duration(milliseconds) {
+    (value, [name, replacement]) => value.replaceAll("{" + name + "}", replacement), labels[key]);
+  const node = (tag, content) => {
+    const element = document.createElement(tag);
+    element.textContent = content;
+    return element;
+  };
+  const duration = milliseconds => {
     const seconds = Math.floor(milliseconds / SECOND);
     return [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
       .map(value => String(value).padStart(2, "0")).join(":");
+  };
+  const utcField = value => new Date(value).toISOString().slice(0, -1);
+  const endpoint = new URL(location.href);
+  endpoint.pathname += "/timing";
+  endpoint.searchParams.delete("saved");
+
+  // Missing CSS is as unusable as a missing script. The recorded intervals stay available.
+  if (!window.vis || document.getElementById("timing-styles").dataset.failed) {
+    $("no-script").textContent = text("loadError");
+    return;
   }
+
+  let task = data.task, selected = task.intervals[0].interval_id;
+  let busy = false, blocked = false, pendingUpdate = null;
+  const items = new vis.DataSet();
+  const rowFor = id => task.intervals.find(row => row.interval_id === id);
+  const dirty = () => {
+    const row = rowFor(selected);
+    return Date.parse($("start").value + "Z") !== Date.parse(row.started_at)
+      || Date.parse($("end").value + "Z") !== Date.parse(row.ended_at);
+  };
+  const editable = enabled => ({updateTime: enabled, updateGroup: false, remove: false});
   function partName(index) {
-    let result = "";
+    let name = "";
     for (let n = index + 1; n; n = Math.floor((n - 1) / 26)) {
-      result = String.fromCharCode(65 + (n - 1) % 26) + result;
+      name = String.fromCharCode(65 + (n - 1) % 26) + name;
     }
-    return text("part", {part: result});
+    return text("part", {part: name});
   }
-  const original = task.intervals.map(row => ({...row, start: Date.parse(row.started_at), end: Date.parse(row.ended_at)}));
-  const intervals = original.map(row => ({...row}));
-  const loaded = Date.parse(task.loaded_at);
-  const completed = Date.parse(task.completed_at);
-  const workLimit = Math.min(loaded, completed);
-  const context = task.context.map(row => ({...row, start: Date.parse(row.started_at),
-    end: Math.min(loaded, row.ended_at ? Date.parse(row.ended_at) : loaded)}));
-  const first = Date.parse(task.range_start);
-  let viewStart = first, viewEnd = loaded;
-  let selected = null, dragging = null, saving = false, blocked = false, leaving = false;
-  const dirty = () => intervals.some((row, i) => row.start !== original[i].start || row.end !== original[i].end);
-  const position = value => (value - viewStart) / (viewEnd - viewStart) * 100;
-  function limits(index, edge) {
-    const row = intervals[index];
-    let lower = edge === "start" ? (intervals[index - 1]?.end ?? first) : row.start + MIN_INTERVAL;
-    let upper = edge === "end" ? (intervals[index + 1]?.start ?? workLimit) : row.end - MIN_INTERVAL;
-    for (const fixed of context) {
-      if (edge === "start" && fixed.end <= row.start) lower = Math.max(lower, fixed.end);
-      if (edge === "end" && fixed.start >= row.end) upper = Math.min(upper, fixed.start);
+  function workItem(row, index) {
+    return {id: row.interval_id, type: "range", start: new Date(row.started_at), end: new Date(row.ended_at),
+      content: node("span", partName(index) + " · " + duration(Date.parse(row.ended_at) - Date.parse(row.started_at))),
+      className: "timing-work", editable: editable(!busy && !blocked)};
+  }
+  function showError(message) {
+    $("error").textContent = message;
+    $("error").hidden = false;
+  }
+  function controls(status) {
+    $("fields").disabled = busy || blocked;
+    $("save").disabled = busy || blocked || !dirty();
+    $("cancel").disabled = busy || (!dirty() && !pendingUpdate);
+    $("track").setAttribute("aria-busy", String(busy));
+    $("status").textContent = status || text(busy ? "saving" : blocked ? "reloadRequired" : dirty() ? "dirty" : "clean");
+    items.update(task.intervals.map(row => ({id: row.interval_id,
+      editable: editable(!busy && !blocked && !dirty())})));
+  }
+  function fillForm(id) {
+    selected = id;
+    const row = rowFor(id);
+    $("part").value = id;
+    $("start").value = utcField(row.started_at);
+    $("end").value = utcField(row.ended_at);
+  }
+  function cancelUpdate() {
+    if (pendingUpdate) {
+      const callback = pendingUpdate;
+      pendingUpdate = null;
+      callback(null);
     }
-    return [lower, upper];
   }
-  function boundaryName(index, edge) {
-    const boundary = edge === "start" ? (index ? "resumed" : "start")
-      : (index === intervals.length - 1 ? "end" : "paused");
-    return text("boundary", {part: partName(index), boundary: text(boundary)});
+  function select(id) {
+    cancelUpdate();
+    fillForm(id);
+    timeline.setSelection(id);
+    controls();
   }
-  function setWindow(start, end) {
-    const span = Math.min(loaded - first, Math.max(MIN_WINDOW, end - start));
-    viewStart = Math.max(first, Math.min(start, loaded - span));
-    viewEnd = viewStart + span;
-    render();
+  function bounds() {
+    return {min: new Date(task.range_start), max: new Date(task.loaded_at)};
   }
-  function zoom(factor) {
-    const anchor = selected ? intervals[selected.index][selected.edge]
-      : (intervals[0].start + intervals.at(-1).end) / 2;
-    const span = (viewEnd - viewStart) * factor;
-    setWindow(anchor - span / 2, anchor + span / 2);
-  }
-  function spanNode(start, end, kind, label, detail) {
-    if (end <= viewStart || start >= viewEnd || end <= start) return;
-    const node = document.createElement("div");
-    node.className = `timing-span ${kind}`;
-    node.style.left = `${position(Math.max(viewStart, start))}%`;
-    node.style.width = `${position(Math.min(viewEnd, end)) - position(Math.max(viewStart, start))}%`;
-    const name = document.createElement("strong"), subtitle = document.createElement("span");
-    name.textContent = label;
-    subtitle.textContent = detail;
-    node.append(name, subtitle);
-    node.title = `${label}\n${timestamp(start)} → ${timestamp(end)}\n${detail}`;
-    $("spans").append(node);
-  }
-  const handles = [];
-  intervals.forEach((row, index) => {
-    for (const edge of ["start", "end"]) {
-      const handle = document.createElement("button");
-      handle.type = "button";
-      handle.className = "timing-handle";
-      handle.dataset.index = index;
-      handle.dataset.edge = edge;
-      handle.setAttribute("role", "slider");
-      handle.setAttribute("aria-orientation", "horizontal");
-      handle.setAttribute("aria-label", boundaryName(index, edge));
-      handle.setAttribute("aria-describedby", "timing-help");
-      const select = () => { selected = {index, edge}; render(); };
-      handle.addEventListener("focus", select);
-      handle.addEventListener("pointerdown", event => {
-        if (event.button !== 0 || saving || blocked) return;
-        select();
-        handle.focus({preventScroll: true});
-        dragging = {index, edge, x: event.clientX, value: intervals[index][edge], pointer: event.pointerId};
-        handle.setPointerCapture(event.pointerId);
-        event.preventDefault();
-      });
-      handle.addEventListener("pointermove", event => {
-        if (!dragging || dragging.pointer !== event.pointerId) return;
-        if (Math.abs(event.clientX - dragging.x) < 2) {
-          change(index, edge, dragging.value);
-          return;
-        }
-        const delta = (event.clientX - dragging.x) / $("track").getBoundingClientRect().width * (viewEnd - viewStart);
-        const step = event.shiftKey ? SECOND : MINUTE;
-        change(index, edge, Math.round((dragging.value + delta) / step) * step);
-      });
-      handle.addEventListener("pointerup", () => { dragging = null; });
-      handle.addEventListener("pointercancel", () => {
-        if (dragging) intervals[dragging.index][dragging.edge] = dragging.value;
-        dragging = null;
-        render();
-      });
-      handle.addEventListener("lostpointercapture", () => { dragging = null; });
-      handle.addEventListener("keydown", event => {
-        const direction = {ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1}[event.key];
-        if (!direction || saving || blocked) return;
-        event.preventDefault();
-        change(index, edge, intervals[index][edge] + direction * (event.shiftKey ? SECOND : MINUTE));
-        const value = intervals[index][edge];
-        if (value < viewStart || value > viewEnd) {
-          const span = viewEnd - viewStart;
-          setWindow(value - span / 2, value + span / 2);
-        }
-      });
-      $("handles").append(handle);
-      handles.push({handle, index, edge});
+  $("editor").hidden = false;
+  const timeline = new vis.Timeline($("track"), items, {
+    ...bounds(), start: new Date(task.range_start), end: new Date(task.loaded_at),
+    zoomMin: SECOND, showCurrentTime: false, selectable: true, multiselect: false,
+    editable: {add: false, updateTime: true, updateGroup: false, remove: false, overrideItems: false},
+    moment: value => vis.moment(value).locale(VIS_LOCALES[locale]).utc(), locale: VIS_LOCALES[locale],
+    snap: null,
+    onMove: (item, callback) => {
+      if (busy || blocked || dirty() || !rowFor(item.id)) return callback(null);
+      cancelUpdate();
+      persist(item, callback);
+    },
+    onUpdate: (item, callback) => {
+      if (busy || blocked || !rowFor(item.id)) return callback(null);
+      select(item.id);
+      pendingUpdate = callback;
+      controls();
+      $("start").focus();
     }
   });
-  function change(index, edge, value) {
-    const [lower, upper] = limits(index, edge);
-    intervals[index][edge] = Math.max(lower, Math.min(upper, value));
-    $("error").hidden = true;
-    render();
-  }
-  function render() {
-    $("spans").replaceChildren();
-    const spans = [...context.map(row => ({...row, fixed: true})), ...intervals.map((row, index) => ({...row, index}))]
-      .sort((a, b) => a.start - b.start);
-    let cursor = first;
-    for (const row of spans) {
-      if (row.start > cursor) {
-        const pause = cursor >= intervals[0].start && row.start <= intervals.at(-1).end;
-        spanNode(cursor, row.start, pause ? "pause" : "idle", text(pause ? "pause" : "idle"), duration(row.start - cursor));
+
+  function renderSnapshot(detail) {
+    if (!detail.editor) {
+      // An authoritative snapshot can revoke completed-task editing.
+      blocked = true;
+      timeline.setOptions({editable: false});
+      items.forEach(item => items.update({id: item.id, editable: false}));
+      $("fields").disabled = true;
+      $("reload").hidden = false;
+      return false;
+    }
+    task = detail.editor;
+    if (!rowFor(selected)) selected = task.intervals[0].interval_id;
+    const rows = task.intervals.map((row, index) => workItem(row, index));
+    const spans = [...task.intervals.map(row => ({start: Date.parse(row.started_at), end: Date.parse(row.ended_at)})),
+      ...task.context.map(row => ({start: Date.parse(row.started_at),
+        end: Date.parse(row.ended_at || task.loaded_at)}))].sort((a, b) => a.start - b.start);
+    task.context.forEach(row => rows.push({id: "context-" + row.interval_id, type: "range",
+      start: new Date(row.started_at), end: new Date(row.ended_at || task.loaded_at), editable: false,
+      className: "timing-context", content: node("span", text("task", {task_id: row.task_id}) + " · " + row.repository)}));
+    let cursor = Date.parse(task.range_start);
+    for (const [index, span] of spans.entries()) {
+      if (span.start > cursor) {
+        const pause = cursor >= Date.parse(task.intervals[0].started_at)
+          && span.start <= Date.parse(task.intervals.at(-1).ended_at);
+        rows.push({id: "gap-" + index, type: "background", start: new Date(cursor), end: new Date(span.start),
+          editable: false, className: "timing-gap", content: node("span", text(pause ? "pause" : "idle"))});
       }
-      spanNode(row.start, row.end, row.fixed ? "fixed" : "active",
-        row.fixed ? text("task", {task_id: row.task_id}) : partName(row.index),
-        row.fixed ? row.repository.split("/").at(-1) : text("elapsed", {elapsed: duration(row.end - row.start)}));
-      cursor = Math.max(cursor, row.end);
+      cursor = Math.max(cursor, span.end);
     }
-    if (cursor < loaded) spanNode(cursor, loaded, "idle", text("idle"), duration(loaded - cursor));
-    $("axis").replaceChildren();
-    const ticks = $("track").clientWidth < 600 ? 2 : 5;
-    for (let index = 0; index < ticks; index++) {
-      const tick = document.createElement("span");
-      tick.className = "timing-tick";
-      tick.style.left = `${index / (ticks - 1) * 100}%`;
-      const value = timestamp(viewStart + (viewEnd - viewStart) * index / (ticks - 1));
-      const date = document.createElement("span"), time = document.createElement("span");
-      date.textContent = value.slice(0, 10);
-      time.textContent = value.slice(11);
-      tick.append(date, time);
-      $("axis").append(tick);
-    }
-    for (const {handle, index, edge} of handles) {
-      const value = intervals[index][edge], [lower, upper] = limits(index, edge);
-      handle.hidden = value < viewStart || value > viewEnd;
-      handle.disabled = saving || blocked;
-      handle.style.left = `${position(value)}%`;
-      handle.setAttribute("aria-valuemin", lower);
-      handle.setAttribute("aria-valuemax", upper);
-      handle.setAttribute("aria-valuenow", value);
-      handle.setAttribute("aria-valuetext", timestamp(value));
-      handle.title = `${boundaryName(index, edge)}: ${timestamp(value)}`;
-      handle.classList.toggle("selected", selected?.index === index && selected?.edge === edge);
-    }
-    $("now").hidden = viewEnd < loaded;
-    $("now").title = timestamp(loaded);
-    $("completed").hidden = completed < viewStart || completed > viewEnd;
-    $("completed").style.left = `${position(completed)}%`;
-    $("completed").title = `${text("commitRecorded")}: ${timestamp(completed)}`;
-    $("selection").textContent = selected
-      ? `${boundaryName(selected.index, selected.edge)} · ${timestamp(intervals[selected.index][selected.edge])}` : "";
-    const total = intervals.reduce((sum, row) => sum + row.end - row.start, 0);
+    if (cursor < Date.parse(task.loaded_at)) rows.push({id: "gap-end", type: "background",
+      start: new Date(cursor), end: new Date(task.loaded_at), editable: false,
+      className: "timing-gap", content: node("span", text("idle"))});
+    rows.push({id: "commit", type: "point", start: new Date(task.completed_at), editable: false,
+      className: "timing-commit", content: node("span", text("commitRecorded"))});
+    items.clear();
+    items.add(rows);
+    timeline.setOptions(bounds());
+    timeline.setSelection(selected);
+    $("part").replaceChildren(...task.intervals.map((row, index) => {
+      const option = node("option", partName(index));
+      option.value = row.interval_id;
+      return option;
+    }));
+    fillForm(selected);
+    const total = task.intervals.reduce((sum, row) => sum + Date.parse(row.ended_at) - Date.parse(row.started_at), 0);
     $("total").textContent = text("elapsed", {elapsed: duration(total)});
     document.querySelector(".report-heading .total strong").textContent = (total / 3600000).toFixed(2);
-    $("save").disabled = !dirty() || saving || blocked;
-    $("cancel").disabled = !dirty() || saving;
-    $("status").textContent = text(saving ? "saving" : dirty() ? "dirty" : "clean");
-    for (const id of ["focus", "zoom-in", "zoom-out", "show-all"]) $(id).disabled = saving;
-    $("zoom-in").disabled ||= viewEnd - viewStart <= MIN_WINDOW;
-    $("zoom-out").disabled ||= viewStart === first && viewEnd === loaded;
+    $("loaded").textContent = text("loaded", {timestamp: new Date(task.loaded_at).toISOString()});
+    if (detail.timeline) {
+      document.querySelector("ol.timeline").replaceChildren(...detail.timeline.map(row => {
+        const entry = node("li", "");
+        entry.className = "interval" + (row.interval_id ? "" : " pause");
+        const times = node("p", "");
+        times.append(node("time", row.started_at), " → ", node("time", row.ended_at));
+        const elapsed = node("p", text("elapsed", {elapsed: row.elapsed_time}));
+        elapsed.className = "elapsed";
+        entry.append(node("strong", text(row.interval_id ? "active" : "pause")), times, elapsed);
+        return entry;
+      }));
+    }
+    return true;
   }
-  $("zoom-in").addEventListener("click", () => zoom(0.5));
-  $("zoom-out").addEventListener("click", () => zoom(2));
-  $("show-all").addEventListener("click", () => setWindow(first, loaded));
-  $("focus").addEventListener("click", () => {
-    const span = Math.max(MIN_WINDOW, intervals.at(-1).end - intervals[0].start);
-    setWindow(intervals[0].start - span / 5, intervals.at(-1).end + span / 5);
-  });
-  $("cancel").addEventListener("click", () => {
-    intervals.forEach((row, index) => { row.start = original[index].start; row.end = original[index].end; });
+
+  async function refresh() {
+    let detail;
+    try {
+      const response = await fetch(endpoint, {signal: AbortSignal.timeout(REQUEST_TIMEOUT)});
+      if (!response.ok) throw new Error("Snapshot unavailable");
+      detail = (await response.json()).task;
+    } catch (error) {
+      blocked = true;
+      $("reload").hidden = false;
+      return;
+    }
+    blocked = !renderSnapshot(detail);
+    $("reload").hidden = blocked;
+  }
+  async function persist(item, callback) {
+    busy = true;
     $("error").hidden = true;
-    selected = null;
-    setWindow(first, loaded);
-  });
-  $("save").addEventListener("click", async () => {
-    saving = true;
-    $("error").hidden = true;
-    render();
-    const endpoint = new URL(location.href);
-    endpoint.pathname = `/tasks/${task.task_id}/timing`;
-    endpoint.searchParams.delete("saved");
+    controls();
+    let detail = null, message = null, recover = false;
+    const payload = {revision: task.revision, loaded_at: task.loaded_at,
+      intervals: task.intervals.map(row => ({...row,
+        started_at: row.interval_id === item.id && +item.start !== Date.parse(row.started_at)
+          ? item.start.toISOString() : row.started_at,
+        ended_at: row.interval_id === item.id && +item.end !== Date.parse(row.ended_at)
+          ? item.end.toISOString() : row.ended_at}))};
     try {
       const response = await fetch(endpoint, {
         method: "POST", headers: {"Content-Type": "application/json"},
-        signal: AbortSignal.timeout(15000),
-        body: JSON.stringify({revision: task.revision, loaded_at: task.loaded_at,
-          intervals: intervals.map((row, index) => ({interval_id: row.interval_id,
-            started_at: row.start === original[index].start ? row.started_at : new Date(row.start).toISOString(),
-            ended_at: row.end === original[index].end ? row.ended_at : new Date(row.end).toISOString()}))})
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+        body: JSON.stringify(payload)
       });
       const result = await response.json();
-      if (!response.ok) {
-        $("error").textContent = result.error;
-        $("error").hidden = false;
-        $("reload").hidden = false;
-        blocked = result.code === "error.timing_conflict";
-      } else if (result.saved === true) {
-        const target = new URL(location.href);
-        target.searchParams.set("saved", "timing");
-        leaving = true;
-        location.assign(target);
-        return;
+      if (response.ok && result.saved === true) {
+        detail = result.task;
+      } else if (response.status >= 400 && response.status < 500) {
+        message = result.error;
+        recover = response.status === 409;
       } else {
         throw new Error("Unconfirmed timing save");
       }
     } catch (error) {
-      $("error").textContent = text("unconfirmed");
-      $("error").hidden = false;
-      $("reload").hidden = false;
-      blocked = true;
+      message = text("unconfirmed");
+      recover = true;
     }
-    saving = false;
-    render();
+    // Settle the vis hook once, before replacing the DataSet with authoritative records.
+    const accepted = detail?.editor?.intervals.find(row => row.interval_id === item.id);
+    callback(accepted ? workItem(accepted, detail.editor.intervals.indexOf(accepted)) : null);
+    if (detail) renderSnapshot(detail);
+    if (recover) {
+      blocked = true;
+      await refresh();
+    }
+    busy = false;
+    if (message) showError(message);
+    controls(blocked ? text("reloadRequired") : detail ? text("saved") : recover ? text("refreshed") : undefined);
+  }
+
+  timeline.on("select", event => {
+    if (busy || blocked) return;
+    const id = event.items.find(id => rowFor(id));
+    if (id) select(id);
   });
+  $("part").addEventListener("change", () => select($("part").value));
+  $("form").addEventListener("input", () => controls());
+  $("form").addEventListener("submit", event => {
+    event.preventDefault();
+    if (busy || blocked || !dirty()) return;
+    const start = new Date($("start").value + "Z"), end = new Date($("end").value + "Z");
+    if (!Number.isFinite(+start) || !Number.isFinite(+end) || end <= start) {
+      showError(text("badTiming"));
+      return;
+    }
+    const callback = pendingUpdate || (() => {});
+    pendingUpdate = null;
+    persist({id: selected, start, end}, callback);
+  });
+  $("cancel").addEventListener("click", () => {
+    cancelUpdate();
+    fillForm(selected);
+    $("error").hidden = true;
+    controls();
+  });
+  $("focus").addEventListener("click", () => {
+    const start = Date.parse(task.intervals[0].started_at), end = Date.parse(task.intervals.at(-1).ended_at);
+    const padding = Math.max(SECOND, (end - start) / 5);
+    timeline.setWindow(start - padding, end + padding);
+  });
+  $("zoom-in").addEventListener("click", () => timeline.zoomIn(0.5));
+  $("zoom-out").addEventListener("click", () => timeline.zoomOut(0.5));
+  $("show-all").addEventListener("click", () => timeline.setWindow(task.range_start, task.loaded_at));
   window.addEventListener("beforeunload", event => {
-    if (dirty() && !leaving) { event.preventDefault(); event.returnValue = ""; }
+    if (busy || (task && dirty())) { event.preventDefault(); event.returnValue = ""; }
   });
-  new ResizeObserver(() => render()).observe($("track"));
-  $("loaded").textContent = text("loaded", {timestamp: timestamp(loaded)});
-  $("records").open = false;
   $("no-script").hidden = true;
-  $("editor").hidden = false;
-  render();
+  $("records").open = false;
+  renderSnapshot({editor: task});
+  controls();
+  timeline.redraw();
 })();

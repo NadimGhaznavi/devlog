@@ -1,59 +1,64 @@
 {
   "branch": "main",
-  "manager_sha256": "45ceb74986f1eb1b836307b31b33516b3de30bf2e485f92483d556c792a9e1aa",
+  "manager_sha256": "15db7017c7c65242a8d9d650b4a2f6dae629ae94b9364e9c898c2291f6fde346",
   "repository": "https://github.com/NadimGhaznavi/bmforge.git",
   "schema": 1,
   "skills": {
     "bmforge-constants": {
-      "sha256": "72836c30ff0ae72c6ac010b05890b371305e05fb8970d44903e44eada8c26509",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "64afcebb00335d0b26551c47a308664aa2bf11c97b8369ac374877955cca2d15",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.1.0"
     },
     "bmforge-db-server": {
-      "sha256": "5d83bd1d3a2693faedcaaf514f3f44b46ec5d4bcf775e3bfc3a636acc1d9f9df",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "84adca656f32beb7f2f5729770046dc1809db2478fa3a9887d9d560277b3f030",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.4.0"
     },
     "bmforge-git": {
-      "sha256": "9e420e07de1b2497e9347e3d875269223b28df8b97abcc5e1b0a198cbc8319e6",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "03f7adc0c65f8d0e9826403c0120c087f534dcaac36e756aff5555eba00e15db",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.1.0"
     },
     "bmforge-http": {
-      "sha256": "911f1c3337407f382a96ed1e143617739888589c2c84ce2e87798891b4eb93bd",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "83199d453abf20c47352d988bb40f840e62f3a577aaa0dc48bb9dae28630acc2",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.4.0"
     },
     "bmforge-installation": {
-      "sha256": "1df4a893d9a128d4ec56dc60b4658b438965e898e70f3f6d95ab0d865356dd65",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "6984cb1eaf19ceaa961c1df6e8afa54311a1f915330d36683528795270a40072",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.1.1"
     },
     "bmforge-localization": {
-      "sha256": "b7cd2ed97e2ff0863a3077c7e10c367e69fc90200e0a7b05fa05e36eec640c12",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "ef774bd65cae07b37bf690f123dff585f48faff730545786a56216ff7714cadd",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.1.0"
     },
     "bmforge-project": {
-      "sha256": "0b0616db30bc8c199d9e27e72d63c6b5cdc49100a3a40eab56e1b13de5165012",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "369cba13bc24a6c8d12d23a2f6dc5611a3b3b4aa2b04626509135fc40760d966",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.1.0"
     },
     "bmforge-rca": {
-      "sha256": "631ad7a3172bfca777889d2c7ca9a966835ec2e2f37a8ba4241aa2b5e7ae30d3",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "04815c7dadd4a91e9711d049ebacb96b609b6b82fea7171e9dc728505abbc6b5",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
+      "spec_version": "0.1.0"
+    },
+    "bmforge-timeline": {
+      "sha256": "45ca028c55041ca3592b14e777960b793f2db5395996082b8994d68840e1a1f3",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.1.0"
     },
     "bmforge-visualization": {
-      "sha256": "c9328a67cc67a94df262c8e07af09510a382254279ea85cd90700b6673e2ff60",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "4d5cc21cb2d21f37622b60f3c39aba12f13bbc88238cedc55c200ac60189c8de",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.1.0"
     },
     "bmforge-zmq": {
-      "sha256": "4417b4306ad63dc62165534d7ec47f9b8250d1bf4bdf025960a40ec03296fb37",
-      "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519",
+      "sha256": "a1df499daa1ac3c9324a0024236b21a29076f9f3d7e7c9c635f02c20c5a219cf",
+      "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6",
       "spec_version": "0.3.1"
     }
   },
-  "source_commit": "87ba468ffb8377e3013045414b4fb25f789a5519"
+  "source_commit": "7b35a708db2b34bf5a14e39354c5d5ef8cebfbd6"
 }

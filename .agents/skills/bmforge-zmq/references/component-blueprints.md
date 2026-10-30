@@ -20,6 +20,8 @@ Use the [Codex bootstrap]({{ site.baseurl }}{% link pages/codex-skills.md %}) to
 
 Installing the Codex skills does not install an application. After requirements are known, the **installation** skill requires Codex to complete and test all three lifecycle operations before the first release, with a versioned `/opt/prod` footprint even for a custom library or client-only program. Use DevLog's frozen role-aware example only when a genuine split client/server topology is required.
 
+The optional [Timeline Editing component]({{ site.baseurl }}{% link pages/component-timeline.md %}) requires HTTP. Select both skills explicitly, or add timeline to a project with HTTP already pinned; the manager checks the prerequisite before writing files.
+
 ## Codex workflow
 
 1. Select only the components requested by the application's requirements. Read each specification in full.
@@ -37,6 +39,7 @@ Animated GIF exports are separately covered by [GIF Animation]({{ site.baseurl }
 ## Blueprints
 
 - [HTTP Display Server]({{ site.baseurl }}{% link pages/component-http.md %})
+- [Timeline Editing: vis-timeline, requires HTTP]({{ site.baseurl }}{% link pages/component-timeline.md %})
 - [ZeroMQ Request/Reply Server]({{ site.baseurl }}{% link pages/component-zmq.md %})
 - [DB Server]({{ site.baseurl }}{% link pages/component-db-server.md %})
 - [Display Visualizations: charts, maps and graphs]({{ site.baseurl }}{% link pages/component-visualization.md %})

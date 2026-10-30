@@ -200,26 +200,24 @@ its title. Open a task to inspect its commit, active intervals and pauses.
 Task-list hours cover the selected period; task details show the whole task.
 **Back to report** shows all repositories for the selected period.
 
-Completed tasks have a horizontal timing editor. Filled blocks show active
-work; gaps show pauses or time when `dl` was not running. Other recorded work,
-including the previous task according to time, is fixed context. The right
-edge marks the server time when the page loaded and stays fixed while editing.
-The recorded completion time is a second fixed marker and an upper limit for
-work; the editor does not access Git or change commit timestamps.
+Completed tasks use vis-timeline 8.5.6 to edit their existing work ranges.
+Select a range to drag the whole block or resize either edge. Each completed
+pointer gesture saves through the server; the range is accepted only after the
+server confirms it. Other recorded tasks and the completion marker are locked.
+Work cannot extend beyond completion or overlap another task. Gaps distinguish
+pauses and time when `dl` was not running. Commit and lifecycle timestamps stay intact.
 
-Drag a vertical boundary to change when work started, paused, resumed or ended.
-For example, if work stopped at 17:00 but the timer ran until 21:00, drag the
-last block's end back to 17:00. Its work duration shrinks and the following idle
-gap grows. For a task with a pause, the two blocks have four editable boundaries;
-moving the inner boundaries adjusts that existing pause.
+Use **Focus task**, **Zoom in**, **Zoom out**, **Show all**, or the timeline's
+pan/zoom gestures to inspect long or short tasks. The axis and precise editing
+fields use **UTC**, independent of the browser and report timezones. To edit
+with a keyboard, choose a work part, enter its start and end, then **Save timing**.
+**Cancel** discards the unsaved form values. Double-clicking a work range opens
+that same form. Hours and elapsed work update from the accepted server snapshot.
 
-**Focus task**, **Zoom in**, **Zoom out** and **Show all** make long timelines
-easier to adjust. Focus a boundary and use arrow keys for minute adjustments,
-or Shift plus an arrow for seconds. Boundary labels include the UTC offset to
-distinguish repeated daylight-saving times. The total hours and elapsed work
-duration preview each adjustment. **Save timing** records all adjustments
-together; **Cancel** restores the loaded timing. Dragging alone never writes to
-the database. The read-only recorded intervals remain available without JavaScript.
+Stale edits and uncertain saves refresh the recorded timing before further edits;
+failed refreshes leave editing disabled with a reload link. Writes are never
+retried automatically. The read-only recorded intervals remain available without
+JavaScript or if the pinned unpkg.com timeline assets cannot load.
 
 Task timestamps display as `yyyy-mm-dd hh:mm:ss` in the configured report
 timezone. Each active interval and pause also shows elapsed time as `HH:MM:SS`, with
@@ -275,9 +273,11 @@ test administrator. Never point these variables at production.
 
 An optional browser acceptance check uses Playwright/Chromium as test-only tools:
 set `DEVLOG_TEST_BROWSER=1` along with the disposable database socket. It verifies
-the pinned Plotly asset, chart values, repository selection, pause editing and
-mobile layout. For offline runs, `DEVLOG_TEST_PLOTLY_ASSET` may point to a cached
-copy of the approved Plotly 4.1.1 asset; this only intercepts requests in tests.
+the pinned assets, charts, repository selection, vis-timeline gestures, precise
+editing, failed-save recovery and mobile layout. For offline runs,
+`DEVLOG_TEST_PLOTLY_ASSET` may point to the approved Plotly 4.1.1 asset;
+`DEVLOG_TEST_TIMELINE_JS` and `DEVLOG_TEST_TIMELINE_CSS` may point to the approved
+vis-timeline 8.5.6 files. These only intercept requests in tests.
 
 See the [changelog](CHANGELOG.md) for version history. Before cutting a release,
 date its changelog entry and record any additional user-visible changes.

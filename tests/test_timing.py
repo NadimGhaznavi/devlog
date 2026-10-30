@@ -197,9 +197,27 @@ def test_timing_http_save_conflict_and_request_boundaries(service, tasks):
         assert tasks.task_detail(task_id) == before
     encoded = json.dumps(payload).encode()
     with post(encoded) as response:
-        assert response.status == 200 and json.load(response) == {"saved": True}
+        assert response.status == 200
+        accepted = json.load(response)
+        assert accepted["saved"] is True
+        editor = accepted["task"]["editor"]
+        assert editor["revision"] != payload["revision"]
+        assert editor["intervals"] == payload["intervals"]
+        assert accepted["task"]["total_hours"] == 3
+        assert accepted["task"]["commit_sha"] == "a" * 40
         assert response.headers["Cache-Control"] == "no-store"
     with pytest.raises(HTTPError) as error:
         post(encoded)
     assert error.value.code == 409
     assert json.load(error.value)["code"] == "error.timing_conflict"
+
+    with urlopen(endpoint) as response:
+        snapshot = json.load(response)["task"]
+        assert snapshot["editor"]["revision"] == editor["revision"]
+        assert snapshot["editor"]["intervals"] == editor["intervals"]
+        assert response.headers["Cache-Control"] == "no-store"
+    with urlopen(Request(endpoint, method="HEAD")) as response:
+        assert response.status == 200 and response.read() == b""
+    with pytest.raises(HTTPError) as error:
+        urlopen(endpoint + "&group=forged")
+    assert error.value.code == 400
