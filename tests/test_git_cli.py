@@ -17,7 +17,7 @@ from devlog.zmq.ZMQServer import ZMQServer
 @pytest.mark.parametrize("result,expected", [
     ({"task_id": None, "repository": None}, "No task currently running\n"),
     *[({"task_id": 17, "repository": "github.com/example/bmforge", "active_seconds": seconds},
-       f"Repository (bmforge): Task #17 running for {duration} hours\n")
+       f"Repository (bmforge): Task #17 running for {duration} (HH:MM)\n")
       for seconds, duration in ((0, "00:00"), (59.999999, "00:00"), (60, "00:01"),
                                 (9359, "02:35"), (371099, "103:04"))],
 ])
@@ -93,13 +93,13 @@ def test_real_cli_global_status(service, tasks, tmp_path):
 
     status("No task currently running")
     first = tasks.start("github.com/example/mycount")["task_id"]
-    status(f"Repository (mycount): Task #{first} running for 00:00 hours")
+    status(f"Repository (mycount): Task #{first} running for 00:00 (HH:MM)")
     second = tasks.start("github.com/example/other")["task_id"]
-    status(f"Repository (other): Task #{second} running for 00:00 hours")
+    status(f"Repository (other): Task #{second} running for 00:00 (HH:MM)")
     tasks.pause("github.com/example/other")
     status("No task currently running")
     tasks.start("github.com/example/mycount")
-    status(f"Repository (mycount): Task #{first} running for 00:00 hours")
+    status(f"Repository (mycount): Task #{first} running for 00:00 (HH:MM)")
     tasks.complete("github.com/example/mycount", first, "a" * 40, "done")
     status("No task currently running")
 
