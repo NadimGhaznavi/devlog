@@ -201,26 +201,34 @@ Task-list hours cover the selected period; task details show the whole task.
 **Back to report** shows all repositories for the selected period.
 
 Completed tasks use vis-timeline 8.5.6 to edit their existing work ranges.
-Select a range to drag the whole block or resize either edge. Each completed
+Choose a task-step from the dropdown to show just that step, then drag its block
+or resize either edge. Each completed
 pointer gesture saves through the server; the range is accepted only after the
-server confirms it. Other recorded tasks and the completion marker are locked.
-Work cannot extend beyond completion or overlap another task. Gaps distinguish
-pauses and time when `dl` was not running. Commit and lifecycle timestamps stay intact.
+server confirms it. The completion marker is locked.
+Work cannot extend beyond completion or overlap another task, including work
+outside the selected view. Commit and lifecycle timestamps stay intact.
 
-The timeline automatically fits the task and its completion marker, including
-after saved corrections. Panning and zooming are disabled. The axis and precise
-editing fields use **UTC**, independent of the browser and report timezones. To edit
-with a keyboard, choose a work part, enter its start and end, then **Save timing**.
+The timeline automatically fits the selected task-step, including after saved
+corrections. Panning and zooming are disabled. Above it, a two-column table holds
+the step dropdown, Start, End and the step's live elapsed time. The axis and
+precise editing fields use **browser-local time**. Start and End display
+`YYYY-MM-DD HH:MM:SS`, with calendar controls alongside. To edit with a keyboard,
+enter the local start and end, then **Save timing**.
 **Cancel** discards the unsaved form values. Double-clicking a work range opens
-that same form. Hours and elapsed work update from the accepted server snapshot.
+that same form. Task hours update from the accepted server snapshot. Unchanged
+fields preserve their saved fractional seconds. Nonexistent local times are
+rejected; an edited time repeated when clocks go back requires an explicit offset
+suffix such as `-04:00` or `-05:00`.
 
 Stale edits and uncertain saves refresh the recorded timing before further edits;
 failed refreshes leave editing disabled with a reload link. Writes are never
 retried automatically. The read-only recorded intervals remain available without
 JavaScript or if the pinned unpkg.com timeline assets cannot load.
 
-Task timestamps display as `yyyy-mm-dd hh:mm:ss` in the configured report
-timezone. Each active interval and pause also shows elapsed time as `HH:MM:SS`, with
+The interactive task detail page uses browser-local time for its metadata,
+last-updated timestamp and selected recorded interval as well as the editor.
+The read-only fallback and task lists display timestamps as `yyyy-mm-dd hh:mm:ss`
+in the configured report timezone. Each interval also shows elapsed time as `HH:MM:SS`, with
 hours continuing beyond 24 for longer intervals.
 
 Saving recalculates daily/project totals and rejects crossed boundaries,

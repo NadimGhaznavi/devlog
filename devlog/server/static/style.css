@@ -110,8 +110,16 @@ button:disabled { opacity: .5; cursor: default; }
 #timing-track .vis-item .vis-drag-left { left: -7px; }
 #timing-track .vis-item .vis-drag-right { right: -7px; }
 #timing-fields { min-width: 0; border: 1px solid var(--border); border-radius: .4rem; padding: 1rem; }
-.timing-form-fields { display: flex; flex-wrap: wrap; gap: 1rem; }
-.timing-form-fields .field { flex: 1 1 15rem; }
+.timing-form-fields { width: 100%; max-width: 42rem; table-layout: fixed; }
+.timing-form-fields th, .timing-form-fields td { text-align: left; padding: .5rem; }
+.timing-form-fields tr > td { text-align: left; }
+.timing-form-fields th, .timing-form-fields td:first-child { width: 9rem; }
+.timing-form-fields th { background: transparent; font-weight: 400; color: var(--text); }
+.timing-date-field { display: flex; align-items: center; gap: .4rem; }
+.timing-date-field input[type="text"] { font-variant-numeric: tabular-nums; }
+.timing-date-field .timing-picker { flex: 0 0 2.8rem; width: 2.8rem; padding-inline: .5rem; }
+.timing-picker::-webkit-datetime-edit { display: none; }
+.timing-picker::-webkit-calendar-picker-indicator { margin: 0; cursor: pointer; }
 .timing-total { color: var(--action); font-size: 1.2rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 #timing-status { color: var(--muted); font-size: .9rem; }
 #timing-error { overflow-wrap: anywhere; }
@@ -123,6 +131,11 @@ th { background: var(--surface); color: var(--muted); font-weight: 600; }
 tr:last-child td { border-bottom: 0; }
 th:last-child, td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 600px) {
+  #timing-fields { padding: .5rem; }
+  .timing-form-fields th, .timing-form-fields td { padding: .4rem .15rem; }
+  .timing-form-fields th, .timing-form-fields td:first-child { width: 6.3rem; }
+  .timing-date-field { gap: .2rem; }
+  .timing-date-field input[type="text"] { padding-inline: .3rem; font-size: .8rem; }
   main, .masthead { padding: 1rem; }
   .masthead-details { margin-left: 0; text-align: left; width: 100%; }
   .masthead nav { justify-content: start; gap: .6rem 1rem; }
