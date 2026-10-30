@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.10.8] - 2026-10-30 @ 04:15
+
 This release is named for the element **Radium (Ra)**. Radium was once used in 
 luminous watch dials before its serious radiation hazards became widely understood.
 
