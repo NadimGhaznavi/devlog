@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.10.10] - 2026-10-30 @ 19:06
+
 ### Summary
 
 Clarify the hours-and-minutes format in command-line task status.
