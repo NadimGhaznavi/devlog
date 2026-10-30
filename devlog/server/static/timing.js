@@ -91,10 +91,15 @@
   function bounds() {
     return {min: new Date(task.range_start), max: new Date(task.loaded_at)};
   }
+  function taskWindow() {
+    const start = Date.parse(task.intervals[0].started_at), end = Date.parse(task.completed_at);
+    const padding = Math.max(SECOND, (end - start) / 5);
+    return {start: new Date(start - padding), end: new Date(end + padding)};
+  }
   $("editor").hidden = false;
   const timeline = new vis.Timeline($("track"), items, {
-    ...bounds(), start: new Date(task.range_start), end: new Date(task.loaded_at),
-    zoomMin: SECOND, showCurrentTime: false, selectable: true, multiselect: false,
+    ...bounds(), ...taskWindow(), moveable: false, zoomable: false,
+    showCurrentTime: false, selectable: true, multiselect: false,
     editable: {add: false, updateTime: true, updateGroup: false, remove: false, overrideItems: false},
     moment: value => vis.moment(value).locale(VIS_LOCALES[locale]).utc(), locale: VIS_LOCALES[locale],
     snap: null,
@@ -149,6 +154,8 @@
     items.clear();
     items.add(rows);
     timeline.setOptions(bounds());
+    const {start, end} = taskWindow();
+    timeline.setWindow(start, end, {animation: false});
     timeline.setSelection(selected);
     $("part").replaceChildren(...task.intervals.map((row, index) => {
       const option = node("option", partName(index));
@@ -257,14 +264,6 @@
     $("error").hidden = true;
     controls();
   });
-  $("focus").addEventListener("click", () => {
-    const start = Date.parse(task.intervals[0].started_at), end = Date.parse(task.intervals.at(-1).ended_at);
-    const padding = Math.max(SECOND, (end - start) / 5);
-    timeline.setWindow(start - padding, end + padding);
-  });
-  $("zoom-in").addEventListener("click", () => timeline.zoomIn(0.5));
-  $("zoom-out").addEventListener("click", () => timeline.zoomOut(0.5));
-  $("show-all").addEventListener("click", () => timeline.setWindow(task.range_start, task.loaded_at));
   window.addEventListener("beforeunload", event => {
     if (busy || (task && dirty())) { event.preventDefault(); event.returnValue = ""; }
   });

@@ -47,12 +47,6 @@
       <section id="timing-editor" hidden aria-label="{{ t(text.TIMELINE) }}">
         <p id="timing-help" class="note">{{ t(text.TIMING_HELP) }}</p>
         <p class="note">{{ t(text.TIMING_TIMEZONE, timezone=task.timezone) }} <span id="timing-loaded"></span></p>
-        <div class="timing-toolbar">
-          <button type="button" id="timing-focus" class="secondary">{{ t(text.TIMING_FOCUS) }}</button>
-          <button type="button" id="timing-zoom-in" class="secondary">{{ t(text.TIMING_ZOOM_IN) }}</button>
-          <button type="button" id="timing-zoom-out" class="secondary">{{ t(text.TIMING_ZOOM_OUT) }}</button>
-          <button type="button" id="timing-show-all" class="secondary">{{ t(text.TIMING_SHOW_ALL) }}</button>
-        </div>
         <div id="timing-track" tabindex="0" aria-label="{{ t(text.TIMELINE) }}" aria-describedby="timing-help"></div>
         <form id="timing-form">
           <fieldset id="timing-fields">
