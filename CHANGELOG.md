@@ -6,6 +6,18 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+### Summary
+
+Make projects easier to distinguish in reports with a more varied palette and
+pattern cues for similar colors.
+
+### Changed
+
+- Spread project colors across hue and lightness, adding subtle diagonal and
+  dotted fills to later palette groups. Share each project's color and pattern
+  between chart segments, legend symbols and larger daily table swatches,
+  preserving the mapping across date and repository filters.
+
 ## [0.12.0] - 2026-10-31 @ 03:49
 
 ### Summary

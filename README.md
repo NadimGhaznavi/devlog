@@ -229,6 +229,9 @@ that day's Daily Task Report across all projects, or click a colored chart
 segment to see that day's tasks for that repository. Hover labels and daily
 totals show hours and minutes (`HH:MM`), rounded to the nearest minute. The main
 Daily Tasks chart is 680 px tall; its former Tasks section is removed.
+Project colors use a separated palette with diagonal or dotted patterns for
+similar hues. The chart, legend and Daily table swatches share the same color
+and pattern for each project across dates and filters.
 **Tasks** opens the whole filtered period and includes the selected project in
 its title. Open a task to inspect its commit, active intervals and pauses.
 Task-list hours cover the selected period; task details show the whole task.

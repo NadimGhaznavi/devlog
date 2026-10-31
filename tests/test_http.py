@@ -45,6 +45,7 @@ class ReportApplication:
 
     def report(self, **filters):
         return dict(project_colors={'<script>alert("unsafe")</script>': '#E63946'},
+                    project_patterns={'<script>alert("unsafe")</script>': '/'},
                     repositories=['<script>alert("unsafe")</script>'], repository="", start="2026-10-24",
                     end="2026-10-24", timezone="America/Toronto", total_hours=self.total_hours, current_task=self.current_task,
                     days=[dict(date="2026-10-24", hours=self.total_hours,
@@ -60,7 +61,8 @@ class TaskListApplication(ReportApplication):
 
     def daily_task_list(self, **filters):
         return dict(self.task_list(**filters), repositories=["github.com/example/MyCount"],
-                    project_colors={"github.com/example/MyCount": "#E63946"})
+                    project_colors={"github.com/example/MyCount": "#E63946"},
+                    project_patterns={"github.com/example/MyCount": "/"})
 
     def task_list(self, **filters):
         day = filters.get("day")
@@ -186,7 +188,7 @@ def test_task_pages_use_zero_padded_hours_and_completed_minutes(seconds, total, 
     assert f'<strong>{total}</strong>' in html
     if path == "/daily":
         assert ('<td><span class="project-swatch" style="--project-color: #E63946" '
-                'aria-hidden="true"></span>MyCount</td>') in html
+                'data-pattern="/" aria-hidden="true"></span>MyCount</td>') in html
     else:
         assert 'class="project-swatch"' not in html
 
