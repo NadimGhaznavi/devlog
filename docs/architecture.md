@@ -68,7 +68,12 @@ Daily report rows include total hours and a `projects` mapping of repository
 identities to hours. A `task_hours` mapping contains each project's positive task
 durations for that day, ordered by task ID and combining resumed intervals.
 The chart stacks these project hours into one bar per day, with consistent
-project colors across filters and a legend below the Date label. Each project
+project colors and patterns across date and repository filters, with a legend
+below the Date label. The 20-color palette varies hue and lightness; later
+groups use diagonal hatching or dots as a second cue for similar hues. Plotly's
+native bar patterns appear in both stacks and legend symbols; CSS renders the
+same cues in the daily table's larger 16 px project swatches. Both mappings use
+the full repository list, before filtering. Each project
 segment has a darker 4 px border and 2 px horizontal task separators matching
 the border color; the separators follow the visible stacks when projects are
 hidden using the legend.

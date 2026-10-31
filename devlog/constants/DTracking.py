@@ -44,11 +44,18 @@ class DTracking:
     REPORT_DAYS: Final[int] = 7
     MAX_REPORT_DAYS: Final[int] = 366
     PROJECT_COLORS: Final[tuple[str, ...]] = (
-        "#E63946", "#00BCD4", "#FFD60A", "#7C3AED",
-        "#22C55E", "#F77F00", "#2563EB", "#EC4899",
-        "#7AC800", "#009DFF", "#BE185D", "#FFA600",
-        "#00A896", "#A855F7", "#F35425", "#4F46E5",
-        "#BAD80A", "#F43F5E", "#00B894", "#D946EF",
+        "#FF6B6B", "#35CDE0", "#F4D35E", "#AD8CFF",
+        "#4DCEA0", "#F49A52", "#6E9EF5", "#EF83C5",
+        "#A6CD55", "#8CDBF2", "#C69BCB", "#DDBF8C",
+        "#44A99B", "#EAE3B2", "#CC826D", "#A7B7D1",
+        "#D8DF8A", "#F5AC9E", "#A5D6BB", "#CBC2F5",
+    )
+    # Plotly shapes, also used by the daily table's CSS swatches. Similar hues
+    # in later palette groups get another visual cue, independent of filters.
+    PROJECT_PATTERNS: Final[tuple[str, ...]] = (
+        "", "", "", "", "", "", "", "",
+        "/", "/", "/", "/", "/", "/", "/", "/",
+        ".", ".", ".", ".",
     )
     TASK_HOURS: Final[str] = "task_hours"
     MAX_REPOSITORY: Final[int] = 512
