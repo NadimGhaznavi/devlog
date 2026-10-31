@@ -72,6 +72,9 @@ class ReportHandler(BaseHTTPRequestHandler):
             elif path == "/daily":
                 for key in ("repository", "start", "end"):
                     values.pop(key, None)
+            elif path == "/projects":
+                for key in ("day", "start", "end"):
+                    values.pop(key, None)
             return path + "?" + urlencode(values)
         return build
 
@@ -174,6 +177,12 @@ class ReportHandler(BaseHTTPRequestHandler):
                     self.respond(200, json.dumps(report, allow_nan=False).encode(), "application/json")
                 else:
                     self.render("report.html", locale, report=report, link=link)
+            elif parsed.path == "/projects":
+                if set(query) - {"repository", "lang"}:
+                    raise ValueError("Unknown project filter")
+                report = app.project_task_list(repository=query.get("repository", ""))
+                self.render("history.html", locale, report=report, task=None,
+                            link=self.link({"repository": report["repository"]}, locale), saved=False, projects=True)
             elif parsed.path in ("/tasks", "/daily"):
                 daily = parsed.path == "/daily"
                 allowed = {"day", "repository", "lang"} if daily else {"repository", "start", "end", "day", "lang"}
