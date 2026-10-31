@@ -9,7 +9,8 @@ date (`YYYY-MM-DD`) when publishing.
 ### Summary
 
 Make projects easier to distinguish in reports with a more varied palette and
-pattern cues for similar colors.
+pattern cues for similar colors. Organize user documentation
+behind a dedicated index, restoring the original brief README.
 
 ### Changed
 
@@ -17,6 +18,8 @@ pattern cues for similar colors.
   dotted fills to later palette groups. Share each project's color and pattern
   between chart segments, legend symbols and larger daily table swatches,
   preserving the mapping across date and repository filters.
+- Restore the original README and add a concise `index.md` with BMDynIP-style
+  overview and User Guides sections covering installation, commands and reports.
 
 ## [0.12.0] - 2026-10-31 @ 03:49
 
