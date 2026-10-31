@@ -6,6 +6,19 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-31 @ 03:49
+
+### Summary
+
+Review all recorded work for a project in one place, across every date.
+
+### Added
+
+- Add Projects after Tasks in the main navigation, with a single-project
+  dropdown defaulting to the first project and no all-projects option. Show
+  all recorded tasks and releases, full active durations and total time, with
+  dates beside start times and the existing task table and release styling.
+
 ## [0.11.1] - 2026-10-30 @ 19:54
 
 ### Summary

@@ -24,6 +24,22 @@ class TaskHistory:
         if day:
             filters.update(start=day, end=day)
         report = Report(self.tasks, self.zone).read(include_tasks=True, **filters)
+        return self._present_history(report)
+
+    def project(self, *, repository="", now=None):
+        now = now or datetime.now(timezone.utc)
+        with self.tasks.db.transaction(read_only=True):
+            repositories = self.tasks.repositories()
+            if repository and repository not in repositories:
+                raise ValueError("Unknown repository")
+            repository = repository or (repositories[0] if repositories else "")
+            history = (self.tasks.project_history(repository, now.astimezone(timezone.utc).replace(tzinfo=None))
+                       if repository else {"tasks": [], DRelease.RELEASES: []})
+        report = dict(history, repositories=repositories, repository=repository,
+                      total_hours=sum(task["hours"] for task in history["tasks"]), timezone=str(self.zone))
+        return self._present_history(report)
+
+    def _present_history(self, report):
         entries = [dict(task, entry_type=HistoryKind.TASK) for task in report["tasks"]]
         entries.extend(dict(release, entry_type=HistoryKind.RELEASE) for release in report[DRelease.RELEASES])
         # Sort UTC datetimes before formatting; local clock times repeat at DST fall-back.
