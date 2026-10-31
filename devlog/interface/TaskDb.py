@@ -187,6 +187,30 @@ class TaskDb:
     def repositories(self):
         return [row["identity"] for row in self.db.query("SELECT identity FROM repositories ORDER BY identity")]
 
+    def project_history(self, repository, now):
+        """All tasks and releases for one project, with full active durations."""
+        rows = self.db.query("""
+            SELECT t.task_id, r.identity AS repository, t.status, t.started_at, t.completed_at,
+                t.commit_sha, t.commit_message,
+                COALESCE(SUM(TIMESTAMPDIFF(MICROSECOND,
+                    i.started_at, COALESCE(i.ended_at, %s))), 0) / 3600000000 AS hours
+            FROM tasks t JOIN repositories r ON r.repository_id = t.repository_id
+            LEFT JOIN intervals i ON i.task_id = t.task_id
+            WHERE r.identity = %s
+            GROUP BY t.task_id, r.identity, t.status, t.started_at, t.completed_at,
+                t.commit_sha, t.commit_message
+            ORDER BY t.started_at DESC, t.task_id DESC
+        """, (now, repository))
+        releases = self.db.query("""
+            SELECT l.release_id, r.identity AS repository, l.tag_name, l.codename,
+                l.commit_sha, l.released_at
+            FROM releases l JOIN repositories r ON r.repository_id = l.repository_id
+            WHERE r.identity = %s
+            ORDER BY l.released_at DESC, l.release_id DESC
+        """, (repository,))
+        return {"tasks": [dict(row, hours=float(row["hours"])) for row in rows],
+                DRelease.RELEASES: releases}
+
     def record_release(self, repository, tag_name, codename, commit_sha, released_at, *, now=None):
         """An exact retry is harmless; changed metadata for a tag is a conflict."""
         with self.db.transaction():

@@ -214,6 +214,11 @@ change interfaces, ports, client host, timeouts, or report timezone (initially
 
 ### Correcting completed task timing
 
+**Projects**, after **Tasks** in the main navigation, shows all recorded tasks
+and releases for one project, with full active durations and total time across
+all dates. Its dropdown selects the first project by default and switches
+projects immediately; there is no `*` option. Dates appear beside start times.
+
 **Daily** lists today's tasks across all projects, with a date picker for other
 days and a Project column after Task #. Between the date and **Show Report**, a
 Project dropdown lists `*` for all projects plus projects with recorded work on
