@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-31 @ 03:49
+
 ### Summary
 
 Review all recorded work for a project in one place, across every date.
