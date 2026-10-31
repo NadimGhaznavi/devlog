@@ -44,5 +44,5 @@
     </details>
 {% endblock %}
 {% block scripts %}
-  <script id="chart-data" type="application/json">{{ {'days': report.days, 'repositories': report.repositories, 'projectColors': report.project_colors, 'hoursLabel': t(text.HOURS), 'dateLabel': t(text.DATE), 'taskUrl': link('/tasks'), 'dailyUrl': link('/daily'), 'dailyLabel': t(text.DAILY_TASKS_TITLE, date='{date}')} | tojson }}</script>
+  <script id="chart-data" type="application/json">{{ {'days': report.days, 'repositories': report.repositories, 'projectColors': report.project_colors, 'projectPatterns': report.project_patterns, 'hoursLabel': t(text.HOURS), 'dateLabel': t(text.DATE), 'taskUrl': link('/tasks'), 'dailyUrl': link('/daily'), 'dailyLabel': t(text.DAILY_TASKS_TITLE, date='{date}')} | tojson }}</script>
 {% endblock %}

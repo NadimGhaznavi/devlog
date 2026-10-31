@@ -99,6 +99,74 @@ def drag_work_range(page, index, delta_seconds, edge=None, touch=False, wait=Tru
 
 @pytest.mark.database
 @pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
+def test_project_patterns_match_bars_legend_and_daily_swatches(service, tasks):
+    playwright = pytest.importorskip("playwright.sync_api")
+    repositories = ["github.com/example/" + name for name in (
+        "ax3l", "blog", "bmca", "bmcyber", "bmdynip", "bmforge", "bmgeoip", "cmdb",
+        "devlog", "disk-ha", "mycount", "nadim", "nadim-daniel", "nadimghaznavi",
+        "r3el", "snake-web", "snake-web-code", "www", "x-tools", "z-tools")]
+    for day in range(7):
+        cursor = datetime(2026, 10, 24 + day, 10)
+        for index, repository in enumerate(repositories):
+            if (index + day) % 3:
+                continue
+            for step in range(2):
+                task_id = tasks.start(repository, now=cursor)["task_id"]
+                cursor += timedelta(minutes=10 + (index * 7 + step * 3) % 40)
+                tasks.complete(repository, task_id, f"{task_id:040x}", "Example work", now=cursor)
+    tasks.record_release(repositories[16], "v1.0.0", None, "f" * 40, datetime(2026, 10, 26, 21))
+    errors = []
+    with playwright.sync_playwright() as runtime:
+        browser = runtime.chromium.launch()
+        page = browser.new_page(viewport={"width": 1440, "height": 1100}, ignore_https_errors=True)
+        use_cached_plotly(page)
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.goto(service["url"] + "/?start=2026-10-24&end=2026-10-30")
+        page.wait_for_selector("#daily-chart .plot-container")
+        styles = page.evaluate("""document.getElementById('daily-chart').data.map(trace => ({
+            repository: trace.customdata[0], color: trace.marker.color, pattern: trace.marker.pattern.shape
+        }))""")
+        assert len(styles) == 20
+        assert {style["pattern"] for style in styles} == {"", "/", "."}
+        for index, style in enumerate(styles):
+            bar = page.locator("#daily-chart .barlayer .trace").nth(index).locator(".point path").nth(
+                next(day for day in range(7) if (index + day) % 3 == 0))
+            legend = page.locator("#daily-chart .legend .legendpoints path").nth(index)
+            for node in (bar, legend):
+                fill = node.evaluate("node => getComputedStyle(node).fill")
+                assert ("url(" in fill) == bool(style["pattern"])
+        screenshots = os.environ.get("DEVLOG_SCREENSHOT_DIR")
+        if screenshots:
+            Path(screenshots).mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(Path(screenshots) / "project-patterns-desktop.png"), full_page=True)
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.wait_for_timeout(300)
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        assert page.locator("#daily-chart .legendtext").count() == 20
+        if screenshots:
+            page.screenshot(path=str(Path(screenshots) / "project-patterns-mobile.png"), full_page=True)
+        # A patterned project keeps its style when it becomes the only trace.
+        for patterned in (styles[8], styles[16]):
+            page.goto(service["url"] + "/?repository=" + patterned["repository"] + "&start=2026-10-24&end=2026-10-30")
+            page.wait_for_selector("#daily-chart .plot-container")
+            assert page.evaluate("document.getElementById('daily-chart').data[0].marker.pattern.shape") == patterned["pattern"]
+            assert page.evaluate("document.getElementById('daily-chart').data[0].marker.color") == patterned["color"]
+        for day in ("2026-10-26", "2026-10-29"):
+            page.goto(service["url"] + "/daily?day=" + day)
+            rows = page.locator(".tasks-table tbody tr")
+            for row in rows.all():
+                name = row.locator("td").nth(1).inner_text()
+                style = next(style for style in styles if style["repository"].endswith("/" + name))
+                swatch = row.locator(".project-swatch")
+                assert swatch.get_attribute("data-pattern") == style["pattern"]
+                assert swatch.evaluate("node => node.style.getPropertyValue('--project-color')") == style["color"]
+                assert (swatch.evaluate("node => getComputedStyle(node).backgroundImage") != "none") == bool(style["pattern"])
+        assert not errors
+        browser.close()
+
+
+@pytest.mark.database
+@pytest.mark.skipif(os.environ.get("DEVLOG_TEST_BROWSER") != "1", reason="Set DEVLOG_TEST_BROWSER=1 and install Playwright/Chromium")
 def test_plotly_report_filters_and_mobile_layout(service, tasks):
     playwright = pytest.importorskip("playwright.sync_api")
     tasks.start("github.com/nadimghaznavi/alpha", now=datetime(2026, 10, 24, 10))
@@ -140,7 +208,7 @@ def test_plotly_report_filters_and_mobile_layout(service, tasks):
         label_box = label.bounding_box()
         assert label_box["y"] + label_box["height"] < bar["y"]
         colors = page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.marker.color)")
-        assert colors == ["#E63946", "#00BCD4"]
+        assert colors == ["#FF6B6B", "#35CDE0"]
         borders = page.evaluate("document.getElementById('daily-chart').data.map(trace => trace.marker.line)")
         assert [border["width"] for border in borders] == [[0, 0, 0, 0, 0, 4, 0], [0, 0, 0, 0, 0, 4, 0]]
         for fill, border in zip(colors, borders):

@@ -36,6 +36,10 @@ class Report:
             name: DTracking.PROJECT_COLORS[index % len(DTracking.PROJECT_COLORS)]
             for index, name in enumerate(repositories)
         }
+        result["project_patterns"] = {
+            name: DTracking.PROJECT_PATTERNS[index % len(DTracking.PROJECT_PATTERNS)]
+            for index, name in enumerate(repositories)
+        }
         if include_tasks:
             result["tasks"] = history
             result[DRelease.RELEASES] = releases

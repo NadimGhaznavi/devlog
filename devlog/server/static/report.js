@@ -35,6 +35,10 @@ document.addEventListener("DOMContentLoaded", () => {
       width: barWidth,
       marker: {
         color: data.projectColors[repository],
+        pattern: {
+          shape: data.projectPatterns[repository], fillmode: "overlay",
+          fgcolor: color("--background"), fgopacity: 0.55, size: 8, solidity: 0.15
+        },
         line: {
           color: darker(data.projectColors[repository]),
           width: data.days.map(day => day.projects[repository] > 0 ? borderWidth : 0)
