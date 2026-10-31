@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-31 @ 07:12
+
 ### Summary
 
 Make projects easier to distinguish in reports with a more varied palette and
