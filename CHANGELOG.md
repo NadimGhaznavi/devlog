@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-01 @ 16:53
+
 ### Summary
 
 Refresh DevLog's pinned BMForge guidance and manager to upstream 0.22.2,
