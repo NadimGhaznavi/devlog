@@ -6,6 +6,37 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+### Summary
+
+Refresh DevLog's pinned BMForge guidance and manager to upstream 0.22.2,
+including explicit MariaDB connection collation and local pin verification.
+Prepare the GitHub Pages documentation site with the shared dark theme,
+the supplied DevLog logo and dedicated user guides.
+
+### Added
+
+- Pin the optional `bmforge-github-pages` skill at specification 0.1.0 from
+  `f17717f03c90`, including its offline configuration and publishing scaffold.
+- Add the canonical Jekyll configuration and a GitHub Pages workflow that builds
+  and publishes only `main`. Use the shared Minimal Mistakes dark theme, wide
+  pages, author sidebar, English translation keys and DevLog's MyCount identity.
+  Exclude application source and tooling from the documentation output.
+
+### Changed
+
+- Use the supplied `pages/images/devlog.png` for the site and homepage logo,
+  preserving its original aspect ratio and transparency. Split the existing
+  installation, tracking and reports content into guides linked from the home
+  page, and point the brief README to the default GitHub project website.
+- Ignore generated Jekyll output and caches; keep site builds on GitHub.
+- Update all 11 installed BMForge skill bundles, the project-local manager and
+  lock fingerprints from `7b35a708db2b` to `f17717f03c90` (BMForge 0.22.2).
+  Include revised database, HTTP, installation, timeline and ZeroMQ contracts,
+  shared component guidance and the manager's offline `verify` command.
+- Synchronize DevLog's unchanged canonical `DbMgr.py` with specification 0.5.0,
+  explicitly setting connection collation to `utf8mb4_unicode_ci`. Existing
+  database schemas and stored data are not migrated by this update.
+
 ## [0.12.1] - 2026-10-31 @ 07:12
 
 ### Summary

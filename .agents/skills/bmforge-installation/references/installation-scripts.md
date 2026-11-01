@@ -65,6 +65,22 @@ The helper is a source-file deployment baseline. Replace its project name and pa
 
 For a source-only toolkit, the baseline can be sufficient once its file lists are configured. [BMForge's installation]({{ site.baseurl }}{% link pages/installing-bmforge.md %}) is an example. Applications with running services or databases need their own additional work before enabling deployment.
 
+## Deploy an isolated Python runtime
+
+A Python application with dependencies owns `<BASE_DIR>/.venv` under `/opt/prod/<slug>`. The development Git checkout (e.g. `/opt/dev/<slug>`) is **not** an installation and is never a runtime path. Configure the **existing** `scripts/install.py` template:
+
+```python
+REQUIREMENTS_FILE = "requirements.txt"
+SYSTEM_PYTHON = "/usr/bin/python3"
+RUNTIME_IMPORTS = ("myapp", "myapp.__main__", "myapp.client", "zmq")
+```
+
+Adapt the module list to the application. Require system Python and venv/ensurepip support (on Debian, `python3-venv`), **not** globally installed application packages. Both `--check` and the real install/upgrade must preflight the host interpreter without making changes; the real operation copies requirements into production, creates or reuses `.venv`, installs pinned packages, runs `pip check` and imports via the deployed interpreter. It records `venv_owned` before creation and must not claim installation success until project-specific health probes pass.
+
+Update **every** runtime entry point as part of the consuming application's implementation: systemd `ExecStart` and `WorkingDirectory`, clients, Fail2ban actions and health probes must use `/opt/prod/<slug>/.venv/bin/python` and deployed code. The application must keep working when the source checkout is moved or absent. Uninstall removes only installer-owned environments; unrelated venvs and persistent data stay untouched. A Python-free library can leave `REQUIREMENTS_FILE = None` and must not create a venv.
+
+Verify with the supplied template lifecycle tests, a real locally installed wheel or controlled dependency source, and project-specific service/client smoke tests. `--check` is read-only; a failed dependency install, import, startup or health probe must never advance `.deployment-version`. Running `pip install --upgrade -r` does not prune unused packages, so projects needing exact removal must explicitly add a cleanup/verification step.
+
 ## Configure Applications Before Service Changes
 
 Implement [Runtime Configuration]({{ site.baseurl }}{% link pages/runtime-configuration.md %}) for deployment settings in `conf/<lowercase-name>.json`, including defaults from constants, shared validation and resolution, CMDB read access, and preservation through the application lifecycle.
