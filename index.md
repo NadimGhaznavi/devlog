@@ -24,6 +24,8 @@ Task times can be edited.
 
 ![Task Editing](/pages/images/task.png)
 
+This is another fine project from the [Bear and Moose](https://www.osoyalce.com) family.
+
 ---
 
 ## User Guides
