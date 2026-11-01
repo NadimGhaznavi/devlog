@@ -6,6 +6,21 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+### Summary
+
+Refresh DevLog's pinned BMForge guidance and manager to upstream 0.22.2,
+including explicit MariaDB connection collation and local pin verification.
+
+### Changed
+
+- Update all 11 installed BMForge skill bundles, the project-local manager and
+  lock fingerprints from `7b35a708db2b` to `f17717f03c90` (BMForge 0.22.2).
+  Include revised database, HTTP, installation, timeline and ZeroMQ contracts,
+  shared component guidance and the manager's offline `verify` command.
+- Synchronize DevLog's unchanged canonical `DbMgr.py` with specification 0.5.0,
+  explicitly setting connection collation to `utf8mb4_unicode_ci`. Existing
+  database schemas and stored data are not migrated by this update.
+
 ## [0.12.1] - 2026-10-31 @ 07:12
 
 ### Summary

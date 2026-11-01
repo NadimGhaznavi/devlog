@@ -79,10 +79,17 @@ SKILLS = {
         "components/reference/snake-web-code/snakewebcode/activity/SimulationAnimation.py",
     )),
     "bmforge-timeline": ("pages/component-timeline.md", ()),
+    "bmforge-nftables": ("pages/component-nftables.md", ()),
+    "bmforge-fail2ban": ("pages/component-fail2ban.md", ()),
+    "bmforge-security-events": ("pages/component-security-events.md", ()),
+    "bmforge-github-pages": ("pages/jekyll-setup.md", ()),
     "bmforge-rca": (None, ()),
 }
 BASE_SKILLS = ("bmforge-project", "bmforge-constants", "bmforge-localization", "bmforge-installation")
-REQUIRES = {"bmforge-timeline": ("bmforge-http",)}
+REQUIRES = {
+    "bmforge-timeline": ("bmforge-http",),
+    "bmforge-fail2ban": ("bmforge-zmq",),
+}
 COMMON = (
     "pages/engineering-contract.md",
     "pages/classification.md",
@@ -93,6 +100,7 @@ HEALTH = "pages/health-checks.md"
 DB_TEMPLATE = "components/templates/db-server/interface/DbMgr.py"
 GIT_TEMPLATE = "components/templates/git/Git.py"
 GIF_TEMPLATE = "components/templates/gif-animation/interface/GIFAnimation.py"
+SECURITY_EVENTS_TEMPLATE = "components/templates/security-events/interface/SecurityEvents.py"
 CONSTANTS_TEMPLATE = "templates/project/constants/DProject.py"
 LOCALIZER_TEMPLATE = "components/templates/localization/interface/Localizer.py"
 TEXT_TEMPLATE = "components/templates/constants/DText.py"
@@ -109,6 +117,15 @@ RELEASE_TEMPLATES = {
 RELEASE_GUIDES = ("pages/release-setup.md", "pages/creating-a-release.md",
                   "pages/changelog-maintenance.md")
 INSTALLATION_GUIDES = ("pages/installation-scripts.md", "pages/cmdb-compliance.md")
+GITHUB_PAGES_ASSETS = {
+    "_config.yml": "templates/_config.yml",
+    "jekyll-gh-pages.yml": "templates/jekyll-gh-pages.yml",
+    "index.md": "templates/github-pages/index.md",
+    "README.md": "templates/github-pages/README.md",
+    "page.md": "templates/github-pages/page.md",
+}
+GITHUB_PAGES_GUIDES = ("pages/github-pages-publishing.md",
+                      "pages/multilingual-documentation.md")
 LOCK = Path(".agents/bmforge/lock.json")
 MANAGER = Path(".agents/bmforge/manage.py")
 DEFAULT_SOURCE_CACHE = Path.home() / ".cache/bmforge-upstream"
@@ -186,6 +203,12 @@ def bundle(source, name):
     if name == "bmforge-installation":
         for guide in INSTALLATION_GUIDES:
             files["references/" + Path(guide).name] = guide
+    if name == "bmforge-github-pages":
+        for destination, original in GITHUB_PAGES_ASSETS.items():
+            files["assets/" + destination] = original
+        for guide in GITHUB_PAGES_GUIDES:
+            files["references/" + Path(guide).name] = guide
+        files["agents/openai.yaml"] = "skills/bmforge-github-pages/agents/openai.yaml"
     if name in ("bmforge-http", "bmforge-zmq", "bmforge-db-server"):
         files["references/health-checks.md"] = HEALTH
     for snapshot in snapshots:
@@ -196,6 +219,8 @@ def bundle(source, name):
         files["assets/Git.py"] = GIT_TEMPLATE
     if name == "bmforge-gif-animation":
         files["assets/GIFAnimation.py"] = GIF_TEMPLATE
+    if name == "bmforge-security-events":
+        files["assets/SecurityEvents.py"] = SECURITY_EVENTS_TEMPLATE
     if name == "bmforge-constants":
         files["assets/DProject.py"] = CONSTANTS_TEMPLATE
     if name == "bmforge-localization":
@@ -272,6 +297,13 @@ Before the first BMForge-related edit in a Codex session, run the **read-only**,
 **offline** update check from the repository root:
 
     python3 .agents/bmforge/manage.py check --project .
+
+If this project's policy prohibits all Git commands, use the alternative:
+
+    python3 .agents/bmforge/manage.py verify --project .
+
+verify checks only local pinned-skill and manager hashes, with no Git, network or
+writes; it does not check whether newer upstream skills exist.
 
 The check reads a clean local BMForge main checkout at
 ~/.cache/bmforge-upstream (override with BMFORGE_SOURCE or --source).
@@ -588,19 +620,43 @@ def local_update_source(explicit, recorded):
     return source
 
 
-def start_check(args):
-    root = project_root(args.project)
-    lock = load_lock(root)
+def local_pin_integrity(root, lock):
+    """Check installed skill/manager hashes without Git, network or mutations."""
     modified = []
     for name, installed in sorted(lock["skills"].items()):
         directory = root / ".agents/skills" / name
         try:
-            current = fingerprint(installed_bundle(directory))
-            if current != installed["sha256"]:
+            if fingerprint(installed_bundle(directory)) != installed["sha256"]:
                 modified.append(name)
         except (OSError, SetupError):
             modified.append(name)
-    manager_changed = sha256((root / MANAGER).read_bytes()).hexdigest() != lock["manager_sha256"]
+    manager = root / MANAGER
+    manager_changed = (not manager.is_file() or manager.is_symlink()
+                       or sha256(manager.read_bytes()).hexdigest() != lock["manager_sha256"])
+    return modified, manager_changed
+
+
+def start_verify(args):
+    """Verify only local pins, even in an app that prohibits every Git command."""
+    root = Path(args.project).expanduser().resolve()
+    if not root.is_dir():
+        raise SetupError(f"Project directory does not exist: {root}")
+    lock = load_lock(root)
+    modified, manager_changed = local_pin_integrity(root, lock)
+    for name in modified:
+        print(f"LOCALLY MODIFIED {name}: installed snapshot differs from the lock; nothing changed")
+    if manager_changed:
+        print("LOCALLY MODIFIED manager: pinned script differs from the lock")
+    if not modified and not manager_changed:
+        print("All local BMForge pins have valid hashes.")
+    print("Integrity only: no Git commands, network requests, update checks or writes.")
+    return 1 if modified or manager_changed else 0
+
+
+def start_check(args):
+    root = project_root(args.project)
+    lock = load_lock(root)
+    modified, manager_changed = local_pin_integrity(root, lock)
     for name in modified:
         print(f"LOCALLY MODIFIED {name}: installed snapshot differs from the lock; nothing changed")
     if manager_changed:
@@ -685,7 +741,7 @@ def start_setup_branches(args):
 def main(argv=None):
     parser = ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    for action in ("init", "attach", "add", "check", "setup-branches"):
+    for action in ("init", "attach", "add", "check", "verify", "setup-branches"):
         cmd = sub.add_parser(action)
         cmd.add_argument("--project", default=".", help="Existing Git repository root")
         if action in ("init", "attach", "add", "check"):
@@ -703,7 +759,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         return {"init": start_init, "attach": start_attach,
-                "add": start_add, "check": start_check,
+                "add": start_add, "check": start_check, "verify": start_verify,
                 "setup-branches": start_setup_branches}[args.action](args) or 0
     except (SetupError, OSError, subprocess.TimeoutExpired) as error:
         print(f"BMForge: {error}", file=sys.stderr)
