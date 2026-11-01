@@ -10,13 +10,19 @@ translation_key: devlog-home
 permalink: /
 ---
 
-![{{ site.title }} logo]({{ site.logo | relative_url }}){: .align-center width="320" }
+![DevLog Main Page](/pages/images/main-page.png)
 
-**DevLog** tracks time spent working in GitHub repositories.
+**DevLog** tracks time spent working in GitHub repositories. This is an application that
+I developed for myself. I wanted to get a sense of how much time I was spending on my
+Open Source projects.
 
-- Start, pause and complete tasks from the command line.
-- Review daily hours, project history and releases in the web interface.
-- Track one active task at a time, with paused time excluded.
+The app supports viewing the tasks for a day or for a project.
+
+![Daily Tasks](/pages/images/daily-tasks.png)
+
+Task times can be edited.
+
+![Task Editing](/pages/images/task.png)
 
 ---
 
