@@ -19,6 +19,11 @@
       "source_commit": "f17717f03c906389f30065d94b0df6a00472a2dd",
       "spec_version": "0.1.0"
     },
+    "bmforge-github-pages": {
+      "sha256": "a0a67cf8ca12ad21568e6db8eec70fc3d9121d876e962c4f9446a8ec434f5487",
+      "source_commit": "f17717f03c906389f30065d94b0df6a00472a2dd",
+      "spec_version": "0.1.0"
+    },
     "bmforge-http": {
       "sha256": "cd55fae66d4e0e750740567b6fc982445ee6f17df8b1687311c614f50b98599a",
       "source_commit": "f17717f03c906389f30065d94b0df6a00472a2dd",
