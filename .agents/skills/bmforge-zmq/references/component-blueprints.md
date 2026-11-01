@@ -24,6 +24,8 @@ The optional [Timeline Editing component]({{ site.baseurl }}{% link pages/compon
 
 ## Codex workflow
 
+For a producer-only application, select [Security Events]({{ site.baseurl }}{% link pages/component-security-events.md %}) **alone**. Business code emits a semantic event; the trusted ingress adapter supplies the verified address and the systemd journal carries the log. No HTTP, ZMQ, Fail2ban or nftables skill dependency is implied. For a blocking/consumer project, select [Fail2ban]({{ site.baseurl }}{% link pages/component-fail2ban.md %}) for native **journald** detection and its thin ban action, [ZMQ]({{ site.baseurl }}{% link pages/component-zmq.md %}) for communication, and [nftables]({{ site.baseurl }}{% link pages/component-nftables.md %}) for timed bans. Fail2ban still requires ZMQ in that project. All detection windows/counts belong to native Fail2ban, never to the producer. No new file log or ban-state machinery is selected.
+
 1. Select only the components requested by the application's requirements. Read each specification in full.
 2. For HTTP and ZeroMQ, inspect the pinned examples under `components/reference/bmgeoip/` as **local reference snapshots**, then adapt the relevant mechanics into the application. For MariaDB, copy `components/templates/db-server/interface/DbMgr.py` **unchanged** into the application and build only the required domain `*Db` interfaces above it. Use the Git component's own standalone template for Git. Never fetch moving upstream source.
 3. Replace BMGeoIP-specific names, routes, configuration, schema, message methods, resource paths and lifecycle hooks in adapted HTTP/ZeroMQ code. Never copy GeoIP business functionality into an unrelated application. For the DB Server, supply the application's resolved configuration **without editing the canonical manager**. Keep business SQL only in new domain `*Db` interfaces.
@@ -38,9 +40,13 @@ Animated GIF exports are separately covered by [GIF Animation]({{ site.baseurl }
 
 ## Blueprints
 
+- [Project GitHub Pages: shared theme, required logo and site scaffold]({{ site.baseurl }}{% link pages/jekyll-setup.md %})
 - [HTTP Display Server]({{ site.baseurl }}{% link pages/component-http.md %})
 - [Timeline Editing: vis-timeline, requires HTTP]({{ site.baseurl }}{% link pages/component-timeline.md %})
 - [ZeroMQ Request/Reply Server]({{ site.baseurl }}{% link pages/component-zmq.md %})
+- [Timed Host IP Bans: nftables]({{ site.baseurl }}{% link pages/component-nftables.md %})
+- [Security Event Producer: fire-and-forget journald, no prerequisites]({{ site.baseurl }}{% link pages/component-security-events.md %})
+- [Security Journal Detection: Fail2ban, requires ZMQ only in blocking project]({{ site.baseurl }}{% link pages/component-fail2ban.md %})
 - [DB Server]({{ site.baseurl }}{% link pages/component-db-server.md %})
 - [Display Visualizations: charts, maps and graphs]({{ site.baseurl }}{% link pages/component-visualization.md %})
 - [GIF Animation: rendered frames to animated GIF]({{ site.baseurl }}{% link pages/component-gif-animation.md %})

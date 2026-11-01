@@ -4,7 +4,7 @@ lang: en
 locale: en-US
 language_name: English
 component_id: "bmforge.timeline"
-spec_version: "0.1.0"
+spec_version: "0.2.0"
 spec_status: "draft"
 translation_key: bmforge-component-timeline
 ---
@@ -82,13 +82,13 @@ Keep pending and failed states visible. A rejected operation preserves the last 
 
 For instant-based records, use ISO 8601 timestamps with `Z` or an explicit numeric offset on the wire and UTC in persistence. Convert valid timestamps to JavaScript `Date` values and serialize edited instants with `toISOString()`. Never treat an offset-free wall-clock string as an instant or slice a UTC string into a local `datetime-local` input.
 
-Choose and label browser-local or UTC display deliberately. For UTC axes, use the bundled constructor with `moment: date => vis.moment(date).utc()`. Local display follows the browser's timezone, which may differ from the server's. Local-form conversion must round-trip across midnight and daylight-saving transitions; reject nonexistent local times and disambiguate repeated local times rather than silently choosing an instant. Define whether domain durations mean elapsed time or calendar time. An arbitrary named-zone axis requiring additional timezone data is a separately approved dependency decision.
+Follow HTTP's **local-time display** contract: use the application's configured local timezone, defaulting to the server's operating-system local timezone, and label it. Browser-local rendering is sufficient only when it matches that zone; do not silently display UTC or the visitor's different timezone. Full timestamps in item details, tooltips and precise editing summaries use `yyyy-mm-dd hh:mm:ss` with a 24-hour clock and no fractional seconds. Axis ticks may use shorter context-appropriate date/time labels, with no subsecond labels. Local-form conversion must round-trip across midnight and daylight-saving transitions; reject nonexistent local times and disambiguate repeated local times rather than silently choosing an instant. Define whether domain durations mean elapsed time or calendar time. An arbitrary named-zone axis requiring additional timezone data is a separately approved dependency decision.
 
 Keep date-only calendar records as date-only values with an explicit calendar policy; do not apply UTC conversion to them implicitly. This component does not impose instant semantics on all-day events.
 
 ## Traceability and upstream references
 
-Use `BMFORGE_COMPONENT = {"id": "bmforge.timeline", "spec_version": "0.1.0"}` in the owning Python page/API module when it clearly owns this component. For a JavaScript-only owner, record the same ID and specification version in a source comment; do not create a Python service just to hold a marker. Record the browser asset version separately. Follow [specification traceability]({{ site.baseurl }}{% link pages/specification-lifecycle.md %}); automated JavaScript scanning is not implemented.
+Use `BMFORGE_COMPONENT = {"id": "bmforge.timeline", "spec_version": "0.2.0"}` in the owning Python page/API module when it clearly owns this component. For a JavaScript-only owner, record the same ID and specification version in a source comment; do not create a Python service just to hold a marker. Record the browser asset version separately. Follow [specification traceability]({{ site.baseurl }}{% link pages/specification-lifecycle.md %}); automated JavaScript scanning is not implemented.
 
 The pinned contract above is sufficient for offline skill use. Consult these upstream primary sources for API detail; they do not authorize changing the pinned library version:
 
@@ -103,7 +103,7 @@ The pinned contract above is sufficient for offline skill use. Consult these ups
 3. In the browser, select, pan/zoom and perform each enabled create/update/move/resize/delete operation. Check the canonical ID and values, then reload and confirm persistence. Verify the precise keyboard form uses the same rules.
 4. Cancel a form/delete and simulate validation rejection, server failure, timeout and lost acknowledgement. Check one callback completion, visible unsaved/uncertain status, restored or refetched state and no unintended repeat write.
 5. Send direct invalid API requests for unknown IDs, disallowed fields/groups, malformed times, reversed ranges and locked items. Apply overlap, barrier and stale-edit checks only where the application specifies those rules. Verify a subsequent valid request succeeds.
-6. Round-trip UTC and explicit offsets, browser/server timezone differences, midnight, and daylight-saving skipped/repeated local times. Verify date-only records retain their calendar date where supported.
+6. Round-trip UTC and explicit offsets, browser/server timezone differences, midnight, and daylight-saving skipped/repeated local times. Verify the axis, forms and details use the application's local timezone, full display timestamps use `yyyy-mm-dd hh:mm:ss`, no fractional seconds appear, and date-only records retain their calendar date where supported.
 7. Render malicious item/group/tooltip labels as inert text; inspect dark desktop/mobile styling, readable range handles, visible focus, localized controls and keyboard editing.
 
 ---
