@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-01 @ 16:58
+
 ### Summary
 
 Align the documentation site's custom-domain configuration with BMCyber so
