@@ -6,6 +6,8 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-11-01 @ 17:51
+
 ## [0.13.1] - 2026-11-01 @ 16:58
 
 ### Summary
