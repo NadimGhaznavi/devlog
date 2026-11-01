@@ -6,6 +6,19 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-01 @ 16:58
+
+### Summary
+
+Align the documentation site's custom-domain configuration with BMCyber so
+styles, logos and guide links resolve from the DevLog domain root.
+
+### Fixed
+
+- Set the Jekyll URL to `https://devlog.osoyalce.com` with an empty base URL,
+  matching `CNAME`, and update the README website link to the custom domain.
+  Remove the incorrect `/devlog` prefix from generated asset and guide URLs.
+
 ## [0.13.0] - 2026-11-01 @ 16:53
 
 ### Summary
