@@ -1,5 +1,8 @@
 ---
 title: "Installation"
+layout: single
+classes: wide
+author_profile: true
 lang: en
 locale: en-US
 language_name: English
