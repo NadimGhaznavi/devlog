@@ -6,6 +6,12 @@ date (`YYYY-MM-DD`) when publishing.
 
 ## [Unreleased]
 
+## [0.13.5] - 2026-11-02 @ 04:17
+
+### Added
+
+- Sidebar to other site pages.
+
 ## [0.13.4] - 2026-11-02 @ 02:22
 
 ### Fixed
