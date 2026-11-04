@@ -17,6 +17,12 @@ Malformed requests receive an `invalid_request` error; invalid requests do not s
 Unexpected internal failures receive an error and terminate the worker visibly,
 so the service exits and systemd can restart it.
 
+The worker keeps one database connection and tests it with `SELECT 1` before
+each normal command. If that probe detects a lost connection, the worker
+replaces it once before executing the command. A command that has started is
+never replayed automatically. Native `health` requests report the existing
+connection's state without reconnecting.
+
 | Method | Payload | Result |
 | --- | --- | --- |
 | `status` | Empty object | `task_id`, `repository` (both null when idle; otherwise the global active task's ID and full repository identity) |

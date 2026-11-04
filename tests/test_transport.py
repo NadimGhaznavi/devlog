@@ -123,3 +123,26 @@ def test_client_rejects_mismatched_response():
     with ZMQServer("tcp://127.0.0.1:*", wrong_reply) as server:
         with pytest.raises(TrackingError, match="invalid_response"):
             ZMQClient(server.endpoint, timeout_ms=1000).call(Method.HEALTH, {})
+
+
+@pytest.mark.database
+def test_lost_database_connection_recovers_without_service_restart(service, tasks, db_options):
+    client = ZMQClient(service["endpoint"], timeout_ms=1000)
+    assert client.call(Method.STATUS, {})["task_id"] is None
+
+    def worker_connection():
+        rows = tasks.db.query("""
+            SELECT ID FROM information_schema.PROCESSLIST
+            WHERE USER = %s AND ID <> CONNECTION_ID()
+        """, (db_options["user"],))
+        assert len(rows) == 1
+        return rows[0]["ID"]
+
+    previous = worker_connection()
+    tasks.db.execute("KILL CONNECTION %s", (previous,))
+    assert client.call(Method.STATUS, {})["task_id"] is None
+    replacement = worker_connection()
+    assert replacement != previous
+    assert client.call(Method.STATUS, {})["task_id"] is None
+    assert worker_connection() == replacement
+    assert service["process"].poll() is None

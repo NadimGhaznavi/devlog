@@ -30,7 +30,14 @@ class Application:
     def handler(self):
         with self.tasks() as tasks:
             tasks.health()
-            yield TrackingHandler(Tracking(tasks), self.localizer)
+            dispatch = TrackingHandler(Tracking(tasks), self.localizer)
+
+            def handle(request):
+                if request.method != Method.HEALTH:
+                    self.store.ensure_connected(tasks)
+                return dispatch(request)
+
+            yield handle
 
     def report(self, **filters):
         with self.tasks() as tasks:
