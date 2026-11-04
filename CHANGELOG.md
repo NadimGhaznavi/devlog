@@ -1,10 +1,24 @@
 # Changelog
 
-User-visible changes are recorded here, newest version first. Versions remain
-marked **Unreleased** until a release is cut; replace that label with the release
-date (`YYYY-MM-DD`) when publishing.
+All changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.13.6] - 2026-11-04 @ 04:07
+
+### Summary
+
+Recover stale database connections before processing CLI commands, keeping the
+ZMQ service running without automatically repeating commands.
+
+### Fixed
+
+- Test the worker's retained database connection before each normal ZMQ command
+  and reconnect once on connection loss. Keep monitoring probes observational
+  and propagate command failures without replaying database operations.
 
 ## [0.13.5] - 2026-11-02 @ 04:17
 
