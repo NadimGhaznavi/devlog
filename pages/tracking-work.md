@@ -13,7 +13,7 @@ Run these commands inside a GitHub repository checkout. DevLog identifies the
 project from its `origin` remote.
 
 ```bash
-dl status                    # show the active task; works from any directory
+dl status                    # show running and paused tasks from any directory
 dl start                     # start or resume this repository's task
 dl pause                     # pause it
 dl commit "Describe changes" # commit, complete the task and push
@@ -23,6 +23,19 @@ Only one task runs at a time. Switching repositories with `dl start` pauses the
 previous task. Returning to a paused repository resumes its unfinished task;
 paused time is excluded from reports. After committing, `dl start` creates a new
 task for that repository.
+
+`dl status` shows any paused tasks below the running-task status, one per line
+and indented, ordered by repository:
+
+```text
+Repository (devlog): Task #17 running for 02:35 (HH:MM)
+Paused tasks:
+  Repository (mycount): Task #12 paused
+  Repository (other): Task #4 paused
+```
+
+The paused list also appears when no task is running. It is omitted when there
+are no paused tasks.
 
 ## Commit and recovery
 

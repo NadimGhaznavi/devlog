@@ -37,6 +37,8 @@ class DText(StrEnum):
     STATUS_HELP = "cli.status_help"
     TASK_RUNNING = "timer.task_running"
     NO_RUNNING_TASK = "timer.no_running_task"
+    PAUSED_TASKS = "timer.paused_tasks"
+    TASK_PAUSED = "timer.task_paused"
     PAUSE_HELP = "cli.pause_help"
     COMMIT_HELP = "cli.commit_help"
     PUBLISH_HELP = "cli.publish_help"

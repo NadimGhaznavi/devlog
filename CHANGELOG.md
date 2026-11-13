@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-13 @ 04:22
+
+### Summary
+
+See paused tasks alongside the running task with `dl status`, making unfinished
+work across repositories easier to find. Development setup now includes a
+persistent virtual environment with the server and test dependencies.
+
+### Added
+
+- List paused tasks under `Paused tasks:` in `dl status`, one indented line per
+  task with its repository and task number, ordered by repository. Show the list
+  even when no task is running, and omit it when empty.
+- Include `paused_tasks` in the read-only status response, with CLI, database
+  and end-to-end coverage for switching, pausing, resuming and completing tasks.
+- Add a pinned `dev` extra for pytest and document creating `.venv` with the
+  existing server dependencies so the test suite has its required database
+  driver and template renderer.
+
 ## [0.13.6] - 2026-11-04 @ 04:07
 
 ### Summary

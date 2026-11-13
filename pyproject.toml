@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devlog"
-version = "0.13.6"
+version = "0.14.0"
 description = "Personal Git repository task and time tracker"
 requires-python = ">=3.11"
 dependencies = ["pyzmq==26.4.0"]
 
 [project.optional-dependencies]
 server = ["Jinja2==3.1.6", "PyMySQL==1.1.2"]
+dev = ["pytest==8.3.5"]
 
 [project.scripts]
 dl = "devlog.cli:main"
