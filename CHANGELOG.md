@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-13 @ 04:22
+
 ### Summary
 
 See paused tasks alongside the running task with `dl status`, making unfinished
