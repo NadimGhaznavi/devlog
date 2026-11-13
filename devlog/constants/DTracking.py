@@ -31,6 +31,7 @@ class DTracking:
     REPOSITORY: Final[str] = "repository"
     TASK_ID: Final[str] = "task_id"
     ACTIVE_SECONDS: Final[str] = "active_seconds"
+    PAUSED_TASKS: Final[str] = "paused_tasks"
     CURRENT_TASK: Final[str] = "current_task"
     PAUSED_AT: Final[str] = "paused_at"
     COMMIT_SHA: Final[str] = "commit_sha"

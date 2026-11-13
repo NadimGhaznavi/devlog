@@ -20,6 +20,16 @@ from devlog.zmq.ZMQServer import ZMQServer
        f"Repository (bmforge): Task #17 running for {duration} (HH:MM)\n")
       for seconds, duration in ((0, "00:00"), (59.999999, "00:00"), (60, "00:01"),
                                 (9359, "02:35"), (371099, "103:04"))],
+    ({"task_id": None, "repository": None, "active_seconds": 0, "paused_tasks": []},
+     "No task currently running\n"),
+    ({"task_id": None, "repository": None, "active_seconds": 0, "paused_tasks": [
+        {"task_id": 12, "repository": "github.com/example/mycount"},
+     ]}, "No task currently running\nPaused tasks:\n  Repository (mycount): Task #12 paused\n"),
+    ({"task_id": 17, "repository": "github.com/example/bmforge", "active_seconds": 9359,
+      "paused_tasks": [{"task_id": 12, "repository": "github.com/example/mycount"},
+                       {"task_id": 4, "repository": "github.com/example/other"}]},
+     "Repository (bmforge): Task #17 running for 02:35 (HH:MM)\nPaused tasks:\n"
+     "  Repository (mycount): Task #12 paused\n  Repository (other): Task #4 paused\n"),
 ])
 def test_cli_status_outside_repository_over_zmq(tmp_path, result, expected):
     @contextmanager
@@ -86,7 +96,10 @@ def test_cli_pause_without_task_keeps_error(monkeypatch, capsys):
 
 @pytest.mark.database
 def test_real_cli_global_status(service, tasks, tmp_path):
-    def status(expected):
+    def status(expected, *paused):
+        if paused:
+            expected += "\nPaused tasks:" + "".join(
+                f"\n  Repository ({repository}): Task #{task_id} paused" for task_id, repository in paused)
         result = dl(tmp_path, service, "status")
         assert result.returncode == 0, result.stderr
         assert result.stdout == expected + "\n"
@@ -95,12 +108,14 @@ def test_real_cli_global_status(service, tasks, tmp_path):
     first = tasks.start("github.com/example/mycount")["task_id"]
     status(f"Repository (mycount): Task #{first} running for 00:00 (HH:MM)")
     second = tasks.start("github.com/example/other")["task_id"]
-    status(f"Repository (other): Task #{second} running for 00:00 (HH:MM)")
+    status(f"Repository (other): Task #{second} running for 00:00 (HH:MM)", (first, "mycount"))
     tasks.pause("github.com/example/other")
-    status("No task currently running")
+    status("No task currently running", (first, "mycount"), (second, "other"))
     tasks.start("github.com/example/mycount")
-    status(f"Repository (mycount): Task #{first} running for 00:00 (HH:MM)")
+    status(f"Repository (mycount): Task #{first} running for 00:00 (HH:MM)", (second, "other"))
     tasks.complete("github.com/example/mycount", first, "a" * 40, "done")
+    status("No task currently running", (second, "other"))
+    tasks.complete("github.com/example/other", second, "b" * 40, "done")
     status("No task currently running")
 
 

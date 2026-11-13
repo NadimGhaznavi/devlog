@@ -93,6 +93,13 @@ def main(argv=None):
                 hours, minutes = divmod(int(result[DTracking.ACTIVE_SECONDS]) // 60, 60)
                 print(t(DText.TASK_RUNNING, repository=result[DTracking.REPOSITORY].rsplit("/", 1)[-1],
                         task_id=result[DTracking.TASK_ID], duration=f"{hours:02}:{minutes:02}"))
+            paused = result.get(DTracking.PAUSED_TASKS, [])
+            if paused:
+                print(t(DText.PAUSED_TASKS))
+                for task in paused:
+                    print("  " + t(DText.TASK_PAUSED,
+                                   repository=task[DTracking.REPOSITORY].rsplit("/", 1)[-1],
+                                   task_id=task[DTracking.TASK_ID]))
             return 0
         repository = local.repository.identity
         if args.command == "commit":

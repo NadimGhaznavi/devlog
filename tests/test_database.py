@@ -19,24 +19,28 @@ A, B = "github.com/example/a", "github.com/example/b"
 def test_status_is_global_and_read_only(tasks):
     t = lambda hour: datetime(2026, 10, 24, hour)
 
-    def status(task_id, repository, seconds, now):
+    def status(task_id, repository, seconds, now, paused=()):
         before = {table: tasks.db.query(f"SELECT * FROM {table}")
                   for table in ("repositories", "tasks", "intervals", "tracker_state")}
         assert tasks.status(now=now) == {"task_id": task_id, "repository": repository,
-                                         "active_seconds": seconds}
+                                         "active_seconds": seconds,
+                                         "paused_tasks": [{"task_id": task, "repository": repo}
+                                                          for task, repo in paused]}
         assert {table: tasks.db.query(f"SELECT * FROM {table}") for table in before} == before
 
     status(None, None, 0, t(10))
-    first = tasks.start(A, now=t(10))["task_id"]
-    status(first, A, 3600, t(11))
-    second = tasks.start(B, now=t(12))["task_id"]
-    status(second, B, 3600, t(13))
-    tasks.pause(B, now=t(14))
-    status(None, None, 0, t(15))
-    tasks.start(A, now=t(16))
-    status(first, A, 10800, t(17))
-    tasks.complete(A, first, "a" * 40, "done", now=t(18))
-    status(None, None, 0, t(19))
+    first = tasks.start(B, now=t(10))["task_id"]
+    status(first, B, 3600, t(11))
+    second = tasks.start(A, now=t(12))["task_id"]
+    status(second, A, 3600, t(13), [(first, B)])
+    tasks.pause(A, now=t(14))
+    status(None, None, 0, t(15), [(second, A), (first, B)])
+    tasks.start(B, now=t(16))
+    status(first, B, 10800, t(17), [(second, A)])
+    tasks.complete(B, first, "a" * 40, "done", now=t(18))
+    status(None, None, 0, t(19), [(second, A)])
+    tasks.complete(A, second, "b" * 40, "done", now=t(20))
+    status(None, None, 0, t(21))
 
 
 def test_status_sums_subsecond_intervals_before_formatting(tasks):

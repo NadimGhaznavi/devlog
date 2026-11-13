@@ -25,7 +25,7 @@ connection's state without reconnecting.
 
 | Method | Payload | Result |
 | --- | --- | --- |
-| `status` | Empty object | `task_id`, `repository` (both null when idle; otherwise the global active task's ID and full repository identity) |
+| `status` | Empty object | `task_id`, `repository` (both null when idle; otherwise the global active task's ID and full repository identity), `active_seconds`, `paused_tasks` |
 | `start` | `repository` | `task_id`, `status: running` |
 | `pause` | `repository` | `task_id`, `status: paused` |
 | `commit` | `repository`, `phase: prepare`, optional `commit_sha` for recovery | Unfinished task's `task_id` and `status`, or the task already linked to the supplied SHA |
@@ -35,6 +35,11 @@ connection's state without reconnecting.
 
 `status` reads the global tracker state without modifying tasks or intervals.
 It requires no local Git checkout and rejects nonempty payloads.
+`active_seconds` is the running task's accumulated active time, or zero when
+idle. `paused_tasks` lists all paused tasks as objects with `task_id` and full
+`repository` identity, ordered by repository identity then task ID; it is empty
+when none are paused. Both reads share one read-only transaction. This additive
+field retains protocol version 1; clients accept older servers that omit it.
 
 `release` records one version tag without changing any task or interval. All
 five fields are required, and additional fields are rejected. Tag names match

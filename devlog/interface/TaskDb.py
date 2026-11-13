@@ -97,6 +97,12 @@ class TaskDb:
             if len(rows) != 1:
                 raise RuntimeError("DevLog schema is not initialized; run dl-db-init")
             rows[0][DTracking.ACTIVE_SECONDS] = float(rows[0].pop("active_microseconds")) / 1000000
+            rows[0][DTracking.PAUSED_TASKS] = self.db.query("""
+                SELECT t.task_id, r.identity AS repository
+                FROM tasks t JOIN repositories r ON r.repository_id = t.repository_id
+                WHERE t.status = %s
+                ORDER BY r.identity, t.task_id
+            """, (TaskStatus.PAUSED,))
             return rows[0]
 
     @staticmethod
