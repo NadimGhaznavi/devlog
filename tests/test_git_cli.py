@@ -77,7 +77,8 @@ def test_cli_pause_over_zmq(tmp_path, monkeypatch, capsys, paused_at, zone, expe
     assert captured.err == ""
 
 
-def test_cli_pause_without_task_keeps_error(monkeypatch, capsys):
+@pytest.mark.parametrize("command", ["pause", "cancel"])
+def test_cli_without_task_keeps_error(monkeypatch, capsys, command):
     repository = SimpleNamespace(identity="github.com/example/mycount", name="mycount")
     monkeypatch.setattr(cli, "LocalRepository", lambda: SimpleNamespace(repository=repository))
 
@@ -88,10 +89,54 @@ def test_cli_pause_without_task_keeps_error(monkeypatch, capsys):
         }}
 
     with ZMQServer("tcp://127.0.0.1:*", handler) as server:
-        assert cli.main(["--server", server.endpoint, "pause"]) == 1
+        assert cli.main(["--server", server.endpoint, command]) == 1
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == "This repository has no unfinished task. Run dl start first.\n"
+
+
+@pytest.mark.database
+@pytest.mark.parametrize("state", ["running", "paused", "other_running"])
+def test_real_cli_cancel_from_nested_directory(service, checkout, tasks, state):
+    root, remote = checkout
+    nested = root / "nested"
+    nested.mkdir()
+    repository = "github.com/example/project"
+    assert dl(root, service, "start").returncode == 0
+    task_id = tasks.prepare_commit(repository)["task_id"]
+    if state == "paused":
+        assert dl(root, service, "pause").returncode == 0
+    elif state == "other_running":
+        tasks.start("github.com/example/other")
+    (root / "initial").write_text("edited\n")
+    (nested / "untracked").write_text("keep me\n")
+    git(root, "add", "initial")
+    before = {tuple(args): git(root, *args).stdout for args in (
+        ("status", "--porcelain"), ("rev-parse", "HEAD"), ("diff",), ("diff", "--cached"),
+    )}
+    remote_head = git(remote, "rev-parse", "main").stdout
+
+    result = dl(nested, service, "cancel")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f"Canceled task {task_id} in example/project and deleted its tracked time.\n"
+    assert tasks.db.query("SELECT * FROM tasks WHERE task_id = %s", (task_id,)) == []
+    assert tasks.db.query("SELECT * FROM intervals WHERE task_id = %s", (task_id,)) == []
+    status = tasks.status()
+    assert status["paused_tasks"] == []
+    assert status["repository"] == ("github.com/example/other" if state == "other_running" else None)
+    assert {args: git(root, *args).stdout for args in before} == before
+    assert git(remote, "rev-parse", "main").stdout == remote_head
+    assert (root / "initial").read_text() == "edited\n"
+    assert (nested / "untracked").read_text() == "keep me\n"
+    retry = dl(nested, service, "cancel")
+    assert retry.returncode == 1
+    assert "no unfinished task" in retry.stderr
+
+
+def test_cli_cancel_requires_repository(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["cancel"]) == 1
+    assert capsys.readouterr().err == "Run dl inside a Git repository.\n"
 
 
 @pytest.mark.database

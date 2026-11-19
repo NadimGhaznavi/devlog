@@ -34,6 +34,10 @@ class Tracking:
             return self.tasks.start(repository)
         if method == Method.PAUSE and set(payload) == {DTracking.REPOSITORY}:
             return self.tasks.pause(repository)
+        if method == Method.CANCEL:
+            if set(payload) != {DTracking.REPOSITORY}:
+                raise TrackingError("invalid_request", DText.INVALID_REQUEST)
+            return self.tasks.cancel(repository)
         if method != Method.COMMIT:
             raise TrackingError("unknown_method", DText.INVALID_REQUEST)
         phase = payload.get(DTracking.PHASE)

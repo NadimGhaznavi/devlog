@@ -16,6 +16,7 @@ project from its `origin` remote.
 dl status                    # show running and paused tasks from any directory
 dl start                     # start or resume this repository's task
 dl pause                     # pause it
+dl cancel                    # delete its running or paused task and tracked time
 dl commit "Describe changes" # commit, complete the task and push
 ```
 
@@ -23,6 +24,13 @@ Only one task runs at a time. Switching repositories with `dl start` pauses the
 previous task. Returning to a paused repository resumes its unfinished task;
 paused time is excluded from reports. After committing, `dl start` creates a new
 task for that repository.
+
+Use `dl cancel` to discard this repository's unfinished task, whether running
+or paused, and remove all its tracked time from reports. It preserves completed
+tasks and leaves any task running in another repository alone. It does not
+change Git commits, staged changes or working files. If there is no unfinished
+task, it reports an error. Run `dl start` to create a new task after cancellation.
+The client and server must both support `cancel`.
 
 `dl status` shows any paused tasks below the running-task status, one per line
 and indented, ordered by repository:

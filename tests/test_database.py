@@ -110,6 +110,79 @@ def test_switch_failure_rolls_back_previous_pause(tasks, monkeypatch):
     assert tasks.repositories() == [A]
 
 
+@pytest.mark.parametrize("state", ["running", "paused", "other_running"])
+def test_cancel_deletes_only_unfinished_task_and_all_its_intervals(tasks, state):
+    t = lambda hour: datetime(2026, 10, 24, hour)
+    completed_id = tasks.start(A, now=t(8))["task_id"]
+    tasks.complete(A, completed_id, "a" * 40, "Keep this commit", now=t(9))
+    completed = tasks.task_detail(completed_id)
+    tasks.record_release(A, "v1.0.0", None, "a" * 40, t(9))
+    releases = tasks.db.query("SELECT * FROM releases")
+    task_id = tasks.start(A, now=t(10))["task_id"]
+    tasks.pause(A, now=t(11))
+    tasks.start(A, now=t(12))
+    if state == "paused":
+        tasks.pause(A, now=t(13))
+    elif state == "other_running":
+        other_id = tasks.start(B, now=t(13))["task_id"]
+        other = tasks.task_detail(other_id)
+
+    assert tasks.cancel(A) == {"task_id": task_id}
+    assert tasks.db.query("SELECT * FROM tasks WHERE task_id = %s", (task_id,)) == []
+    assert tasks.db.query("SELECT * FROM intervals WHERE task_id = %s", (task_id,)) == []
+    assert tasks.task_detail(completed_id) == completed
+    assert tasks.db.query("SELECT * FROM releases") == releases
+    assert [task["task_id"] for task in tasks.project_history(A, t(14))["tasks"]] == [completed_id]
+    assert A in tasks.repositories()
+    status = tasks.status(now=t(14))
+    assert status["paused_tasks"] == []
+    if state == "other_running":
+        assert status["task_id"] == other_id
+        assert status["active_seconds"] == 3600
+        assert tasks.task_detail(other_id) == other
+    else:
+        assert status["task_id"] is None
+    report = Report(tasks, ZoneInfo("UTC")).read(
+        repository=A, start="2026-10-24", end="2026-10-24", now=t(14).replace(tzinfo=timezone.utc))
+    assert report["total_hours"] == 1
+    with pytest.raises(TrackingError, match="no_task"):
+        tasks.cancel(A)
+    assert tasks.start(A, now=t(15))["task_id"] != task_id
+
+
+@pytest.mark.parametrize("completed", [False, True])
+def test_cancel_without_unfinished_task_changes_nothing(tasks, completed):
+    if completed:
+        task_id = tasks.start(A)["task_id"]
+        tasks.complete(A, task_id, "a" * 40, "Keep this commit")
+    tasks.start(B)
+    before = {table: tasks.db.query(f"SELECT * FROM {table}")
+              for table in ("repositories", "tasks", "intervals", "tracker_state")}
+    with pytest.raises(TrackingError, match="no_task"):
+        tasks.cancel(A)
+    assert {table: tasks.db.query(f"SELECT * FROM {table}") for table in before} == before
+
+
+@pytest.mark.parametrize("paused", [False, True])
+def test_cancel_failure_rolls_back_task_intervals_and_tracker(tasks, monkeypatch, paused):
+    tasks.start(A)
+    if paused:
+        tasks.start(B)
+    before = {table: tasks.db.query(f"SELECT * FROM {table}")
+              for table in ("repositories", "tasks", "intervals", "tracker_state")}
+    execute = tasks.db.execute
+
+    def fail_task_deletion(sql, params=()):
+        if "DELETE FROM tasks" in sql:
+            raise RuntimeError("injected delete failure")
+        return execute(sql, params)
+
+    monkeypatch.setattr(tasks.db, "execute", fail_task_deletion)
+    with pytest.raises(RuntimeError, match="injected delete failure"):
+        tasks.cancel(A)
+    assert {table: tasks.db.query(f"SELECT * FROM {table}") for table in before} == before
+
+
 def test_concurrent_starts_leave_one_active_task(db_options):
     barrier = Barrier(2)
 
