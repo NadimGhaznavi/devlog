@@ -160,6 +160,16 @@ class TaskDb:
                 result[DTracking.PAUSED_AT] = now.replace(tzinfo=timezone.utc).isoformat()
             return result
 
+    def cancel(self, repository):
+        with self.db.transaction():
+            active = self._lock()
+            task_id = self._unfinished(repository)[DTracking.TASK_ID]
+            if task_id == active:
+                self.db.execute("UPDATE tracker_state SET active_task_id = NULL WHERE singleton_id = 1")
+            self.db.execute("DELETE FROM intervals WHERE task_id = %s", (task_id,))
+            self.db.execute("DELETE FROM tasks WHERE task_id = %s", (task_id,))
+            return {DTracking.TASK_ID: task_id}
+
     def prepare_commit(self, repository, *, commit_sha=None):
         with self.db.transaction(read_only=True):
             if commit_sha:

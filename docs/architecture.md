@@ -5,7 +5,7 @@ One systemd process runs the standard-library HTTP display server on
 `tcp://0.0.0.0:19701`. MariaDB runs as its own existing database daemon.
 
 ```text
-dl (local checkout) -- start/pause/commit metadata --> ZMQ worker
+dl (local checkout) -- start/pause/cancel/commit metadata --> ZMQ worker
                                                      |
                                                activity/Tracking
                                                      |
@@ -39,6 +39,12 @@ database row serializes mutations. Unique generated columns enforce one open
 interval globally and one unfinished task per repository. Database transactions
 roll back all changes if switching repositories fails. Every worker owns its
 database connection; there is no shared connection or ORM.
+
+`dl cancel` resolves the current repository locally and asks `TaskDb` to remove
+its unfinished task and intervals in one transaction under the same singleton
+lock. A running task's tracker reference is cleared before deletion. Canceling
+a paused task leaves another repository's running task intact. Completed tasks,
+repository records and releases remain available, and Git is unchanged.
 
 The additive `releases` table references `repositories` and stores the exact
 tag name, optional codename, commit SHA, UTC release timestamp and server

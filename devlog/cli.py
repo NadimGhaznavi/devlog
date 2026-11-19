@@ -38,6 +38,7 @@ def main(argv=None):
     commands.add_parser(Method.STATUS, help=t(DText.STATUS_HELP))
     commands.add_parser("start", help=t(DText.START_HELP))
     commands.add_parser("pause", help=t(DText.PAUSE_HELP))
+    commands.add_parser(Method.CANCEL, help=t(DText.CANCEL_HELP))
     commit = commands.add_parser("commit", help=t(DText.COMMIT_HELP))
     commit.add_argument("message", nargs="?", help=t(DText.MESSAGE_HELP))
     commit.add_argument("--record", metavar="SHA", help=t(DText.RECORD_HELP))
@@ -112,7 +113,8 @@ def main(argv=None):
                     print(output, end="" if output.endswith("\n") else "\n")
         else:
             result = client.call(Method(args.command), {DTracking.REPOSITORY: repository})
-            key = DText.STARTED if args.command == "start" else DText.PAUSED
+            key = {Method.START: DText.STARTED, Method.PAUSE: DText.PAUSED,
+                   Method.CANCEL: DText.CANCELED}[args.command]
             values = dict(repository=local.repository.name, task_id=result[DTracking.TASK_ID])
             if args.command == Method.PAUSE and result[DTracking.PAUSED_AT] is not None:
                 key = DText.PAUSED_ON
