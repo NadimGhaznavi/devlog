@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-19 @ 03:28
+
 ### Summary
 
 Cancel unwanted running or paused tasks from their repository without keeping
