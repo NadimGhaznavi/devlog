@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Summary
+
+Cancel unwanted running or paused tasks from their repository without keeping
+their tracked time or disturbing work running in another repository.
+
+### Added
+
+- Add `dl cancel` to delete the current repository's unfinished task and all its
+  time intervals atomically. Preserve completed tasks, repository records,
+  releases and Git state, and report an error when there is no unfinished task.
+- Document the cancellation command and ZMQ method, with coverage for running
+  and paused tasks, repository isolation, completed-task protection and rollback.
+
 ## [0.14.0] - 2026-11-13 @ 04:22
 
 ### Summary

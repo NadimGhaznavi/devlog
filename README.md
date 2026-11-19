@@ -4,6 +4,11 @@ Track time spent working in GitHub repositories, from the command line to daily 
 
 [Project website and documentation](https://devlog.osoyalce.com/)
 
+Run `dl cancel` inside a repository to delete its running or paused task and all
+of that task's tracked time. Completed tasks are retained. Git commits and
+working files are unchanged. If another repository's task is running, it keeps
+running. Both the client and server must support the command.
+
 ## Development
 
 Create a persistent development environment with the client, server and test

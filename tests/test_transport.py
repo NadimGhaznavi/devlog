@@ -40,6 +40,31 @@ def test_status_dispatch_rejects_repository_then_answers_global_query():
         }
 
 
+def test_cancel_dispatch_rejects_invalid_payloads_then_cancels():
+    calls = []
+
+    class Tasks:
+        def cancel(self, repository):
+            calls.append(repository)
+            return {"task_id": 42}
+
+    @contextmanager
+    def handler():
+        yield TrackingHandler(Tracking(Tasks()), Localizer(Path(__file__).resolve().parents[1] / "devlog/locales"))
+
+    repository = "github.com/example/mycount"
+    with ZMQServer("tcp://127.0.0.1:*", handler) as server:
+        client = ZMQClient(server.endpoint, timeout_ms=1000)
+        for payload in ({}, {"repository": None}, {"repository": 1}, {"repository": " "},
+                        {"repository": "bad\nrepo"}, {"repository": "a" * 513},
+                        {"repository": repository, "task_id": 42}):
+            with pytest.raises(TrackingError, match="invalid_request"):
+                client.call(Method.CANCEL, payload)
+        assert calls == []
+        assert client.call(Method.CANCEL, {"repository": repository}) == {"task_id": 42}
+        assert calls == [repository]
+
+
 @pytest.mark.parametrize("frames", [
     [b"not JSON"], [b"{}", b"extra"], [b"x" * 65537],
     [json.dumps(dict(protocol_version=True, sender="dl", target="devlog", method="health", payload={})).encode()],

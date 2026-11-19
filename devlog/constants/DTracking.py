@@ -12,6 +12,7 @@ class Method(StrEnum):
     STATUS = "status"
     START = "start"
     PAUSE = "pause"
+    CANCEL = "cancel"
     COMMIT = "commit"
     RELEASE = "release"
     HEALTH = "health"

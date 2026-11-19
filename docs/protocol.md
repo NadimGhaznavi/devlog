@@ -28,6 +28,7 @@ connection's state without reconnecting.
 | `status` | Empty object | `task_id`, `repository` (both null when idle; otherwise the global active task's ID and full repository identity), `active_seconds`, `paused_tasks` |
 | `start` | `repository` | `task_id`, `status: running` |
 | `pause` | `repository` | `task_id`, `status: paused` |
+| `cancel` | `repository` | Deleted `task_id` |
 | `commit` | `repository`, `phase: prepare`, optional `commit_sha` for recovery | Unfinished task's `task_id` and `status`, or the task already linked to the supplied SHA |
 | `commit` | `repository`, `phase: complete`, `task_id`, `commit_sha`, `message` | `task_id`, `status: completed`, `commit_sha` |
 | `release` | `repository`, `tag_name`, `codename` (string or null), `commit_sha`, `released_at` (ISO timestamp with UTC offset) | `release_id`, `inserted` (boolean; false for an exact retry) |
@@ -66,6 +67,15 @@ interval. Repeating `pause` on a paused task changes nothing. Pausing an inactiv
 repository never pauses a different repository. A repository has at most one
 unfinished task. `commit` completion is idempotent for the same task and SHA.
 An already completed task cannot be linked to a different SHA.
+
+`cancel` atomically deletes the repository's unfinished task and all its active
+intervals, whether running or paused. It clears the global active task only if
+that task is being canceled; a running task in another repository is unaffected.
+Completed tasks, repository records and releases are retained. If the repository
+has no unfinished task, including after a successful cancellation, it returns
+`no_task`. Only the `repository` field is accepted. This additive method retains
+protocol version 1 and requires an upgraded server. Cancellation checks the
+service's task record; Git commits and working files are unchanged.
 
 The server timestamps transitions in UTC and persists every active interval.
 Open intervals continue across service restarts. Paused time is excluded.
